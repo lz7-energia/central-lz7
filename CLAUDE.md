@@ -16,7 +16,10 @@ A empresa não tem equipe de TI: o Claude constrói e mantém este sistema. O do
 
 ## Stack
 
-- **Supabase:** Postgres, autenticação, armazenamento de arquivos, rotinas agendadas. Dois projetos: `central-teste` e `central-producao` (região São Paulo).
+- **Supabase:** Postgres, autenticação, armazenamento de arquivos, rotinas agendadas. Dois projetos, região São Paulo:
+  - `central-teste`: `https://ypiudecoofbrqicpwapm.supabase.co`
+  - `central-producao`: `https://psfcvqngucsbvfqxdgge.supabase.co`
+  - Toda mudança vai primeiro pro teste; produção só depois de aprovada pelo usuário.
 - **Vercel:** hospedagem do front-end, conectada a este repositório.
 - **E-mail:** Titan, com remetente dedicado (SPF/DKIM configurados no DNS).
 
