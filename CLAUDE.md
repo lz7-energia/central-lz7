@@ -63,6 +63,15 @@ Sincronização: rotina no servidor copia os dados para o banco da central; as t
 - Propostas a confirmar: consulta por protocolo + link; aprovação do gestor por link no e-mail (token assinado, com validade); identificação por lista fechada de nomes.
 - Proteção do formulário aberto: limite de envios e verificação anti-robô.
 
+## Site (`app/`)
+
+- Next.js 16 (App Router, Turbopack). A documentação da versão instalada está em
+  `app/node_modules/next/dist/docs/`: consultar antes de usar uma API do Next que mudou (ex.: `proxy.ts` substitui `middleware.ts`).
+- Equipe: cliente com a sessão do usuário (`lib/supabase/server.ts`), sujeito ao RLS.
+- Portal, consulta e aprovação: rotas do servidor com a chave de serviço (`lib/supabase/servico.ts`), só chamando as funções do banco.
+- `Referrer-Policy: same-origin` (os links de consulta/aprovação têm token; `no-referrer` quebra as Server Actions).
+- Testes: `bash supabase/tests/rodar.sh` (banco) e `testes/ponta-a-ponta/` (site inteiro, sem Docker).
+
 ## Documentos de referência
 
 O planejamento completo está no projeto "ADM" do usuário no claude.ai:
