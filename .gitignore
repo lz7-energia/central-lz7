@@ -1,0 +1,26 @@
+# Segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependências e builds
+node_modules/
+.next/
+out/
+dist/
+build/
+.vercel/
+.turbo/
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
