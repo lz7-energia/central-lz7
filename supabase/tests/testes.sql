@@ -1,0 +1,109 @@
+-- Testes das regras da fase 1. Rodar depois do stub, das migrações e do seed.
+\set ON_ERROR_STOP on
+grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
+-- (o Supabase dá esses grants por padrão; o RLS é quem restringe)
+revoke update on public.pedidos, public.pedidos_venda from authenticated;
+grant update (status, responsavel_id, prazo) on public.pedidos to authenticated;
+grant update (responsavel) on public.pedidos_venda to authenticated;
+
+-- Dados de teste
+insert into auth.users values ('11111111-1111-1111-1111-111111111111'), ('22222222-2222-2222-2222-222222222222');
+insert into public.perfis (id, nome, email, papel) values
+  ('11111111-1111-1111-1111-111111111111', 'Ana', 'ana@lz7.com.br', 'equipe');
+insert into public.solicitantes (nome, email, gestor_email) values ('Colaborador 1', 'c1@lz7.com.br', 'gestor@lz7.com.br');
+
+insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valor_total) values
+  ('PV1', '1001', 'SP000001ABC', 'Cliente A', 10000),
+  ('PV2', '1002', 'SP000002ABC', 'Cliente B', 20000),
+  ('PV3', '1003', 'SP000003ABC', 'Cliente C', 30000),
+  ('PV4', '1004', 'SP000004ABC', 'Cliente D', 40000),
+  ('PV5', '1005', 'SP000005ABC', 'Cliente E', 50000);
+insert into public.ordens_servico (flow_id, pedido_flow_id, status, status_desde) values
+  ('OS1', 'PV1', 'Instalando',          now() - interval '2 days'),
+  ('OS2', 'PV2', 'Aguardando vistoria', now() - interval '7 days'),
+  ('OS3', 'PV3', 'Aguardando vistoria', now() - interval '9 days'),
+  ('OS4', 'PV4', 'Aguardando vistoria', now() - interval '20 days'),
+  ('OS5', 'PV5', 'Aguardando vistoria', now() - interval '3 days');
+insert into public.notas_fiscais (flow_id, pedido_flow_id, numero, situacao) values
+  ('NF3', 'PV3', '8820', 'autorizada'),
+  ('NF4', 'PV4', '8821', 'autorizada'),
+  ('NF5', 'PV5', '8822', 'cancelada');
+insert into public.titulos_receber (flow_id, pedido_flow_id, valor, valor_recebido) values
+  ('T3a', 'PV3', 15000, 15000), ('T3b', 'PV3', 15000, 0),
+  ('T4a', 'PV4', 20000, 20000), ('T4b', 'PV4', 20000, 20000);
+
+-- 1) Colunas do painel
+select numero, coluna, pct_recebido, dias_parado from public.painel_faturamento order by numero;
+do $$
+declare r record;
+begin
+  for r in select numero, coluna, pct_recebido, dias_parado from public.painel_faturamento loop
+    if (r.numero, r.coluna) not in (('1001','em_execucao'),('1002','pronto_faturar'),('1003','faturado'),
+                                    ('1004','recebido'),('1005','pronto_faturar')) then
+      raise exception 'coluna errada: % %', r.numero, r.coluna;
+    end if;
+  end loop;
+  if (select pct_recebido from public.painel_faturamento where numero='1003') <> 50 then raise exception 'pct 1003'; end if;
+  if (select dias_parado from public.painel_faturamento where numero='1002') <> 7 then raise exception 'dias 1002'; end if;
+  raise notice 'OK painel';
+end $$;
+
+-- 2) Portal: criar pedido sem aprovação e com aprovação (como service_role)
+set role service_role;
+select public.criar_pedido((select id from public.tipos_pedido where nome='Emissão de nota fiscal'),
+                           (select id from public.solicitantes limit 1),
+                           '{"codigo_projeto":"SP000002ABC"}') as sem_aprovacao \gset
+select public.criar_pedido((select id from public.tipos_pedido where nome='Reembolso de despesa'),
+                           (select id from public.solicitantes limit 1),
+                           '{"valor":"120","data_despesa":"2026-11-09","motivo":"Almoço cliente","comprovante":"x.pdf"}') as com_aprovacao \gset
+reset role;
+
+do $$
+begin
+  begin
+    perform public.criar_pedido((select id from public.tipos_pedido where nome='Reembolso de despesa'),
+                                (select id from public.solicitantes limit 1), '{"valor":"1"}');
+    raise exception 'deveria exigir campo obrigatório';
+  exception when sqlstate '22023' then raise notice 'OK campo obrigatório';
+  end;
+end $$;
+
+select :'sem_aprovacao'::jsonb->>'status' as s1, :'com_aprovacao'::jsonb->>'status' as s2;
+
+-- 3) Consulta com token certo e errado
+select public.consultar_pedido(:'sem_aprovacao'::jsonb->>'protocolo', :'sem_aprovacao'::jsonb->>'token_consulta') is not null as consulta_ok;
+select public.consultar_pedido(:'sem_aprovacao'::jsonb->>'protocolo', 'token-errado') is null as consulta_negada;
+
+-- 4) Aprovação pelo link
+select public.decidir_aprovacao(:'com_aprovacao'::jsonb->'aprovacao'->>'token', 'aprovado', 'ok') ->> 'status' as apos_aprovar;
+do $$ begin
+  begin
+    perform public.decidir_aprovacao((select 'x'), 'aprovado');
+    raise exception 'token falso aceito';
+  exception when sqlstate '22023' then raise notice 'OK token falso recusado';
+  end;
+end $$;
+
+-- 5) RLS: anon não vê nada nem chama funções; equipe vê; não-equipe logado não vê
+set role anon;
+select count(*) as anon_ve_pedidos from public.pedidos;
+do $$ begin
+  begin perform public.portal_opcoes(); raise exception 'anon chamou função';
+  exception when insufficient_privilege then raise notice 'OK anon sem acesso às funções'; end;
+end $$;
+reset role;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
+select count(*) as estranho_ve_pedidos from public.pedidos;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+select count(*) as equipe_ve_pedidos from public.pedidos;
+select count(*) as equipe_ve_painel from public.painel_faturamento;
+update public.pedidos set status = 'em_andamento' where protocolo = :'sem_aprovacao'::jsonb->>'protocolo';
+do $$ begin
+  begin update public.pedidos set dados = '{}' ; raise exception 'equipe editou dados';
+  exception when insufficient_privilege then raise notice 'OK equipe não edita dados do pedido'; end;
+end $$;
+reset role;
+
+select tipo, de_status, para_status, autor from public.pedido_eventos order by id;
