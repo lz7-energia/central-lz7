@@ -1,4 +1,5 @@
 -- Central LZ7 — dados iniciais do portal (catálogo a validar com o usuário).
+-- Decisão de 10/11/2026: só "Compra ou contratação de serviço" exige aprovação do gestor.
 -- E-mails dos setores, aprovadores e lista de solicitantes: pendentes.
 
 insert into public.setores (id, nome, ordem) values
@@ -9,19 +10,19 @@ insert into public.setores (id, nome, ordem) values
 on conflict (id) do nothing;
 
 insert into public.tipos_pedido (setor_id, nome, exige_aprovacao, prazo_dias, ordem, campos) values
-  ('financeiro', 'Solicitação de pagamento', true, 3, 1, '[
+  ('financeiro', 'Solicitação de pagamento', false, 3, 1, '[
     {"chave":"favorecido","rotulo":"Favorecido","tipo":"texto","obrigatorio":true},
     {"chave":"valor","rotulo":"Valor (R$)","tipo":"numero","obrigatorio":true},
     {"chave":"vencimento","rotulo":"Vencimento","tipo":"data","obrigatorio":true},
     {"chave":"codigo_projeto","rotulo":"Código do projeto (se houver)","tipo":"texto","obrigatorio":false},
     {"chave":"motivo","rotulo":"Motivo","tipo":"texto_longo","obrigatorio":true},
     {"chave":"anexo","rotulo":"Boleto ou nota","tipo":"arquivo","obrigatorio":false}]'),
-  ('financeiro', 'Reembolso de despesa', true, 5, 2, '[
+  ('financeiro', 'Reembolso de despesa', false, 5, 2, '[
     {"chave":"valor","rotulo":"Valor (R$)","tipo":"numero","obrigatorio":true},
     {"chave":"data_despesa","rotulo":"Data da despesa","tipo":"data","obrigatorio":true},
     {"chave":"motivo","rotulo":"Motivo","tipo":"texto_longo","obrigatorio":true},
     {"chave":"comprovante","rotulo":"Comprovante","tipo":"arquivo","obrigatorio":true}]'),
-  ('financeiro', 'Adiantamento', true, 3, 3, '[
+  ('financeiro', 'Adiantamento', false, 3, 3, '[
     {"chave":"valor","rotulo":"Valor (R$)","tipo":"numero","obrigatorio":true},
     {"chave":"motivo","rotulo":"Motivo","tipo":"texto_longo","obrigatorio":true}]'),
   ('financeiro', 'Segunda via de boleto ou comprovante', false, 2, 4, '[
@@ -34,7 +35,7 @@ insert into public.tipos_pedido (setor_id, nome, exige_aprovacao, prazo_dias, or
   ('fiscal', 'Emissão de nota fiscal', false, 2, 1, '[
     {"chave":"codigo_projeto","rotulo":"Código do projeto","tipo":"texto","obrigatorio":true},
     {"chave":"observacao","rotulo":"Observação","tipo":"texto_longo","obrigatorio":false}]'),
-  ('fiscal', 'Autorização de faturamento (AF)', true, 2, 2, '[
+  ('fiscal', 'Autorização de faturamento (AF)', false, 2, 2, '[
     {"chave":"codigo_projeto","rotulo":"Código do projeto","tipo":"texto","obrigatorio":true},
     {"chave":"observacao","rotulo":"Observação","tipo":"texto_longo","obrigatorio":false}]'),
   ('fiscal', 'Cancelamento ou carta de correção', false, 1, 3, '[
@@ -43,12 +44,12 @@ insert into public.tipos_pedido (setor_id, nome, exige_aprovacao, prazo_dias, or
   ('fiscal', 'XML ou PDF de uma nota', false, 1, 4, '[
     {"chave":"numero_nf","rotulo":"Número da NF ou código do projeto","tipo":"texto","obrigatorio":true}]'),
 
-  ('rh', 'Abertura de vaga', true, 5, 1, '[
+  ('rh', 'Abertura de vaga', false, 5, 1, '[
     {"chave":"area","rotulo":"Área","tipo":"texto","obrigatorio":true},
     {"chave":"cargo","rotulo":"Cargo","tipo":"texto","obrigatorio":true},
     {"chave":"quantidade","rotulo":"Quantidade","tipo":"numero","obrigatorio":true},
     {"chave":"justificativa","rotulo":"Justificativa","tipo":"texto_longo","obrigatorio":true}]'),
-  ('rh', 'Substituição de quem saiu', true, 5, 2, '[
+  ('rh', 'Substituição de quem saiu', false, 5, 2, '[
     {"chave":"quem_saiu","rotulo":"Quem saiu","tipo":"texto","obrigatorio":true},
     {"chave":"cargo","rotulo":"Cargo","tipo":"texto","obrigatorio":true}]'),
   ('rh', 'Declaração ou documento', false, 3, 3, '[
