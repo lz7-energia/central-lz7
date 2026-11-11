@@ -88,7 +88,10 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano) com o total previsto.
 - A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo. "Concluir atualização" registra
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
-- Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos` (CSV, padrão Excel pt-BR).
+- Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
+  **baixa manual** (data, valor, observação → vai para Recebidos), **excluir** (aba Excluídos, com restaurar) e **nome para exibir**.
+- Aba Recebidos com períodos hoje / semana (seg–dom) / mês / ano. Todas as colunas principais ordenáveis (clique no título).
+- Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos` (CSV, padrão Excel pt-BR).
 
 ## Site (`app/`)
 

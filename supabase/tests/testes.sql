@@ -197,3 +197,37 @@ do $$ begin
   raise notice 'OK diretoria só lê situações';
 end $$;
 reset role;
+
+-- 9) Ajustes manuais de título: baixa, exclusão e nome
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.titulo_ajustes (titulo_flow_id, baixa_manual, baixa_data, baixa_valor, baixa_obs)
+  values ('T3b', true, current_date, 15000, 'PIX recebido');
+insert into public.titulo_ajustes (titulo_flow_id, excluido, excluido_motivo) values ('T4a', true, 'Título duplicado');
+insert into public.titulo_ajustes (titulo_flow_id, nome_exibicao) values ('T3a', 'Cliente B (apelido manual)');
+do $$ begin
+  if (select estado from public.recebiveis where flow_id = 'T3b') <> 'recebido' then raise exception 'baixa manual não recebeu'; end if;
+  if (select valor_recebido from public.recebiveis where flow_id = 'T3b') <> 15000 then raise exception 'valor da baixa'; end if;
+  if (select valor_aberto from public.recebiveis where flow_id = 'T3b') <> 0 then raise exception 'aberto após baixa'; end if;
+  if (select estado from public.recebiveis where flow_id = 'T4a') <> 'excluido' then raise exception 'exclusão'; end if;
+  if (select cliente_apelido from public.recebiveis where flow_id = 'T3a') <> 'Cliente B (apelido manual)' then raise exception 'nome manual'; end if;
+  if (select ajuste_por from public.recebiveis where flow_id = 'T3b') <> 'Ana' then raise exception 'carimbo do ajuste'; end if;
+  raise notice 'OK ajustes de título';
+end $$;
+-- desfazer a baixa volta a ser vencido
+update public.titulo_ajustes set baixa_manual = false where titulo_flow_id = 'T3b';
+do $$ begin
+  if (select estado from public.recebiveis where flow_id = 'T3b') <> 'vencido' then raise exception 'desfazer baixa'; end if;
+  raise notice 'OK desfazer baixa';
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if (select count(*) from public.titulo_ajustes) < 3 then raise exception 'diretoria não vê ajustes'; end if;
+  begin
+    update public.titulo_ajustes set excluido = false where titulo_flow_id = 'T4a';
+    if found then raise exception 'diretoria alterou ajuste'; end if;
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'OK diretoria só lê ajustes';
+end $$;
+reset role;

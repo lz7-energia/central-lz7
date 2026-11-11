@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 import type { Atualizacao, Recebivel, Situacao } from "@/lib/recebiveis";
-import { mesAtual } from "@/lib/recebiveis";
 import { dataHora, hojeSP } from "@/lib/formato";
 import { Tabela } from "./Tabela";
 
@@ -12,10 +11,10 @@ export default async function Recebiveis() {
   const perfil = await perfilAtual();
   const sb = await supabaseUsuario();
   const hoje = hojeSP();
-  const { inicio, fim } = mesAtual(hoje);
+  const inicioAno = `${hoje.slice(0, 4)}-01-01`;
 
   const [{ data, error }, { data: atualizacoes }, { data: sinc }, { data: sits }] = await Promise.all([
-    sb.from("recebiveis").select("*").or(`estado.neq.recebido,and(recebido_em.gte.${inicio},recebido_em.lte.${fim})`).limit(5000),
+    sb.from("recebiveis").select("*").or(`estado.neq.recebido,recebido_em.gte.${inicioAno}`).limit(10000),
     sb.from("cobranca_atualizacoes").select("*").order("concluida_em", { ascending: false }).limit(6),
     sb.from("titulos_receber").select("sincronizado_em").order("sincronizado_em", { ascending: false }).limit(1),
     sb.from("cobranca_situacoes").select("*").order("ordem").order("rotulo"),
