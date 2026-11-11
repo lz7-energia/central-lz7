@@ -36,5 +36,5 @@ export async function perfilAtual() {
     .eq("id", user.id)
     .maybeSingle();
   if (!data || !data.ativo) return null;
-  return data as { id: string; nome: string; email: string; papel: "equipe" | "admin"; ativo: boolean };
+  return data as { id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria"; ativo: boolean };
 }

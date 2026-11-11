@@ -21,3 +21,9 @@ Projetos (região São Paulo):
   de 10 minutos de intervalo, então chamar o endereço repetidas vezes não pesa o Flow.
 - `agendar-sincronizacao.sql`: agenda no pg_cron (a cada 30 min, 7h–20h, segunda a sábado). Em produção, trocar a URL.
 - Cada execução fica registrada em `sincronizacoes` (recurso `flow`); o painel avisa quando a última falhou.
+
+## Recebíveis (Financeiro)
+
+- Títulos do Contas a Receber (`titulos_receber`, pela sincronização) + anotações de cobrança (`cobranca_notas`) e
+  atualizações concluídas (`cobranca_atualizacoes`), que são só da central. Tela: `/recebiveis`.
+- Perfil `diretoria`: entra só nos recebíveis, só leitura (RLS: `ve_recebiveis()`; `eh_equipe()` exclui a diretoria).

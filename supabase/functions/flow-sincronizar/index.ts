@@ -226,6 +226,16 @@ Deno.serve(async () => {
     await emLotes(remover, (l) => sb.from("notas_fiscais").delete().in("flow_id", l));
 
     // 5) Contas a receber. Título baixado conta 100%; cancelado fica de fora.
+    //    Nome do cliente: o título traz só o código (idCliente); o nome vem dos pedidos e das notas do mesmo cliente.
+    const nomeCliente = new Map<string, string>();
+    for (const d of documentos) {
+      const id = d.idCliente ?? d.destinatarioRemetente?.idCliente;
+      const nome = d.destinatarioRemetente?.nomeRazaoSocial;
+      if (id != null && nome) nomeCliente.set(String(id), nome);
+    }
+    for (const p of pedidos) {
+      if (p.cliente?.id != null && p.cliente?.nomeRazaoSocial) nomeCliente.set(String(p.cliente.id), p.cliente.nomeRazaoSocial);
+    }
     const linhasTitulos = titulos
       .filter((t) => !/cancel/i.test(String(t.situacao ?? "")))
       .map((t) => {
@@ -236,6 +246,10 @@ Deno.serve(async () => {
           flow_id: String(t.id),
           pedido_flow_id: pedido,
           codigo_projeto: t.codigoProjeto || null,
+          id_cliente: t.idCliente != null ? String(t.idCliente) : null,
+          cliente: (t.idCliente != null ? nomeCliente.get(String(t.idCliente)) : null) ??
+            (pedido ? pedidoPorId.get(pedido)?.cliente?.nomeRazaoSocial : null) ?? null,
+          situacao: t.situacao ?? null,
           valor,
           valor_recebido: baixado ? valor : Math.min(Number(numero(t.valorRecebido) ?? 0), valor),
           vencimento: dataISO(t.dataVencimentoReal ?? t.dataVencimentoNominal),

@@ -1,29 +1,16 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { perfilAtual } from "@/lib/supabase/server";
-import { sair } from "../entrar/acoes";
-import { Nav } from "./Nav";
+import { Topo } from "@/components/Topo";
 
 export default async function LayoutEquipe({ children }: { children: React.ReactNode }) {
   const perfil = await perfilAtual();
   if (!perfil) redirect("/entrar");
+  // A diretoria só tem acesso aos recebíveis.
+  if (perfil.papel === "diretoria") redirect("/recebiveis");
 
   return (
     <>
-      <header className="topo">
-        <div className="topo-dentro">
-          <Link href="/inicio" className="logo">
-            LZ7 <span>Central</span>
-          </Link>
-          <Nav />
-          <div className="usuario">
-            <span>{perfil.nome}</span>
-            <form action={sair}>
-              <button className="botao secundario pequeno">Sair</button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <Topo nome={perfil.nome} papel={perfil.papel} />
       <main className="pagina">{children}</main>
     </>
   );

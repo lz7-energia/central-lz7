@@ -29,6 +29,7 @@ A empresa não tem equipe de TI: o Claude constrói e mantém este sistema. O do
 |---|---|---|
 | Equipe da central (4 pessoas) | Sim (e-mail Titan) | Tudo, exceto pastas sensíveis |
 | Administrador | Sim | Tudo, inclusive pastas sensíveis e permissões |
+| Diretoria | Sim | Só os Recebíveis, só leitura (perfil `diretoria`) |
 | Colaboradores (40–50) | **Não** | Só o formulário do portal e a consulta do próprio pedido por protocolo |
 
 Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
@@ -77,6 +78,13 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Consulta por protocolo + link; identificação por lista fechada de nomes (`solicitantes`).
 - Aprovação do gestor por link no e-mail: **desligada em todos os tipos** (decisão de 10/11/2026; aprovações são raras e combinadas direto com os gestores). O recurso existe e pode ser religado por tipo (`tipos_pedido.exige_aprovacao`).
 - Proteção do formulário aberto: limite de envios e verificação anti-robô.
+
+### Recebíveis e inadimplência (Financeiro)
+
+- Títulos do Contas a Receber do Flow: vencidos, a vencer e recebidos no mês; nome do cliente vem dos pedidos e notas (pelo `idCliente`).
+- A equipe anota em cada título: situação da cobrança, previsão de pagamento e motivo. "Concluir atualização" registra
+  quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
+- Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos` (CSV, padrão Excel pt-BR).
 
 ## Site (`app/`)
 
