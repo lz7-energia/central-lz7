@@ -52,13 +52,15 @@ begin
 end $$;
 
 -- 2) Portal: criar pedido sem aprovação e com aprovação (como service_role)
+-- A aprovação vem desligada no catálogo; liga num tipo só para testar o fluxo.
+update public.tipos_pedido set exige_aprovacao = true where nome = 'Compra ou contratação de serviço';
 set role service_role;
 select public.criar_pedido((select id from public.tipos_pedido where nome='Emissão de nota fiscal'),
                            (select id from public.solicitantes limit 1),
                            '{"codigo_projeto":"SP000002ABC"}') as sem_aprovacao \gset
-select public.criar_pedido((select id from public.tipos_pedido where nome='Reembolso de despesa'),
+select public.criar_pedido((select id from public.tipos_pedido where nome='Compra ou contratação de serviço'),
                            (select id from public.solicitantes limit 1),
-                           '{"valor":"120","data_despesa":"2026-11-09","motivo":"Almoço cliente","comprovante":"x.pdf"}') as com_aprovacao \gset
+                           '{"descricao":"Notebook para o comercial","valor_estimado":"4500"}') as com_aprovacao \gset
 reset role;
 
 do $$
