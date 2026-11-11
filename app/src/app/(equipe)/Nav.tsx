@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITENS = [
+  { href: "/inicio", rotulo: "Início" },
   { href: "/pedidos", rotulo: "Pedidos" },
   { href: "/painel", rotulo: "Faturamento" },
 ];

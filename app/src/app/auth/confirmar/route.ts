@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
   const tokenHash = p.get("token_hash");
   const tipo = p.get("type") as EmailOtpType | null;
   const codigo = p.get("code");
-  const prox = p.get("next") || "/pedidos";
-  const destino = prox.startsWith("/") && !prox.startsWith("//") ? prox : "/pedidos";
+  const prox = p.get("next") || "/inicio";
+  const destino = prox.startsWith("/") && !prox.startsWith("//") ? prox : "/inicio";
 
   const sb = await supabaseUsuario();
   let ok = false;
