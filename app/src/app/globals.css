@@ -302,3 +302,6 @@ th .seta.ativa { opacity: 1; color: var(--marca); }
 .ct-trilho { flex: 1; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--borda); }
 .ct-barra { display: block; width: min(70%, 36px); background: #0a4f3a; border-radius: 4px 4px 0 0; }
 .ct-rotulo { font-size: 0.7rem; text-align: center; color: var(--texto-2); white-space: nowrap; overflow: hidden; }
+.intervalo { display: inline-flex; gap: 6px; align-items: center; }
+.intervalo label { margin: 0; font-weight: 400; color: var(--texto-2); }
+.intervalo input { width: auto; padding: 5px 8px; }

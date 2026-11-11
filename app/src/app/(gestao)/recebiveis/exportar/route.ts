@@ -12,9 +12,14 @@ export async function GET(request: NextRequest) {
   const hoje = hojeSP();
   const sb = await supabaseUsuario();
   const periodo = (request.nextUrl.searchParams.get("periodo") ?? "mes") as Periodo;
+  const dataDe = request.nextUrl.searchParams.get("de") ?? "";
+  const dataAte = request.nextUrl.searchParams.get("ate") ?? "";
+  const dataValida = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
   const montar = (de: number, ate: number) => {
     let q = sb.from("recebiveis").select("*").eq("estado", estado).order("vencimento").order("flow_id").range(de, ate);
-    if (estado === "recebido" && periodo !== "todos") {
+    if (estado === "recebido" && periodo === "personalizado" && dataValida(dataDe) && dataValida(dataAte)) {
+      q = q.gte("recebido_em", dataDe).lte("recebido_em", dataAte);
+    } else if (estado === "recebido" && periodo !== "todos" && periodo !== "personalizado") {
       q = q.gte("recebido_em", limitesDoPeriodo(hoje, periodo).inicio).lte("recebido_em", hoje);
     } else if (estado === "a_vencer") {
       q = q.lte("vencimento", limitesDoPeriodo(hoje, periodo).fim);
@@ -43,7 +48,8 @@ export async function GET(request: NextRequest) {
     t.alterado_por, br(t.recebido_em), t.baixa_manual ? `sim (${t.ajuste_por ?? ""}${t.baixa_obs ? ` · ${t.baixa_obs}` : ""})` : "",
   ].map(cel).join(";"));
   const csv = "﻿" + [cabecalho.join(";"), ...linhas].join("\r\n");
-  const nome = { vencido: "vencidos", a_vencer: `a-vencer-${periodo}`, recebido: `recebidos-${periodo}` }[estado];
+  const nome = { vencido: "vencidos", a_vencer: `a-vencer-${periodo}`,
+    recebido: periodo === "personalizado" ? `recebidos-${dataDe}-a-${dataAte}` : `recebidos-${periodo}` }[estado];
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
