@@ -40,8 +40,8 @@ export const STATUS_ABERTOS: StatusPedido[] = ["aguardando_aprovacao", "aberto",
 export type ColunaPainel = "em_execucao" | "pronto_faturar" | "faturado" | "recebido";
 
 export const COLUNAS: { id: ColunaPainel; rotulo: string; dica: string }[] = [
-  { id: "em_execucao", rotulo: "Em execução", dica: "OS ainda não chegou na vistoria" },
-  { id: "pronto_faturar", rotulo: "Pronto pra faturar", dica: "OS aguardando vistoria e pedido sem NF-e" },
+  { id: "em_execucao", rotulo: "Em execução", dica: "OS ainda não chegou em Obra concluída" },
+  { id: "pronto_faturar", rotulo: "Pronto pra faturar", dica: "Obra concluída e pedido sem NF-e" },
   { id: "faturado", rotulo: "Faturado", dica: "NF-e autorizada, recebimento em aberto" },
   { id: "recebido", rotulo: "Recebido", dica: "100% dos títulos recebidos" },
 ];
@@ -62,4 +62,9 @@ export type LinhaPainel = {
   pct_recebido: number;
   coluna: ColunaPainel;
   dias_parado: number | null;
+  oculto: boolean;
+  oculto_motivo: string | null;
+  nota_manual: boolean;
+  alterado_por: string | null;
+  alterado_em: string | null;
 };

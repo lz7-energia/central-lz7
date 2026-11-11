@@ -17,13 +17,15 @@ insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valo
   ('PV2', '1002', 'SP000002ABC', 'Cliente B', 20000),
   ('PV3', '1003', 'SP000003ABC', 'Cliente C', 30000),
   ('PV4', '1004', 'SP000004ABC', 'Cliente D', 40000),
-  ('PV5', '1005', 'SP000005ABC', 'Cliente E', 50000);
+  ('PV5', '1005', 'SP000005ABC', 'Cliente E', 50000),
+  ('PV6', '1006', 'SP000006ABC', 'Cliente F', 60000);
 insert into public.ordens_servico (flow_id, pedido_flow_id, status, status_desde) values
   ('OS1', 'PV1', 'Instalando',          now() - interval '2 days'),
-  ('OS2', 'PV2', 'Aguardando vistoria', now() - interval '7 days'),
-  ('OS3', 'PV3', 'Aguardando vistoria', now() - interval '9 days'),
-  ('OS4', 'PV4', 'Aguardando vistoria', now() - interval '20 days'),
-  ('OS5', 'PV5', 'Aguardando vistoria', now() - interval '3 days');
+  ('OS2', 'PV2', 'Obra concluída.', now() - interval '7 days'),
+  ('OS3', 'PV3', 'Obra concluída.', now() - interval '9 days'),
+  ('OS4', 'PV4', 'Obra concluída.', now() - interval '20 days'),
+  ('OS5', 'PV5', 'Obra concluída.', now() - interval '3 days'),
+  ('OS6', 'PV6', 'Cancelado',       now() - interval '1 day');
 insert into public.notas_fiscais (flow_id, pedido_flow_id, numero, situacao) values
   ('NF3', 'PV3', '8820', 'autorizada'),
   ('NF4', 'PV4', '8821', 'autorizada'),
@@ -45,17 +47,20 @@ begin
   end loop;
   if (select pct_recebido from public.painel_faturamento where numero='1003') <> 50 then raise exception 'pct 1003'; end if;
   if (select dias_parado from public.painel_faturamento where numero='1002') <> 7 then raise exception 'dias 1002'; end if;
+  if exists (select 1 from public.painel_faturamento where numero='1006') then raise exception 'OS cancelada apareceu no painel'; end if;
   raise notice 'OK painel';
 end $$;
 
 -- 2) Portal: criar pedido sem aprovação e com aprovação (como service_role)
+-- A aprovação vem desligada no catálogo; liga num tipo só para testar o fluxo.
+update public.tipos_pedido set exige_aprovacao = true where nome = 'Compra ou contratação de serviço';
 set role service_role;
 select public.criar_pedido((select id from public.tipos_pedido where nome='Emissão de nota fiscal'),
                            (select id from public.solicitantes limit 1),
                            '{"codigo_projeto":"SP000002ABC"}') as sem_aprovacao \gset
-select public.criar_pedido((select id from public.tipos_pedido where nome='Reembolso de despesa'),
+select public.criar_pedido((select id from public.tipos_pedido where nome='Compra ou contratação de serviço'),
                            (select id from public.solicitantes limit 1),
-                           '{"valor":"120","data_despesa":"2026-11-09","motivo":"Almoço cliente","comprovante":"x.pdf"}') as com_aprovacao \gset
+                           '{"descricao":"Notebook para o comercial","valor_estimado":"4500"}') as com_aprovacao \gset
 reset role;
 
 do $$
@@ -107,3 +112,25 @@ end $$;
 reset role;
 
 select tipo, de_status, para_status, autor from public.pedido_eventos order by id;
+
+-- 6) Ajustes manuais do painel: ocultar e "já tem nota" sobrevivem à sincronização
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.painel_ajustes (pedido_flow_id, oculto) values ('PV1', true);
+insert into public.painel_ajustes (pedido_flow_id, nota_manual, nota_numero) values ('PV2', true, '9999');
+reset role;
+-- simula a sincronização regravando o pedido
+update public.pedidos_venda set cliente = 'Cliente A (Flow)', sincronizado_em = now() where flow_id in ('PV1', 'PV2');
+do $$ begin
+  if not (select oculto from public.painel_faturamento where numero = '1001') then raise exception 'oculto se perdeu'; end if;
+  if (select coluna from public.painel_faturamento where numero = '1002') <> 'faturado' then raise exception 'nota manual não faturou'; end if;
+  if (select nf_numero from public.painel_faturamento where numero = '1002') <> '9999' then raise exception 'número da nota manual'; end if;
+  if (select alterado_por from public.painel_ajustes where pedido_flow_id = 'PV2') <> 'Ana' then raise exception 'carimbo'; end if;
+  raise notice 'OK ajustes manuais';
+end $$;
+set role anon;
+do $$ begin
+  if (select count(*) from public.painel_ajustes) > 0 then raise exception 'anon leu ajustes'; end if;
+  raise notice 'OK anon sem ajustes';
+end $$;
+reset role;
