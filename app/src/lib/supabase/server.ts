@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 /** Cliente com a sessão de quem está logado (equipe). Respeita as regras de acesso (RLS). */
 export async function supabaseUsuario() {
@@ -23,8 +24,8 @@ export async function supabaseUsuario() {
   );
 }
 
-/** Perfil de quem está logado, ou null se não for da equipe. */
-export async function perfilAtual() {
+/** Perfil de quem está logado, ou null se não for da equipe. Lido uma vez por carregamento de página (layout e página dividem). */
+export const perfilAtual = cache(async () => {
   const sb = await supabaseUsuario();
   const {
     data: { user },
@@ -37,4 +38,4 @@ export async function perfilAtual() {
     .maybeSingle();
   if (!data || !data.ativo) return null;
   return data as { id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria"; ativo: boolean };
-}
+});
