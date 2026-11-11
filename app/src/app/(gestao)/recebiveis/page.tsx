@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
-import type { Atualizacao, Recebivel } from "@/lib/recebiveis";
+import type { Atualizacao, Recebivel, Situacao } from "@/lib/recebiveis";
 import { mesAtual } from "@/lib/recebiveis";
 import { dataHora, hojeSP } from "@/lib/formato";
 import { Tabela } from "./Tabela";
@@ -14,10 +14,11 @@ export default async function Recebiveis() {
   const hoje = hojeSP();
   const { inicio, fim } = mesAtual(hoje);
 
-  const [{ data, error }, { data: atualizacoes }, { data: sinc }] = await Promise.all([
+  const [{ data, error }, { data: atualizacoes }, { data: sinc }, { data: sits }] = await Promise.all([
     sb.from("recebiveis").select("*").or(`estado.neq.recebido,and(recebido_em.gte.${inicio},recebido_em.lte.${fim})`).limit(5000),
     sb.from("cobranca_atualizacoes").select("*").order("concluida_em", { ascending: false }).limit(6),
     sb.from("titulos_receber").select("sincronizado_em").order("sincronizado_em", { ascending: false }).limit(1),
+    sb.from("cobranca_situacoes").select("*").order("ordem").order("rotulo"),
   ]);
   const titulos = (data ?? []) as Recebivel[];
   const historico = (atualizacoes ?? []) as Atualizacao[];
@@ -45,7 +46,7 @@ export default async function Recebiveis() {
           <strong>Nenhuma atualização concluída ainda.</strong>
         )}
       </div>
-      <Tabela titulos={titulos} historico={historico} podeEditar={perfil?.papel !== "diretoria"} hoje={hoje} />
+      <Tabela titulos={titulos} historico={historico} situacoes={(sits ?? []) as Situacao[]} podeEditar={perfil?.papel !== "diretoria"} hoje={hoje} />
     </>
   );
 }

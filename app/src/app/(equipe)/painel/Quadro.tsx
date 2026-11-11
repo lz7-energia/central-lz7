@@ -23,7 +23,7 @@ export function Quadro({ linhas }: { linhas: LinhaPainel[] }) {
       (l) =>
         (!resp || (resp === "__sem" ? !l.responsavel : l.responsavel === resp)) &&
         (!b ||
-          [l.codigo_projeto, l.cliente, l.numero, l.nf_numero, l.os_numero].some((v) => v?.toLowerCase().includes(b))),
+          [l.codigo_projeto, l.cliente, l.cliente_apelido, l.numero, l.nf_numero, l.os_numero].some((v) => v?.toLowerCase().includes(b))),
     );
   }, [linhas, busca, resp]);
 
@@ -144,7 +144,8 @@ function Cartao({ l, coluna }: { l: LinhaPainel; coluna: string }) {
           </span>
         )}
       </div>
-      <div className="cliente">{l.cliente ?? "—"}</div>
+      <div className="cliente">{l.cliente_apelido ?? l.cliente ?? "—"}</div>
+      {l.cliente_apelido && l.cliente && <div className="razao">{l.cliente}</div>}
       <div className="linha-info">
         <span>{moeda(l.valor_total)}</span>
         <span>{l.responsavel ?? "sem responsável"}</span>

@@ -99,6 +99,7 @@ Deno.serve(async () => {
       numero: String(p.id),
       codigo_projeto: p.codigoProjeto || null,
       cliente: p.cliente?.nomeRazaoSocial ?? p.cliente?.apelido ?? null,
+      cliente_apelido: p.cliente?.apelido || null,
       valor_total: somaItens.has(String(p.id)) ? Math.round(somaItens.get(String(p.id))! * 100) / 100 : null,
       data_pedido: dataISO(p.dataEmissao),
       bruto: p,
@@ -228,13 +229,17 @@ Deno.serve(async () => {
     // 5) Contas a receber. Título baixado conta 100%; cancelado fica de fora.
     //    Nome do cliente: o título traz só o código (idCliente); o nome vem dos pedidos e das notas do mesmo cliente.
     const nomeCliente = new Map<string, string>();
+    const apelidoCliente = new Map<string, string>();
     for (const d of documentos) {
       const id = d.idCliente ?? d.destinatarioRemetente?.idCliente;
-      const nome = d.destinatarioRemetente?.nomeRazaoSocial;
-      if (id != null && nome) nomeCliente.set(String(id), nome);
+      if (id == null) continue;
+      if (d.destinatarioRemetente?.nomeRazaoSocial) nomeCliente.set(String(id), d.destinatarioRemetente.nomeRazaoSocial);
+      if (d.destinatarioRemetente?.apelido) apelidoCliente.set(String(id), d.destinatarioRemetente.apelido);
     }
     for (const p of pedidos) {
-      if (p.cliente?.id != null && p.cliente?.nomeRazaoSocial) nomeCliente.set(String(p.cliente.id), p.cliente.nomeRazaoSocial);
+      if (p.cliente?.id == null) continue;
+      if (p.cliente.nomeRazaoSocial) nomeCliente.set(String(p.cliente.id), p.cliente.nomeRazaoSocial);
+      if (p.cliente.apelido) apelidoCliente.set(String(p.cliente.id), p.cliente.apelido);
     }
     const linhasTitulos = titulos
       .filter((t) => !/cancel/i.test(String(t.situacao ?? "")))
@@ -250,6 +255,8 @@ Deno.serve(async () => {
           cliente: (t.idCliente != null ? nomeCliente.get(String(t.idCliente)) : null) ??
             (pedido ? pedidoPorId.get(pedido)?.cliente?.nomeRazaoSocial : null) ?? null,
           situacao: t.situacao ?? null,
+          cliente_apelido: (t.idCliente != null ? apelidoCliente.get(String(t.idCliente)) : null) ??
+            (pedido ? pedidoPorId.get(pedido)?.cliente?.apelido : null) ?? null,
           valor,
           valor_recebido: baixado ? valor : Math.min(Number(numero(t.valorRecebido) ?? 0), valor),
           vencimento: dataISO(t.dataVencimentoReal ?? t.dataVencimentoNominal),

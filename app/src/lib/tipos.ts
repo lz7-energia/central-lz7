@@ -51,6 +51,7 @@ export type LinhaPainel = {
   numero: string | null;
   codigo_projeto: string | null;
   cliente: string | null;
+  cliente_apelido: string | null;
   valor_total: number | null;
   responsavel: string | null;
   os_numero: string | null;

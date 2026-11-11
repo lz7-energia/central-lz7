@@ -169,3 +169,31 @@ do $$ begin
   raise notice 'OK recebíveis e diretoria';
 end $$;
 reset role;
+
+-- 8) Situações de cobrança configuráveis e apelido
+update public.titulos_receber set cliente_apelido = 'Clientinho' where flow_id = 'T3b';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.cobranca_situacoes (id, rotulo, grupo) values ('aguarda_seguro', 'Aguardando seguradora', 'aguardando');
+update public.cobranca_notas set situacao = 'aguarda_seguro' where titulo_flow_id = 'T3b';
+do $$ begin
+  if (select cliente_apelido from public.recebiveis where flow_id = 'T3b') <> 'Clientinho' then raise exception 'apelido'; end if;
+  if (select cobranca_situacao from public.recebiveis where flow_id = 'T3b') <> 'aguarda_seguro' then raise exception 'situação personalizada'; end if;
+  begin
+    update public.cobranca_notas set situacao = 'nao_existe' where titulo_flow_id = 'T3b';
+    raise exception 'aceitou situação inexistente';
+  exception when foreign_key_violation then null;
+  end;
+  raise notice 'OK situações personalizadas';
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if (select count(*) from public.cobranca_situacoes) < 10 then raise exception 'diretoria não lê situações'; end if;
+  begin
+    insert into public.cobranca_situacoes (id, rotulo, grupo) values ('x', 'x', 'outro');
+    raise exception 'diretoria criou situação';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'OK diretoria só lê situações';
+end $$;
+reset role;

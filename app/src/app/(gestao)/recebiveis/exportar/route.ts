@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
-import { SITUACOES, mesAtual, type Recebivel } from "@/lib/recebiveis";
+import { GRUPOS, mesAtual, type Grupo, type Recebivel } from "@/lib/recebiveis";
 import { hojeSP } from "@/lib/formato";
 
 // Planilha (CSV no padrão do Excel em português: separador ";" e vírgula decimal).
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const { inicio, fim } = mesAtual(hoje);
     q = q.gte("recebido_em", inicio).lte("recebido_em", fim);
   }
-  const { data, error } = await q;
+  const [{ data, error }, { data: sits }] = await Promise.all([q, sb.from("cobranca_situacoes").select("id, rotulo, grupo")]);
+  const situacao = new Map((sits ?? []).map((x) => [x.id, x]));
   if (error) return new NextResponse("Não foi possível gerar a planilha.", { status: 500 });
 
   const br = (d: string | null) => (d ? d.split("-").reverse().join("/") : "");
@@ -24,11 +25,12 @@ export async function GET(request: NextRequest) {
     const s = String(v ?? "");
     return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const cabecalho = ["Cliente", "Projeto", "Título (Flow)", "Vencimento", "Dias em atraso", "Valor", "Recebido", "Em aberto",
-    "Situação no Flow", "Cobrança", "Previsão", "Motivo", "Atualizado por", "Recebido em"];
+  const cabecalho = ["Apelido", "Cliente", "Projeto", "Título (Flow)", "Vencimento", "Dias em atraso", "Valor", "Recebido", "Em aberto",
+    "Situação no Flow", "Cobrança", "Grupo", "Previsão", "Motivo", "Atualizado por", "Recebido em"];
   const linhas = (data as Recebivel[]).map((t) => [
-    t.cliente, t.codigo_projeto, t.flow_id, br(t.vencimento), t.dias_atraso ?? "", num(t.valor), num(t.valor_recebido),
-    num(t.valor_aberto), t.situacao_flow, SITUACOES[t.cobranca_situacao]?.rotulo, br(t.previsao), t.motivo,
+    t.cliente_apelido, t.cliente, t.codigo_projeto, t.flow_id, br(t.vencimento), t.dias_atraso ?? "", num(t.valor), num(t.valor_recebido),
+    num(t.valor_aberto), t.situacao_flow, situacao.get(t.cobranca_situacao)?.rotulo ?? t.cobranca_situacao,
+    GRUPOS[situacao.get(t.cobranca_situacao)?.grupo as Grupo]?.rotulo ?? "", br(t.previsao), t.motivo,
     t.alterado_por, br(t.recebido_em),
   ].map(cel).join(";"));
   const csv = "﻿" + [cabecalho.join(";"), ...linhas].join("\r\n");

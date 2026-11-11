@@ -82,7 +82,11 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 ### Recebíveis e inadimplência (Financeiro)
 
 - Títulos do Contas a Receber do Flow: vencidos, a vencer e recebidos no mês; nome do cliente vem dos pedidos e notas (pelo `idCliente`).
-- A equipe anota em cada título: situação da cobrança, previsão de pagamento e motivo. "Concluir atualização" registra
+- Nome principal = **apelido** do cliente no Flow (`cliente.apelido` / `destinatarioRemetente.apelido`), razão social embaixo (também no painel).
+- Situações de cobrança configuráveis pela equipe (`cobranca_situacoes`), cada uma num grupo: inadimplente, em negociação,
+  aguardando terceiro, outro. "Panorama dos vencidos": barras por situação (cor do grupo) e por faixa de atraso, com filtros.
+- Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano) com o total previsto.
+- A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo. "Concluir atualização" registra
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos` (CSV, padrão Excel pt-BR).
 
