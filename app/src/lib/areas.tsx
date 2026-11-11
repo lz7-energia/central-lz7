@@ -24,7 +24,8 @@ export const AREAS: Area[] = [
     modulos: [
       { nome: "Pedidos do Financeiro", descricao: "Pagamentos, reembolsos e cadastros", href: "/pedidos?setor=financeiro" },
       { nome: "Central de boletos", descricao: "DDA × nota × boleto lançado" },
-      { nome: "Faturado × recebido", descricao: "Inadimplência e régua de cobrança" },
+      { nome: "Recebíveis e inadimplência", descricao: "Vencidos, previsões e motivos, do Flow", href: "/recebiveis" },
+      { nome: "Régua de cobrança", descricao: "Mensagens de cobrança por WhatsApp e e-mail" },
       { nome: "Fluxo de caixa projetado", descricao: "A pagar, a receber e previsto × realizado" },
       { nome: "Conciliação bancária", descricao: "Extrato × movimento do Flow" },
     ],

@@ -237,3 +237,11 @@ a.modulo strong::after { content: " →"; color: var(--marca); }
   .pagina { padding: 20px 16px 48px; }
   .saudacao h1 { font-size: 1.6rem; }
 }
+
+/* ---------- Recebíveis ---------- */
+.faixa-atualizacao { background: var(--marca-clara); border: 1px solid #b7dccd; color: var(--marca-escura); padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.92rem; }
+.faixa-atualizacao.pendente { background: #fffaeb; border-color: #fedf89; color: #93370d; }
+.linha-edicao td { background: #f7faf9; }
+.form-cobranca { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.form-cobranca > div { flex: 1; min-width: 160px; }
+.form-cobranca label { font-size: 0.82rem; }

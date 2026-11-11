@@ -134,3 +134,38 @@ do $$ begin
   raise notice 'OK anon sem ajustes';
 end $$;
 reset role;
+
+-- 7) Recebíveis: equipe anota e conclui; diretoria só lê esta parte
+insert into auth.users values ('33333333-3333-3333-3333-333333333333');
+insert into public.perfis (id, nome, email, papel) values
+  ('33333333-3333-3333-3333-333333333333', 'Diretor', 'diretor@lz7.com.br', 'diretoria');
+update public.titulos_receber set vencimento = current_date - 10 where flow_id = 'T3b';
+update public.titulos_receber set cliente = 'Cliente C (Flow)' where flow_id = 'T3b';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.cobranca_notas (titulo_flow_id, situacao, previsao, motivo) values ('T3b', 'promessa', current_date + 5, 'Cliente pediu prorrogação');
+insert into public.cobranca_atualizacoes (qtd_vencidos, valor_vencido, observacao) values (1, 15000, 'revisão semanal');
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if (select estado from public.recebiveis where flow_id = 'T3b') <> 'vencido' then raise exception 'estado do título'; end if;
+  if (select dias_atraso from public.recebiveis where flow_id = 'T3b') <> 10 then raise exception 'dias em atraso'; end if;
+  if (select cobranca_situacao from public.recebiveis where flow_id = 'T3b') <> 'promessa' then raise exception 'diretoria não vê a anotação'; end if;
+  if (select cliente from public.recebiveis where flow_id = 'T3b') <> 'Cliente C (Flow)' then raise exception 'cliente'; end if;
+  if (select concluida_por from public.cobranca_atualizacoes order by id desc limit 1) <> 'Ana' then raise exception 'carimbo da atualização'; end if;
+  if (select count(*) from public.perfis) <> 1 then raise exception 'diretoria deveria ver só o próprio perfil'; end if;
+  if (select count(*) from public.pedidos) > 0 or (select count(*) from public.painel_faturamento) > 0 then
+    raise exception 'diretoria vê pedidos ou painel';
+  end if;
+  begin
+    insert into public.cobranca_notas (titulo_flow_id, situacao) values ('T4a', 'cobrado');
+    raise exception 'diretoria conseguiu anotar';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.cobranca_atualizacoes (observacao) values ('x');
+    raise exception 'diretoria conseguiu concluir';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'OK recebíveis e diretoria';
+end $$;
+reset role;
