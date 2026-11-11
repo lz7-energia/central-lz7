@@ -61,7 +61,7 @@ Sincronização: rotina no servidor copia os dados para o banco da central; as t
 - Formulário aberto, sem login: setor → tipo de pedido → campos do tipo → protocolo.
 - Pedido grava direto no banco e aparece na fila do setor na hora; aviso por e-mail ao responsável.
 - Consulta por protocolo + link; identificação por lista fechada de nomes (`solicitantes`).
-- Aprovação do gestor por link no e-mail **só em "Compra ou contratação de serviço"** (decisão de 10/11/2026). Demais pedidos vão direto ao setor.
+- Aprovação do gestor por link no e-mail: **desligada em todos os tipos** (decisão de 10/11/2026; aprovações são raras e combinadas direto com os gestores). O recurso existe e pode ser religado por tipo (`tipos_pedido.exige_aprovacao`).
 - Proteção do formulário aberto: limite de envios e verificação anti-robô.
 
 ## Site (`app/`)

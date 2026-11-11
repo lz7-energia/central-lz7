@@ -49,6 +49,8 @@ begin
 end $$;
 
 -- 2) Portal: criar pedido sem aprovação e com aprovação (como service_role)
+-- A aprovação vem desligada no catálogo; liga num tipo só para testar o fluxo.
+update public.tipos_pedido set exige_aprovacao = true where nome = 'Compra ou contratação de serviço';
 set role service_role;
 select public.criar_pedido((select id from public.tipos_pedido where nome='Emissão de nota fiscal'),
                            (select id from public.solicitantes limit 1),

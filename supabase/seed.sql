@@ -1,5 +1,6 @@
 -- Central LZ7 — dados iniciais do portal (catálogo a validar com o usuário).
--- Decisão de 10/11/2026: só "Compra ou contratação de serviço" exige aprovação do gestor.
+-- Decisão de 10/11/2026: nenhum tipo exige aprovação por e-mail (aprovações raras, combinadas direto com os gestores).
+-- O recurso continua no sistema: para religar num tipo, exige_aprovacao = true.
 -- E-mails dos setores, aprovadores e lista de solicitantes: pendentes.
 
 insert into public.setores (id, nome, ordem) values
@@ -55,7 +56,7 @@ insert into public.tipos_pedido (setor_id, nome, exige_aprovacao, prazo_dias, or
   ('rh', 'Declaração ou documento', false, 3, 3, '[
     {"chave":"descricao","rotulo":"O que você precisa","tipo":"texto_longo","obrigatorio":true}]'),
 
-  ('adm', 'Compra ou contratação de serviço', true, 5, 1, '[
+  ('adm', 'Compra ou contratação de serviço', false, 5, 1, '[
     {"chave":"descricao","rotulo":"O que comprar ou contratar","tipo":"texto_longo","obrigatorio":true},
     {"chave":"valor_estimado","rotulo":"Valor estimado (R$)","tipo":"numero","obrigatorio":false}]'),
   ('adm', 'Manutenção de veículo ou equipamento', false, 3, 2, '[
