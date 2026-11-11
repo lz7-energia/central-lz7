@@ -1,5 +1,5 @@
 // Central LZ7 — sincronização com o Flow (Everflow). SOMENTE LEITURA no Flow.
-// Copia pedidos de venda, itens, OS e contas a receber para o banco da central; as telas leem do banco.
+// Copia pedidos de venda, itens, OS, notas de produto (documentosSaida) e contas a receber para o banco da central; as telas leem do banco.
 // Agendada pelo pg_cron (ver supabase/README.md). Ignora chamadas com menos de 10 minutos de intervalo,
 // para nunca pesar a API do Flow mesmo se alguém chamar o endereço repetidas vezes.
 // deno-lint-ignore-file no-explicit-any
@@ -84,6 +84,7 @@ Deno.serve(async () => {
     const itens = await todos("pedidosVenda/itens");
     const ordens = await todos("ordensServico");
     const titulos = await todos("recebers");
+    const documentos = await todos("documentosSaida"); // página "Notas de Produto" do Flow
 
     // 2) Pedidos de venda. O valor do pedido é a soma dos itens (o total do cabeçalho vem vazio na API).
     const somaItens = new Map<string, number>();
@@ -134,35 +135,92 @@ Deno.serve(async () => {
     });
     await emLotes(linhasOS, (l) => sb.from("ordens_servico").upsert(l, { onConflict: "flow_id" }));
 
-    // 4) Notas fiscais: números de NF-e de produto que vêm na OS; pedido "Faturado" sem número vira nota sem número.
+    // 4) Notas fiscais. Ordem de ligação nota → pedido:
+    //    a) nota de "Notas de Produto" (documentosSaida) que informa o pedido;
+    //    b) número de NF-e que vem na OS;
+    //    c) nota de "Notas de Produto" sem pedido: mesmo cliente, emitida depois do pedido, pedido ainda sem nota
+    //       (com mais de um candidato, escolhe pelo valor; sem certeza, não liga);
+    //    d) pedido com situação "Faturado" sem nota encontrada: nota sem número.
     const notas = new Map<string, any>();
+    const notaDoPedido = new Set<string>();
+    const numerosUsados = new Set<string>();
+    const adicionar = (n: any) => {
+      notas.set(n.flow_id, { situacao: "autorizada", sincronizado_em: agora, ...n });
+      notaDoPedido.add(n.pedido_flow_id);
+      if (n.numero) numerosUsados.add(String(n.numero));
+    };
+    const pedidoPorId = new Map(pedidos.map((p) => [String(p.id), p]));
+    const osCancelada = new Set(linhasOS.filter((o) => o.status === "Cancelado").map((o) => o.pedido_flow_id));
+
+    const docsValidos = documentos.filter((d) =>
+      !d.dataCancelamento && !d.homologacao && !/^e/i.test(String(d.entradaSaida ?? "")) &&
+      !/cancel|deneg|rejeit|inutiliz|digita/i.test(String(d.situacaoDocumento ?? "")) && d.numeroNota != null);
+    const notaDeDocumento = (d: any, pedido: string, vinculo: string) => ({
+      flow_id: `doc-${d.id}`, pedido_flow_id: pedido, numero: String(d.numeroNota),
+      serie: d.serieNota != null ? String(d.serieNota) : null, chave_acesso: d.chaveDanfe || null,
+      valor: numero(d.valorTotalNotaFiscal), emitida_em: dataISO(d.dataEmissao),
+      bruto: { origem: `documentosSaida (${vinculo})`, ...d },
+    });
+
+    // a) documento que informa o pedido
+    const docsUsados = new Set<string>();
+    for (const d of docsValidos) {
+      const pedido = (d.idsPedidosVenda ?? []).map(String).find((id: string) => idsPedidos.has(id));
+      if (!pedido) continue;
+      adicionar(notaDeDocumento(d, pedido, "pedido informado na nota"));
+      docsUsados.add(String(d.id));
+    }
+    // b) NF-e que vem na OS
     for (const o of ordens) {
       const pedido = (o.idsPedidosVendas ?? []).map(String).find((id: string) => idsPedidos.has(id));
       if (!pedido) continue;
       for (const nf of o.numerosNotasFiscaisProduto ?? []) {
-        if (nf?.id === undefined || nf?.id === null) continue;
-        notas.set(`nfp-${nf.id}`, {
+        if (nf?.id == null || (nf.numeroNota != null && numerosUsados.has(String(nf.numeroNota)))) continue;
+        adicionar({
           flow_id: `nfp-${nf.id}`, pedido_flow_id: pedido,
           numero: nf.numeroNota != null ? String(nf.numeroNota) : null,
-          situacao: "autorizada", emitida_em: null, bruto: nf, sincronizado_em: agora,
+          emitida_em: dataISO(pedidoPorId.get(pedido)?.dataFaturamento), bruto: { origem: "OS", ...nf },
         });
       }
     }
-    const pedidosComNota = new Set([...notas.values()].map((n) => n.pedido_flow_id));
+    // c) documento sem pedido: mesmo cliente
+    let ambiguas = 0;
+    const docsPorData = docsValidos
+      .filter((d) => !docsUsados.has(String(d.id)) && !numerosUsados.has(String(d.numeroNota)))
+      .sort((a, b) => String(a.dataEmissao).localeCompare(String(b.dataEmissao)));
+    for (const d of docsPorData) {
+      const cliente = d.idCliente ?? d.destinatarioRemetente?.idCliente;
+      const emissao = dataISO(d.dataEmissao);
+      if (cliente == null) continue;
+      const candidatos = pedidos.filter((p) =>
+        String(p.cliente?.id) === String(cliente) && !notaDoPedido.has(String(p.id)) && !osCancelada.has(String(p.id)) &&
+        (!emissao || !dataISO(p.dataEmissao) || dataISO(p.dataEmissao)! <= emissao));
+      let escolhido: any = null;
+      if (candidatos.length === 1) escolhido = candidatos[0];
+      else if (candidatos.length > 1) {
+        const valorNota = Number(d.valorTotalNotaFiscal ?? 0);
+        const perto = candidatos.filter((p) => {
+          const v = somaItens.get(String(p.id));
+          return v && valorNota && Math.abs(v - valorNota) <= Math.max(1, v * 0.02);
+        });
+        if (perto.length === 1) escolhido = perto[0];
+        else ambiguas++;
+      }
+      if (!escolhido) continue;
+      adicionar(notaDeDocumento(d, String(escolhido.id), "mesmo cliente"));
+      docsUsados.add(String(d.id));
+    }
+    // d) pedido "Faturado" sem nota encontrada
     for (const p of pedidos) {
-      if (p.situacao === "Faturado" && !pedidosComNota.has(String(p.id))) {
-        notas.set(`pv-${p.id}`, {
+      if (p.situacao === "Faturado" && !notaDoPedido.has(String(p.id))) {
+        adicionar({
           flow_id: `pv-${p.id}`, pedido_flow_id: String(p.id), numero: null,
-          situacao: "autorizada", emitida_em: dataISO(p.dataFaturamento),
-          bruto: { origem: "situacao do pedido = Faturado" }, sincronizado_em: agora,
+          emitida_em: dataISO(p.dataFaturamento), bruto: { origem: "situacao do pedido = Faturado" },
         });
       }
     }
-    // Data de emissão para as notas vindas da OS: data de faturamento do pedido.
-    const dataFat = new Map(pedidos.map((p) => [String(p.id), dataISO(p.dataFaturamento)]));
-    for (const n of notas.values()) n.emitida_em ??= dataFat.get(n.pedido_flow_id) ?? null;
     await emLotes([...notas.values()], (l) => sb.from("notas_fiscais").upsert(l, { onConflict: "flow_id" }));
-    // A lista do Flow é completa: nota que sumiu (ex.: cancelada) sai da central e o pedido volta a "Pronto pra faturar".
+    // A lista do Flow é completa: nota que sumiu ou foi cancelada sai da central e o pedido volta a "Pronto pra faturar".
     const { data: notasAntigas } = await sb.from("notas_fiscais").select("flow_id");
     const remover = (notasAntigas ?? []).map((n: any) => n.flow_id).filter((id: string) => !notas.has(id));
     await emLotes(remover, (l) => sb.from("notas_fiscais").delete().in("flow_id", l));
@@ -194,7 +252,7 @@ Deno.serve(async () => {
 
     const resumo = {
       pedidos: linhasPedidos.length, itens: itens.length, ordens: linhasOS.length,
-      notas: notas.size, titulos: linhasTitulos.length,
+      notas: notas.size, notasProduto: documentos.length, notasSemCerteza: ambiguas, titulos: linhasTitulos.length,
     };
     await sb.from("sincronizacoes").update({
       terminada_em: new Date().toISOString(), sucesso: true,

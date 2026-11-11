@@ -46,7 +46,10 @@ Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
   Separação → Entrega → Aguardando instalação → Instalação → **Obra concluída.** → Cancelado.
 - `/recebers/`: `situacao` ("A vencer", "Vencido", "Baixado"), `valorBruto`, `valorRecebido`, `idCabPedidoVenda`
   (vínculo com o pedido, ~3/4 dos títulos), `codigoProjeto`, `dataVencimentoReal`, `dataBaixa`.
-- `/pagars/` existe (não usado ainda). `/nfes` responde 405 a GET: **download de XML/PDF da NF-e ainda não mapeado**.
+- `/documentosSaida/`: página "Notas de Produto" (todas as NF-e emitidas, inclusive sem OS/pedido): `id`, `idCliente`
+  (= `cliente.id` do pedido), `numeroNota`, `serieNota`, `chaveDanfe`, `dataEmissao`, `dataCancelamento`, `homologacao`,
+  `entradaSaida`, `situacaoDocumento`, `idsPedidosVenda[]` (geralmente vazio), `valorTotalNotaFiscal`. `linkDanfe`/`linkDanfeXml` vêm vazios na lista.
+- `/pagars/` existe (não usado ainda). `/nfes` responde 405 a GET. **Download de XML/PDF da NF-e ainda não mapeado** (testar `documentosSaida/{id}`).
 - `developers.everflow.io` é outra empresa (marketing), não é este ERP.
 
 Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dados para o banco da central a cada
@@ -59,7 +62,10 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Base: **pedido de venda**. Todo pedido de venda tem OS, e toda OS tem pedido.
 - Colunas: Em execução → Pronto pra faturar → Faturado → Recebido.
 - "Pronto pra faturar": OS vinculada com status **"Obra concluída."** (decisão de 10/11/2026; não existe "Aguardando vistoria" no Flow) e pedido sem NF-e. Mostra dias parado (contados desde que a central viu o status pela primeira vez).
-- "Faturado": NF-e de produto vinculada à OS, ou pedido com situação "Faturado" no Flow.
+- "Faturado": nota ligada ao pedido, nesta ordem: (a) nota de `documentosSaida` que informa o pedido; (b) NF-e que vem na OS;
+  (c) nota de `documentosSaida` sem pedido, do **mesmo cliente** (`idCliente`), emitida depois do pedido, para pedido ainda sem nota
+  — com mais de um candidato decide pelo valor (±2%), sem certeza não liga; (d) pedido com situação "Faturado" (nota sem número).
+  Notas canceladas e de homologação são ignoradas.
 - OS "Cancelado" some do painel (`status_os_faturamento.oculta_no_painel`).
 - Recebido proporcional: soma dos títulos recebidos ÷ total dos títulos do projeto no contas a receber. O card mostra o %. Vai para "Recebido" só com 100%.
 - NF-e cancelada → volta para "Pronto pra faturar".
