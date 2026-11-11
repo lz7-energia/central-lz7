@@ -86,7 +86,8 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Nome principal = **apelido** do cliente no Flow (`cliente.apelido` / `destinatarioRemetente.apelido`), razão social embaixo (também no painel).
 - Situações de cobrança configuráveis pela equipe (`cobranca_situacoes`), cada uma num grupo: inadimplente, em negociação,
   aguardando terceiro, outro. "Panorama dos vencidos": barras por situação (cor do grupo) e por faixa de atraso, com filtros.
-- Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano) com o total previsto.
+- Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano, tudo) com o total previsto;
+  gráfico "Previsão de recebimentos" pelo vencimento (por dia, mês ou ano; clique filtra) e totais dos próximos 7/30/90 dias.
 - A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo. "Concluir atualização" registra
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
 - Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
@@ -102,6 +103,7 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   `app/node_modules/next/dist/docs/`: consultar antes de usar uma API do Next que mudou (ex.: `proxy.ts` substitui `middleware.ts`).
 - Equipe: cliente com a sessão do usuário (`lib/supabase/server.ts`), sujeito ao RLS.
 - Portal, consulta e aprovação: rotas do servidor com a chave de serviço (`lib/supabase/servico.ts`), só chamando as funções do banco.
+- Funções da Vercel na região `gru1` (São Paulo, `app/vercel.json`), perto do Supabase; `perfilAtual` usa `cache` (layout e página dividem a leitura).
 - `Referrer-Policy: same-origin` (os links de consulta/aprovação têm token; `no-referrer` quebra as Server Actions).
 - Testes: `bash supabase/tests/rodar.sh` (banco) e `testes/ponta-a-ponta/` (site inteiro, sem Docker).
 

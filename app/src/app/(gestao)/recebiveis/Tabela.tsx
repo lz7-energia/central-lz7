@@ -61,6 +61,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
   const [periodoPassado, setPeriodoPassado] = useState<Periodo>("ano");
   const [ordem, setOrdem] = useState(ORDEM_PADRAO.vencidos);
   const [balde, setBalde] = useState<Balde | null>(null);
+  const [baldeFuturo, setBaldeFuturo] = useState<Balde | null>(null);
   const [deData, setDeData] = useState(`${hoje.slice(0, 7)}-01`);
   const [ateData, setAteData] = useState(hoje);
   const [pendente, iniciar] = useTransition();
@@ -82,7 +83,10 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
     (!grupo || grupoDe(t) === grupo) && (!faixa || faixaDe(t.dias_atraso) === faixa) && (!situacao || t.cobranca_situacao === situacao));
   const filtrosAtivos = Boolean(grupo || faixa || situacao);
   const fimFuturo = limitesDoPeriodo(hoje, periodoFuturo).fim;
-  const aVencerNoPeriodo = aVencer.filter((t) => t.vencimento && t.vencimento <= fimFuturo);
+  const aVencerDoPeriodo = aVencer.filter((t) => t.vencimento && t.vencimento <= fimFuturo);
+  const aVencerNoPeriodo = baldeFuturo
+    ? aVencerDoPeriodo.filter((t) => t.vencimento && t.vencimento >= baldeFuturo.inicio && t.vencimento <= baldeFuturo.fim)
+    : aVencerDoPeriodo;
   const inicioPassado = limitesDoPeriodo(hoje, periodoPassado).inicio;
   const recebidosDoPeriodo = periodoPassado === "todos"
     ? recebidos
@@ -157,6 +161,10 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
         </div>
       </div>
 
+      {aba === "a_vencer" && (
+        <PanoramaAVencer todos={aVencer} titulos={aVencerDoPeriodo} periodo={periodoFuturo} hoje={hoje} balde={baldeFuturo} setBalde={setBaldeFuturo} />
+      )}
+
       {aba === "recebidos" && (
         <PanoramaRecebidos
           titulos={recebidosDoPeriodo} periodo={periodoPassado} hoje={hoje} balde={balde} intervalo={{ de: deData, ate: ateData }}
@@ -203,7 +211,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
               const ativo = (aba === "a_vencer" ? periodoFuturo : periodoPassado) === p.id;
               return (
                 <a key={p.id} href="#" className={ativo ? "ativo" : ""}
-                   onClick={(e) => { e.preventDefault(); if (aba === "a_vencer") setPeriodoFuturo(p.id); else { setPeriodoPassado(p.id); setBalde(null); } }}>
+                   onClick={(e) => { e.preventDefault(); if (aba === "a_vencer") { setPeriodoFuturo(p.id); setBaldeFuturo(null); } else { setPeriodoPassado(p.id); setBalde(null); } }}>
                   {p.rotulo}
                 </a>
               );
@@ -218,8 +226,9 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
             </span>
           )}
           {aba === "a_vencer" ? (
-            <span className="previsto">Previsto para receber: <strong>{moeda(soma(aVencerNoPeriodo, "valor_aberto"))}</strong>{" "}
-              <span className="mudo">em {aVencerNoPeriodo.length} título{aVencerNoPeriodo.length === 1 ? "" : "s"}</span></span>
+            <span className="previsto">Previsto para receber{baldeFuturo ? ` em ${baldeFuturo.dica}` : ""}: <strong>{moeda(soma(aVencerNoPeriodo, "valor_aberto"))}</strong>{" "}
+              <span className="mudo">em {aVencerNoPeriodo.length} título{aVencerNoPeriodo.length === 1 ? "" : "s"}</span>
+              {baldeFuturo && <button className="link-acao" style={{ marginLeft: 10 }} onClick={() => setBaldeFuturo(null)}>ver o período todo</button>}</span>
           ) : (
             <span className="previsto">Recebido{balde ? ` em ${balde.dica}` : ""}: <strong>{moeda(soma(recebidosNoPeriodo, "valor_recebido"))}</strong>{" "}
               <span className="mudo">em {recebidosNoPeriodo.length} título{recebidosNoPeriodo.length === 1 ? "" : "s"}</span>
@@ -364,27 +373,34 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
+const isoDe = (d: Date) => d.toISOString().slice(0, 10);
+function baldesPorDia(inicio: string, fim: string, comSemana: boolean): Balde[] {
+  const r: Balde[] = [];
+  for (let d = new Date(`${inicio}T12:00:00Z`); isoDe(d) <= fim; d.setUTCDate(d.getUTCDate() + 1)) {
+    const id = isoDe(d);
+    r.push({ id, inicio: id, fim: id, rotulo: comSemana ? `${SEMANA[d.getUTCDay()]} ${d.getUTCDate()}` : String(d.getUTCDate()), dica: fmtData(id) });
+  }
+  return r;
+}
+function baldesPorMes(inicio: string, fim: string): Balde[] {
+  const r: Balde[] = [];
+  for (let d = new Date(Date.UTC(Number(inicio.slice(0, 4)), Number(inicio.slice(5, 7)) - 1, 1, 12)); isoDe(d).slice(0, 7) <= fim.slice(0, 7); d.setUTCMonth(d.getUTCMonth() + 1)) {
+    const ini = isoDe(d);
+    const ult = isoDe(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 12)));
+    const rot = `${MESES[d.getUTCMonth()]}/${String(d.getUTCFullYear()).slice(2)}`;
+    r.push({ id: ini.slice(0, 7), inicio: ini, fim: ult, rotulo: rot, dica: rot });
+  }
+  return r;
+}
+function baldesPorAno(de: number, ate: number): Balde[] {
+  const r: Balde[] = [];
+  for (let a = de; a <= ate; a++) r.push({ id: String(a), inicio: `${a}-01-01`, fim: `${a}-12-31`, rotulo: String(a), dica: String(a) });
+  return r;
+}
+
 function baldesDoPeriodo(titulos: Recebivel[], periodo: Periodo, hoje: string, intervalo: { de: string; ate: string }): Balde[] {
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const dia = (s: string) => new Date(`${s}T12:00:00Z`);
-  const porDia = (inicio: string, fim: string) => {
-    const r: Balde[] = [];
-    for (let d = dia(inicio); iso(d) <= fim; d.setUTCDate(d.getUTCDate() + 1)) {
-      const id = iso(d);
-      r.push({ id, inicio: id, fim: id, rotulo: periodo === "semana" ? `${SEMANA[d.getUTCDay()]} ${d.getUTCDate()}` : String(d.getUTCDate()), dica: fmtData(id) });
-    }
-    return r;
-  };
-  const porMes = (inicio: string, fim: string) => {
-    const r: Balde[] = [];
-    for (let d = new Date(Date.UTC(Number(inicio.slice(0, 4)), Number(inicio.slice(5, 7)) - 1, 1, 12)); iso(d).slice(0, 7) <= fim.slice(0, 7); d.setUTCMonth(d.getUTCMonth() + 1)) {
-      const ini = iso(d);
-      const ult = iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 12)));
-      const rot = `${MESES[d.getUTCMonth()]}/${String(d.getUTCFullYear()).slice(2)}`;
-      r.push({ id: ini.slice(0, 7), inicio: ini, fim: ult, rotulo: rot, dica: rot });
-    }
-    return r;
-  };
+  const porDia = (inicio: string, fim: string) => baldesPorDia(inicio, fim, periodo === "semana");
+  const porMes = baldesPorMes;
   if (periodo === "semana" || periodo === "mes") {
     const { inicio, fim } = limitesDoPeriodo(hoje, periodo);
     return porDia(inicio, fim);
@@ -400,11 +416,75 @@ function baldesDoPeriodo(titulos: Recebivel[], periodo: Periodo, hoje: string, i
   if (!datas.length) return [];
   const meses = porMes(datas[0], hoje);
   if (meses.length <= 36) return meses;
-  const anos: Balde[] = [];
-  for (let a = Number(datas[0].slice(0, 4)); a <= Number(hoje.slice(0, 4)); a++) {
-    anos.push({ id: String(a), inicio: `${a}-01-01`, fim: `${a}-12-31`, rotulo: String(a), dica: String(a) });
+  return baldesPorAno(Number(datas[0].slice(0, 4)), Number(hoje.slice(0, 4)));
+}
+
+/* ---------- Gráfico: previsão de recebimentos (a vencer) ---------- */
+function baldesDaPrevisao(titulos: Recebivel[], periodo: Periodo, hoje: string): Balde[] {
+  if (periodo === "semana" || periodo === "mes") return baldesPorDia(hoje, limitesDoPeriodo(hoje, periodo).fim, periodo === "semana");
+  if (periodo === "ano") return baldesPorMes(hoje, `${hoje.slice(0, 4)}-12-31`);
+  if (periodo === "todos") {
+    const ultimo = titulos.map((t) => t.vencimento).filter(Boolean).sort().at(-1) as string | undefined;
+    if (!ultimo) return [];
+    const meses = baldesPorMes(hoje, ultimo);
+    return meses.length <= 36 ? meses : baldesPorAno(Number(hoje.slice(0, 4)), Number(ultimo.slice(0, 4)));
   }
-  return anos;
+  return [];
+}
+
+function PanoramaAVencer({ todos, titulos, periodo, hoje, balde, setBalde }: {
+  todos: Recebivel[]; titulos: Recebivel[]; periodo: Periodo; hoje: string; balde: Balde | null; setBalde: (b: Balde | null) => void;
+}) {
+  const valor = (l: Recebivel[]) => l.reduce((s, t) => s + Number(t.valor_aberto), 0);
+  const ate = (dias: number) => { const d = new Date(`${hoje}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + dias); const fim = isoDe(d); return todos.filter((t) => t.vencimento && t.vencimento <= fim); };
+  const prox = [{ rotulo: "Próximos 7 dias", l: ate(7) }, { rotulo: "Próximos 30 dias", l: ate(30) }, { rotulo: "Próximos 90 dias", l: ate(90) }];
+  const baldes = baldesDaPrevisao(titulos, periodo, hoje);
+  // Título com vencimento já passado mas ainda "a vencer" no Flow cai no primeiro balde.
+  const doBalde = (b: Balde, i: number) => titulos.filter((t) => t.vencimento && t.vencimento <= b.fim && (i === 0 || t.vencimento >= b.inicio));
+  const valores = baldes.map((b, i) => valor(doBalde(b, i)));
+  const qtds = baldes.map((b, i) => doBalde(b, i).length);
+  const max = Math.max(1, ...valores);
+  const comRotulo = baldes.length <= 14;
+
+  return (
+    <section className="cartao panorama" aria-label="Previsão de recebimentos">
+      <div className="panorama-topo">
+        <h2 style={{ margin: 0 }}>Previsão de recebimentos</h2>
+        {balde && <button className="botao secundario pequeno" onClick={() => setBalde(null)}>Limpar filtro</button>}
+      </div>
+      <div className="resumo" style={{ marginBottom: baldes.length ? 18 : 0 }}>
+        <div className="indicador"><div className="rotulo">Previsto no período</div><div className="numero">{moeda(valor(titulos))}</div><div className="detalhe">{titulos.length} títulos</div></div>
+        {prox.map((p) => (
+          <div key={p.rotulo} className="indicador"><div className="rotulo">{p.rotulo}</div><div className="numero">{moeda(valor(p.l))}</div><div className="detalhe">{p.l.length} títulos</div></div>
+        ))}
+      </div>
+      {baldes.length > 0 && (
+        <>
+          <h3>{baldes[0].id.length === 7 ? "Por mês" : baldes[0].id.length === 4 ? "Por ano" : "Por dia"}</h3>
+          <div className="colunas-tempo" style={{ gridTemplateColumns: `repeat(${baldes.length}, minmax(0, 1fr))` }} role="group" aria-label="Previsão no tempo">
+            {baldes.map((b, i) => {
+              const ativo = balde?.id === b.id;
+              return (
+                <button
+                  key={b.id}
+                  className={`coluna-tempo${ativo ? " ativo" : ""}${balde && !ativo ? " apagada" : ""}`}
+                  disabled={qtds[i] === 0}
+                  onClick={() => setBalde(ativo ? null : { ...b, inicio: i === 0 ? "0000-01-01" : b.inicio })}
+                  aria-pressed={ativo}
+                  title={`${b.dica}: ${moeda(valores[i])} em ${qtds[i]} título${qtds[i] === 1 ? "" : "s"}${qtds[i] ? " — clique para filtrar" : ""}`}
+                >
+                  <span className="ct-valor">{comRotulo && valores[i] ? moedaCurta(valores[i]) : (valores[i] === max && valores[i] ? moedaCurta(valores[i]) : "")}</span>
+                  <span className="ct-trilho"><span className="ct-barra" style={{ height: `${valores[i] ? Math.max(2, (valores[i] / max) * 100) : 0}%` }} /></span>
+                  <span className="ct-rotulo">{b.rotulo}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="pequeno mudo" style={{ margin: "10px 0 0" }}>Pelo vencimento de cada título. Passe o mouse numa barra para ver o valor; clique para filtrar a lista.</p>
+        </>
+      )}
+    </section>
+  );
 }
 
 function PanoramaRecebidos({ titulos, periodo, hoje, balde, setBalde, intervalo }: {
@@ -430,7 +510,6 @@ function PanoramaRecebidos({ titulos, periodo, hoje, balde, setBalde, intervalo 
       </div>
       <div className="resumo" style={{ marginBottom: baldes.length ? 18 : 0 }}>
         <div className="indicador"><div className="rotulo">Total recebido</div><div className="numero">{moeda(total)}</div><div className="detalhe">{titulos.length} títulos</div></div>
-        <div className="indicador"><div className="rotulo">Ticket médio</div><div className="numero">{moeda(titulos.length ? total / titulos.length : 0)}</div><div className="detalhe">por título</div></div>
         <div className="indicador"><div className="rotulo">Baixas manuais</div><div className="numero">{manuais.length}</div><div className="detalhe">{moeda(manuais.reduce((s, t) => s + Number(t.valor_recebido), 0))} · só na central</div></div>
         <div className="indicador"><div className="rotulo">Baixados no Flow</div><div className="numero">{titulos.length - manuais.length}</div><div className="detalhe">{semData ? `${semData} sem data de baixa` : "com data de baixa"}</div></div>
       </div>
