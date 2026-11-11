@@ -90,7 +90,9 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
 - Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
   **baixa manual** (data, valor, observação → vai para Recebidos), **excluir** (aba Excluídos, com restaurar) e **nome para exibir**.
-- Aba Recebidos com períodos hoje / semana (seg–dom) / mês / ano. Todas as colunas principais ordenáveis (clique no título).
+- Aba Recebidos com **todo o histórico** do Flow e períodos hoje / semana (seg–dom) / mês / ano / tudo; gráfico "Recebimentos"
+  por dia, mês ou ano (clique filtra). Todas as colunas principais ordenáveis (clique no título; sem data vai para o fim).
+- O Supabase devolve no máximo 1000 linhas por consulta: telas usam `lib/paginar.ts` (`todasAsLinhas`) e a sincronização `lerTudo`.
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos` (CSV, padrão Excel pt-BR).
 
 ## Site (`app/`)

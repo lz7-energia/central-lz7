@@ -52,6 +52,18 @@ async function todos(recurso: string): Promise<any[]> {
   return itens;
 }
 
+/** Lê todas as linhas de uma tabela da central (o Supabase devolve no máximo 1000 por consulta). */
+async function lerTudo(sb: any, tabela: string, colunas: string): Promise<any[]> {
+  const linhas: any[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await sb.from(tabela).select(colunas).order("flow_id").range(de, de + 999);
+    if (error) throw new Error(`${tabela}: ${error.message}`);
+    linhas.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return linhas;
+}
+
 async function emLotes<T>(linhas: T[], fazer: (lote: T[]) => Promise<{ error: any }>) {
   for (let i = 0; i < linhas.length; i += 500) {
     const { error } = await fazer(linhas.slice(i, i + 500));
@@ -108,8 +120,8 @@ Deno.serve(async () => {
     await emLotes(linhasPedidos, (l) => sb.from("pedidos_venda").upsert(l, { onConflict: "flow_id" }));
 
     // 3) Ordens de serviço. "status_desde" é marcado pela central (o Flow não informa a data da troca de status).
-    const { data: osAntigas } = await sb.from("ordens_servico").select("flow_id, status, status_desde");
-    const antigas = new Map((osAntigas ?? []).map((o: any) => [o.flow_id, o]));
+    const osAntigas = await lerTudo(sb, "ordens_servico", "flow_id, status, status_desde");
+    const antigas = new Map(osAntigas.map((o: any) => [o.flow_id, o]));
     const os = new Map<string, any>();
     for (const p of pedidos) {
       // Reserva: status de OS que já vem no pedido, caso a OS não apareça na lista de OS.
@@ -222,8 +234,8 @@ Deno.serve(async () => {
     }
     await emLotes([...notas.values()], (l) => sb.from("notas_fiscais").upsert(l, { onConflict: "flow_id" }));
     // A lista do Flow é completa: nota que sumiu ou foi cancelada sai da central e o pedido volta a "Pronto pra faturar".
-    const { data: notasAntigas } = await sb.from("notas_fiscais").select("flow_id");
-    const remover = (notasAntigas ?? []).map((n: any) => n.flow_id).filter((id: string) => !notas.has(id));
+    const notasAntigas = await lerTudo(sb, "notas_fiscais", "flow_id");
+    const remover = notasAntigas.map((n: any) => n.flow_id).filter((id: string) => !notas.has(id));
     await emLotes(remover, (l) => sb.from("notas_fiscais").delete().in("flow_id", l));
 
     // 5) Contas a receber. Título baixado conta 100%; cancelado fica de fora.
@@ -267,8 +279,8 @@ Deno.serve(async () => {
       });
     await emLotes(linhasTitulos, (l) => sb.from("titulos_receber").upsert(l, { onConflict: "flow_id" }));
     const idsTitulos = new Set(linhasTitulos.map((t) => t.flow_id));
-    const { data: titulosAntigos } = await sb.from("titulos_receber").select("flow_id");
-    const titulosRemover = (titulosAntigos ?? []).map((t: any) => t.flow_id).filter((id: string) => !idsTitulos.has(id));
+    const titulosAntigos = await lerTudo(sb, "titulos_receber", "flow_id");
+    const titulosRemover = titulosAntigos.map((t: any) => t.flow_id).filter((id: string) => !idsTitulos.has(id));
     await emLotes(titulosRemover, (l) => sb.from("titulos_receber").delete().in("flow_id", l));
 
     const resumo = {
