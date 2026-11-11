@@ -110,3 +110,25 @@ end $$;
 reset role;
 
 select tipo, de_status, para_status, autor from public.pedido_eventos order by id;
+
+-- 6) Ajustes manuais do painel: ocultar e "já tem nota" sobrevivem à sincronização
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.painel_ajustes (pedido_flow_id, oculto) values ('PV1', true);
+insert into public.painel_ajustes (pedido_flow_id, nota_manual, nota_numero) values ('PV2', true, '9999');
+reset role;
+-- simula a sincronização regravando o pedido
+update public.pedidos_venda set cliente = 'Cliente A (Flow)', sincronizado_em = now() where flow_id in ('PV1', 'PV2');
+do $$ begin
+  if not (select oculto from public.painel_faturamento where numero = '1001') then raise exception 'oculto se perdeu'; end if;
+  if (select coluna from public.painel_faturamento where numero = '1002') <> 'faturado' then raise exception 'nota manual não faturou'; end if;
+  if (select nf_numero from public.painel_faturamento where numero = '1002') <> '9999' then raise exception 'número da nota manual'; end if;
+  if (select alterado_por from public.painel_ajustes where pedido_flow_id = 'PV2') <> 'Ana' then raise exception 'carimbo'; end if;
+  raise notice 'OK ajustes manuais';
+end $$;
+set role anon;
+do $$ begin
+  if (select count(*) from public.painel_ajustes) > 0 then raise exception 'anon leu ajustes'; end if;
+  raise notice 'OK anon sem ajustes';
+end $$;
+reset role;

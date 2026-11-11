@@ -183,3 +183,11 @@ dl.dados dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
 .protocolo { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.6rem; font-weight: 700; color: var(--marca-escura); letter-spacing: 0.02em; }
 .copiavel { display: flex; gap: 8px; }
 .copiavel input { font-size: 0.85rem; color: var(--texto-2); }
+
+/* Ações do card do painel (ajustes manuais) */
+.cp-acoes { display: flex; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--borda); }
+.cp-acoes button { font: inherit; font-size: 0.8rem; background: none; border: 0; padding: 0; color: var(--texto-2); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.cp-acoes button:hover { color: var(--marca); }
+.cp-nota { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--borda); }
+.cp-nota input { padding: 5px 8px; font-size: 0.85rem; min-width: 0; }
+td.codigo { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; font-weight: 700; }
