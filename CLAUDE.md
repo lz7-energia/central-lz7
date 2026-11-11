@@ -33,17 +33,24 @@ A empresa não tem equipe de TI: o Claude constrói e mantém este sistema. O do
 
 Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
 
-## API do Flow (confirmar com a documentação oficial)
+## API do Flow (mapeada pela própria API em 10/11/2026)
 
-- Base: `https://api.flow2.com.br/v1/`, header `Authorization: Bearer <token>`
-- Endpoints conhecidos: `/recebers/`, `/pagars/`, `/pedidosVenda/`, `/pedidosVenda/itens`
-- Paginação por deslocamento: `pageSize` + `skip`
-- Campos só vêm quando pedidos: parâmetros `carregar<Campo>=true`
-- Vínculo pedido ↔ título: campos "Pedido de venda" e "Código do projeto" (código da obra: 2 letras + 6 dígitos + 3 letras)
-- **Ainda não mapeado:** endpoint de OS (status "Aguardando vistoria") e download de XML/PDF da NF-e
-- `developers.everflow.io` é outra empresa (marketing), não é este ERP
+- Base: `https://api.flow2.com.br/v1/`, header `Authorization: Bearer <token>`. Respostas: `{ itens, totalRecords, totalPages, pageSize }`.
+- Paginação por deslocamento: `pageSize` + `skip` (skip = quantidade de registros já lidos).
+- `/pedidosVenda/`: `id`, `situacao` ("Em digitação", "Aprovado", "Faturado"), `codigoProjeto`, `cliente.nomeRazaoSocial`,
+  `dataEmissao`, `dataFaturamento`, `ordemServico.id`, `ordemServicoStatus.descricao`. Totais do cabeçalho e
+  `notasFiscaisProdutos` vêm vazios → valor = soma de `/pedidosVenda/itens` (`idPedidoVenda`, `total`).
+- `/ordensServico/`: `id`, `idsPedidosVendas[]`, `statusChamado.descricao`, `numerosNotasFiscaisProduto[] {id, numeroNota}`,
+  `codigoProjeto`. `dataUltimaAlteracaoStatus` vem sempre vazio → a central marca `status_desde` ela mesma.
+- `/statusOrdemServico/`: lista de status. Pipeline "Planejamento e Execução": Adição no Cronograma → Lista de materiais →
+  Separação → Entrega → Aguardando instalação → Instalação → **Obra concluída.** → Cancelado.
+- `/recebers/`: `situacao` ("A vencer", "Vencido", "Baixado"), `valorBruto`, `valorRecebido`, `idCabPedidoVenda`
+  (vínculo com o pedido, ~3/4 dos títulos), `codigoProjeto`, `dataVencimentoReal`, `dataBaixa`.
+- `/pagars/` existe (não usado ainda). `/nfes` responde 405 a GET: **download de XML/PDF da NF-e ainda não mapeado**.
+- `developers.everflow.io` é outra empresa (marketing), não é este ERP.
 
-Sincronização: rotina no servidor copia os dados para o banco da central; as telas leem do banco.
+Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dados para o banco da central a cada
+30 min (7h–20h, seg–sáb); as telas leem do banco. Detalhes em `supabase/README.md`.
 
 ## Fase 1
 
@@ -51,8 +58,9 @@ Sincronização: rotina no servidor copia os dados para o banco da central; as t
 
 - Base: **pedido de venda**. Todo pedido de venda tem OS, e toda OS tem pedido.
 - Colunas: Em execução → Pronto pra faturar → Faturado → Recebido.
-- "Pronto pra faturar": OS vinculada com status "Aguardando vistoria" e pedido sem NF-e. Mostra dias parado.
-- "Faturado": pedido com NF-e vinculada.
+- "Pronto pra faturar": OS vinculada com status **"Obra concluída."** (decisão de 10/11/2026; não existe "Aguardando vistoria" no Flow) e pedido sem NF-e. Mostra dias parado (contados desde que a central viu o status pela primeira vez).
+- "Faturado": NF-e de produto vinculada à OS, ou pedido com situação "Faturado" no Flow.
+- OS "Cancelado" some do painel (`status_os_faturamento.oculta_no_painel`).
 - Recebido proporcional: soma dos títulos recebidos ÷ total dos títulos do projeto no contas a receber. O card mostra o %. Vai para "Recebido" só com 100%.
 - NF-e cancelada → volta para "Pronto pra faturar".
 

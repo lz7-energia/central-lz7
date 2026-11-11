@@ -12,8 +12,8 @@ insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valo
   ('pv4', '1004', 'SP000104IND', 'Metalúrgica Forte', 156000, null),
   ('pv5', '1005', 'RJ000105RES', 'Maria Souza', 18700, null);
 insert into public.ordens_servico (flow_id, pedido_flow_id, numero, status, status_desde) values
-  ('os1', 'pv1', 'OS-1', 'Aguardando vistoria', now() - interval '8 days'),
-  ('os2', 'pv2', 'OS-2', 'Aguardando vistoria', now() - interval '2 days'),
+  ('os1', 'pv1', 'OS-1', 'Obra concluída.', now() - interval '8 days'),
+  ('os2', 'pv2', 'OS-2', 'Obra concluída.', now() - interval '2 days'),
   ('os3', 'pv3', 'OS-3', 'Concluída', now() - interval '20 days'),
   ('os4', 'pv4', 'OS-4', 'Em instalação', now() - interval '3 days'),
   ('os5', 'pv5', 'OS-5', 'Concluída', now() - interval '40 days');

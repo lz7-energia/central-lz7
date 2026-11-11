@@ -17,13 +17,15 @@ insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valo
   ('PV2', '1002', 'SP000002ABC', 'Cliente B', 20000),
   ('PV3', '1003', 'SP000003ABC', 'Cliente C', 30000),
   ('PV4', '1004', 'SP000004ABC', 'Cliente D', 40000),
-  ('PV5', '1005', 'SP000005ABC', 'Cliente E', 50000);
+  ('PV5', '1005', 'SP000005ABC', 'Cliente E', 50000),
+  ('PV6', '1006', 'SP000006ABC', 'Cliente F', 60000);
 insert into public.ordens_servico (flow_id, pedido_flow_id, status, status_desde) values
   ('OS1', 'PV1', 'Instalando',          now() - interval '2 days'),
-  ('OS2', 'PV2', 'Aguardando vistoria', now() - interval '7 days'),
-  ('OS3', 'PV3', 'Aguardando vistoria', now() - interval '9 days'),
-  ('OS4', 'PV4', 'Aguardando vistoria', now() - interval '20 days'),
-  ('OS5', 'PV5', 'Aguardando vistoria', now() - interval '3 days');
+  ('OS2', 'PV2', 'Obra concluída.', now() - interval '7 days'),
+  ('OS3', 'PV3', 'Obra concluída.', now() - interval '9 days'),
+  ('OS4', 'PV4', 'Obra concluída.', now() - interval '20 days'),
+  ('OS5', 'PV5', 'Obra concluída.', now() - interval '3 days'),
+  ('OS6', 'PV6', 'Cancelado',       now() - interval '1 day');
 insert into public.notas_fiscais (flow_id, pedido_flow_id, numero, situacao) values
   ('NF3', 'PV3', '8820', 'autorizada'),
   ('NF4', 'PV4', '8821', 'autorizada'),
@@ -45,6 +47,7 @@ begin
   end loop;
   if (select pct_recebido from public.painel_faturamento where numero='1003') <> 50 then raise exception 'pct 1003'; end if;
   if (select dias_parado from public.painel_faturamento where numero='1002') <> 7 then raise exception 'dias 1002'; end if;
+  if exists (select 1 from public.painel_faturamento where numero='1006') then raise exception 'OS cancelada apareceu no painel'; end if;
   raise notice 'OK painel';
 end $$;
 
