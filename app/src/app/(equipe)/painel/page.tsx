@@ -3,16 +3,17 @@ import { supabaseUsuario } from "@/lib/supabase/server";
 import type { LinhaPainel } from "@/lib/tipos";
 import { dataHora } from "@/lib/formato";
 import { Quadro } from "./Quadro";
+import { todasAsLinhas } from "@/lib/paginar";
 
 export const metadata: Metadata = { title: "Faturamento" };
 
 export default async function Painel() {
   const sb = await supabaseUsuario();
   const [{ data, error }, { data: ultimas }] = await Promise.all([
-    sb.from("painel_faturamento").select("*").limit(5000),
+    todasAsLinhas<LinhaPainel>((de, ate) => sb.from("painel_faturamento").select("*").order("flow_id").range(de, ate)),
     sb.from("sincronizacoes").select("recurso, terminada_em, sucesso, erro").order("iniciada_em", { ascending: false }).limit(20),
   ]);
-  const linhas = (data ?? []) as LinhaPainel[];
+  const linhas = data;
   const ultimaOk = (ultimas ?? []).find((s) => s.sucesso);
   const ultimaFalha = (ultimas ?? [])[0]?.sucesso === false ? ultimas![0] : null;
 
