@@ -50,6 +50,7 @@ Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
 - `/documentosSaida/`: página "Notas de Produto" (todas as NF-e emitidas, inclusive sem OS/pedido): `id`, `idCliente`
   (= `cliente.id` do pedido), `numeroNota`, `serieNota`, `chaveDanfe`, `dataEmissao`, `dataCancelamento`, `homologacao`,
   `entradaSaida`, `situacaoDocumento`, `idsPedidosVenda[]` (geralmente vazio), `valorTotalNotaFiscal`. `linkDanfe`/`linkDanfeXml` vêm vazios na lista.
+- `/clientes/`: cadastro de clientes (`id` = `idCliente` dos títulos e notas, `nomeRazaoSocial`, `apelido`, `cnpjCpf`…). A sincronização usa como fonte final de nome/apelido.
 - `/pagars/` existe (não usado ainda). `/nfes` responde 405 a GET. **Download de XML/PDF da NF-e ainda não mapeado** (testar `documentosSaida/{id}`).
 - `developers.everflow.io` é outra empresa (marketing), não é este ERP.
 
@@ -81,7 +82,7 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 
 ### Recebíveis e inadimplência (Financeiro)
 
-- Títulos do Contas a Receber do Flow: vencidos, a vencer e recebidos no mês; nome do cliente vem dos pedidos e notas (pelo `idCliente`).
+- Títulos do Contas a Receber do Flow: vencidos, a vencer e recebidos; nome e apelido vêm do cadastro `/clientes/` (pelo `idCliente`).
 - Nome principal = **apelido** do cliente no Flow (`cliente.apelido` / `destinatarioRemetente.apelido`), razão social embaixo (também no painel).
 - Situações de cobrança configuráveis pela equipe (`cobranca_situacoes`), cada uma num grupo: inadimplente, em negociação,
   aguardando terceiro, outro. "Panorama dos vencidos": barras por situação (cor do grupo) e por faixa de atraso, com filtros.
@@ -90,10 +91,10 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
 - Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
   **baixa manual** (data, valor, observação → vai para Recebidos), **excluir** (aba Excluídos, com restaurar) e **nome para exibir**.
-- Aba Recebidos com **todo o histórico** do Flow e períodos hoje / semana (seg–dom) / mês / ano / tudo; gráfico "Recebimentos"
+- Aba Recebidos com **todo o histórico** do Flow (o número na aba é o total; abre em "Este ano") e períodos hoje / semana (seg–dom) / mês / ano / tudo / escolher datas (de–até); gráfico "Recebimentos"
   por dia, mês ou ano (clique filtra). Todas as colunas principais ordenáveis (clique no título; sem data vai para o fim).
 - O Supabase devolve no máximo 1000 linhas por consulta: telas usam `lib/paginar.ts` (`todasAsLinhas`) e a sincronização `lerTudo`.
-- Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos` (CSV, padrão Excel pt-BR).
+- Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
 
 ## Site (`app/`)
 

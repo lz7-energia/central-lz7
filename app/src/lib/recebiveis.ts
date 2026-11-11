@@ -85,7 +85,7 @@ export function nomesDoCliente(t: { cliente_apelido: string | null; cliente: str
   return { principal, apoio };
 }
 
-export type Periodo = "dia" | "semana" | "mes" | "ano" | "todos";
+export type Periodo = "dia" | "semana" | "mes" | "ano" | "todos" | "personalizado";
 
 /** Início e fim de um período do calendário de Brasília que contém "hoje" (semana de segunda a domingo). */
 export function limitesDoPeriodo(hoje: string, p: Periodo) {

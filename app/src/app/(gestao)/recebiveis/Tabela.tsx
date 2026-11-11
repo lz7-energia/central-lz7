@@ -20,7 +20,7 @@ const PERIODOS_FUTURO: { id: Periodo; rotulo: string }[] = [
 ];
 const PERIODOS_PASSADO: { id: Periodo; rotulo: string }[] = [
   { id: "dia", rotulo: "Hoje" }, { id: "semana", rotulo: "Esta semana" }, { id: "mes", rotulo: "Este mês" },
-  { id: "ano", rotulo: "Este ano" }, { id: "todos", rotulo: "Tudo" },
+  { id: "ano", rotulo: "Este ano" }, { id: "todos", rotulo: "Tudo" }, { id: "personalizado", rotulo: "Escolher datas" },
 ];
 type Balde = { id: string; inicio: string; fim: string; rotulo: string; dica: string };
 const ORDEM_PADRAO: Record<Aba, { col: Coluna; dir: 1 | -1 }> = {
@@ -58,9 +58,11 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
   const [faixa, setFaixa] = useState<FaixaId | null>(null);
   const [situacao, setSituacao] = useState<string | null>(null);
   const [periodoFuturo, setPeriodoFuturo] = useState<Periodo>("mes");
-  const [periodoPassado, setPeriodoPassado] = useState<Periodo>("mes");
+  const [periodoPassado, setPeriodoPassado] = useState<Periodo>("ano");
   const [ordem, setOrdem] = useState(ORDEM_PADRAO.vencidos);
   const [balde, setBalde] = useState<Balde | null>(null);
+  const [deData, setDeData] = useState(`${hoje.slice(0, 7)}-01`);
+  const [ateData, setAteData] = useState(hoje);
   const [pendente, iniciar] = useTransition();
 
   const sit = useMemo(() => new Map(situacoes.map((s) => [s.id, s])), [situacoes]);
@@ -84,7 +86,9 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
   const inicioPassado = limitesDoPeriodo(hoje, periodoPassado).inicio;
   const recebidosDoPeriodo = periodoPassado === "todos"
     ? recebidos
-    : recebidos.filter((t) => t.recebido_em && t.recebido_em >= inicioPassado && t.recebido_em <= hoje);
+    : periodoPassado === "personalizado"
+      ? recebidos.filter((t) => t.recebido_em && t.recebido_em >= deData && t.recebido_em <= ateData)
+      : recebidos.filter((t) => t.recebido_em && t.recebido_em >= inicioPassado && t.recebido_em <= hoje);
   const recebidosNoPeriodo = balde
     ? recebidosDoPeriodo.filter((t) => t.recebido_em && t.recebido_em >= balde.inicio && t.recebido_em <= balde.fim)
     : recebidosDoPeriodo;
@@ -155,7 +159,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 
       {aba === "recebidos" && (
         <PanoramaRecebidos
-          titulos={recebidosDoPeriodo} periodo={periodoPassado} hoje={hoje} balde={balde}
+          titulos={recebidosDoPeriodo} periodo={periodoPassado} hoje={hoje} balde={balde} intervalo={{ de: deData, ate: ateData }}
           setBalde={setBalde}
         />
       )}
@@ -171,8 +175,8 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 
       <div className="filtros">
         <div className="abas">
-          {([["vencidos", "Vencidos", vencidosFiltrados.length], ["a_vencer", "A vencer", aVencerNoPeriodo.length],
-             ["recebidos", "Recebidos", recebidosNoPeriodo.length], ["excluidos", "Excluídos", excluidos.length]] as const).map(([id, rotulo, n]) => (
+          {([["vencidos", "Vencidos", vencidos.length], ["a_vencer", "A vencer", aVencer.length],
+             ["recebidos", "Recebidos", recebidos.length], ["excluidos", "Excluídos", excluidos.length]] as const).map(([id, rotulo, n]) => (
             <a key={id} href="#" className={aba === id ? "ativo" : ""} onClick={(e) => { e.preventDefault(); trocarAba(id); }}>
               {rotulo}<span className="contador">{n}</span>
             </a>
@@ -186,7 +190,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
         )}
         {aba !== "excluidos" && (
           <a className="botao secundario pequeno" style={{ marginLeft: "auto" }}
-             href={`/recebiveis/exportar?aba=${aba}&periodo=${aba === "a_vencer" ? periodoFuturo : periodoPassado}`}>
+             href={`/recebiveis/exportar?aba=${aba}&periodo=${aba === "a_vencer" ? periodoFuturo : periodoPassado}${aba === "recebidos" && periodoPassado === "personalizado" ? `&de=${deData}&ate=${ateData}` : ""}`}>
             Baixar planilha
           </a>
         )}
@@ -205,6 +209,14 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
               );
             })}
           </div>
+          {aba === "recebidos" && periodoPassado === "personalizado" && (
+            <span className="intervalo">
+              <label htmlFor="de">de</label>
+              <input id="de" type="date" value={deData} max={ateData} onChange={(e) => { setDeData(e.target.value); setBalde(null); }} />
+              <label htmlFor="ate">até</label>
+              <input id="ate" type="date" value={ateData} min={deData} onChange={(e) => { setAteData(e.target.value); setBalde(null); }} />
+            </span>
+          )}
           {aba === "a_vencer" ? (
             <span className="previsto">Previsto para receber: <strong>{moeda(soma(aVencerNoPeriodo, "valor_aberto"))}</strong>{" "}
               <span className="mudo">em {aVencerNoPeriodo.length} título{aVencerNoPeriodo.length === 1 ? "" : "s"}</span></span>
@@ -352,7 +364,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
-function baldesDoPeriodo(titulos: Recebivel[], periodo: Periodo, hoje: string): Balde[] {
+function baldesDoPeriodo(titulos: Recebivel[], periodo: Periodo, hoje: string, intervalo: { de: string; ate: string }): Balde[] {
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const dia = (s: string) => new Date(`${s}T12:00:00Z`);
   const porDia = (inicio: string, fim: string) => {
@@ -378,6 +390,11 @@ function baldesDoPeriodo(titulos: Recebivel[], periodo: Periodo, hoje: string): 
     return porDia(inicio, fim);
   }
   if (periodo === "ano") return porMes(`${hoje.slice(0, 4)}-01-01`, `${hoje.slice(0, 4)}-12-31`);
+  if (periodo === "personalizado") {
+    if (!intervalo.de || !intervalo.ate || intervalo.de > intervalo.ate) return [];
+    const dias = Math.round((Date.parse(`${intervalo.ate}T12:00:00Z`) - Date.parse(`${intervalo.de}T12:00:00Z`)) / 86_400_000);
+    return dias <= 62 ? porDia(intervalo.de, intervalo.ate) : porMes(intervalo.de, intervalo.ate);
+  }
   // Tudo: por mês; se passar de 3 anos, por ano.
   const datas = titulos.map((t) => t.recebido_em).filter(Boolean).sort() as string[];
   if (!datas.length) return [];
@@ -390,13 +407,14 @@ function baldesDoPeriodo(titulos: Recebivel[], periodo: Periodo, hoje: string): 
   return anos;
 }
 
-function PanoramaRecebidos({ titulos, periodo, hoje, balde, setBalde }: {
+function PanoramaRecebidos({ titulos, periodo, hoje, balde, setBalde, intervalo }: {
   titulos: Recebivel[]; periodo: Periodo; hoje: string; balde: Balde | null; setBalde: (b: Balde | null) => void;
+  intervalo: { de: string; ate: string };
 }) {
   const total = titulos.reduce((s, t) => s + Number(t.valor_recebido), 0);
   const manuais = titulos.filter((t) => t.baixa_manual);
   const semData = titulos.filter((t) => !t.recebido_em).length;
-  const baldes = periodo === "dia" ? [] : baldesDoPeriodo(titulos, periodo, hoje);
+  const baldes = periodo === "dia" ? [] : baldesDoPeriodo(titulos, periodo, hoje, intervalo);
   const valores = baldes.map((b) => titulos
     .filter((t) => t.recebido_em && t.recebido_em >= b.inicio && t.recebido_em <= b.fim)
     .reduce((s, t) => s + Number(t.valor_recebido), 0));

@@ -1,5 +1,5 @@
 // Central LZ7 — sincronização com o Flow (Everflow). SOMENTE LEITURA no Flow.
-// Copia pedidos de venda, itens, OS, notas de produto (documentosSaida) e contas a receber para o banco da central; as telas leem do banco.
+// Copia pedidos de venda, itens, OS, notas de produto (documentosSaida), clientes e contas a receber para o banco da central; as telas leem do banco.
 // Agendada pelo pg_cron (ver supabase/README.md). Ignora chamadas com menos de 10 minutos de intervalo,
 // para nunca pesar a API do Flow mesmo se alguém chamar o endereço repetidas vezes.
 // deno-lint-ignore-file no-explicit-any
@@ -52,14 +52,15 @@ async function todos(recurso: string): Promise<any[]> {
   return itens;
 }
 
-/** Lê todas as linhas de uma tabela da central (o Supabase devolve no máximo 1000 por consulta). */
+/** Lê todas as linhas de uma tabela da central (o Supabase corta cada consulta no "Max rows" do projeto). */
 async function lerTudo(sb: any, tabela: string, colunas: string): Promise<any[]> {
   const linhas: any[] = [];
-  for (let de = 0; ; de += 1000) {
+  for (let de = 0; de < 500_000; ) {
     const { data, error } = await sb.from(tabela).select(colunas).order("flow_id").range(de, de + 999);
     if (error) throw new Error(`${tabela}: ${error.message}`);
-    linhas.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
+    if (!data || data.length === 0) break;
+    linhas.push(...data);
+    de += data.length; // avança pelo que veio de fato (o "Max rows" do projeto pode ser menor que 1000)
   }
   return linhas;
 }
@@ -97,6 +98,8 @@ Deno.serve(async () => {
     const ordens = await todos("ordensServico");
     const titulos = await todos("recebers");
     const documentos = await todos("documentosSaida"); // página "Notas de Produto" do Flow
+    const clientes = await todos("clientes"); // cadastro de clientes (nome e apelido de todos)
+    const cadastro = new Map(clientes.map((c) => [String(c.id), c]));
 
     // 2) Pedidos de venda. O valor do pedido é a soma dos itens (o total do cabeçalho vem vazio na API).
     const somaItens = new Map<string, number>();
@@ -110,8 +113,8 @@ Deno.serve(async () => {
       flow_id: String(p.id),
       numero: String(p.id),
       codigo_projeto: p.codigoProjeto || null,
-      cliente: p.cliente?.nomeRazaoSocial ?? p.cliente?.apelido ?? null,
-      cliente_apelido: p.cliente?.apelido || null,
+      cliente: cadastro.get(String(p.cliente?.id))?.nomeRazaoSocial || p.cliente?.nomeRazaoSocial || p.cliente?.apelido || null,
+      cliente_apelido: cadastro.get(String(p.cliente?.id))?.apelido || p.cliente?.apelido || null,
       valor_total: somaItens.has(String(p.id)) ? Math.round(somaItens.get(String(p.id))! * 100) / 100 : null,
       data_pedido: dataISO(p.dataEmissao),
       bruto: p,
@@ -253,6 +256,11 @@ Deno.serve(async () => {
       if (p.cliente.nomeRazaoSocial) nomeCliente.set(String(p.cliente.id), p.cliente.nomeRazaoSocial);
       if (p.cliente.apelido) apelidoCliente.set(String(p.cliente.id), p.cliente.apelido);
     }
+    // O cadastro de clientes do Flow tem a palavra final.
+    for (const [id, c] of cadastro) {
+      if (c.nomeRazaoSocial) nomeCliente.set(id, c.nomeRazaoSocial);
+      if (c.apelido) apelidoCliente.set(id, c.apelido);
+    }
     const linhasTitulos = titulos
       .filter((t) => !/cancel/i.test(String(t.situacao ?? "")))
       .map((t) => {
@@ -285,7 +293,7 @@ Deno.serve(async () => {
 
     const resumo = {
       pedidos: linhasPedidos.length, itens: itens.length, ordens: linhasOS.length,
-      notas: notas.size, notasProduto: documentos.length, notasSemCerteza: ambiguas, titulos: linhasTitulos.length,
+      notas: notas.size, notasProduto: documentos.length, clientes: clientes.length, notasSemCerteza: ambiguas, titulos: linhasTitulos.length,
     };
     await sb.from("sincronizacoes").update({
       terminada_em: new Date().toISOString(), sucesso: true,
