@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState, useTransition } from "react";
 import {
-  FAIXAS, GRUPOS, ORDEM_GRUPOS, faixaDe,
+  FAIXAS, GRUPOS, ORDEM_GRUPOS, faixaDe, nomesDoCliente,
   type Atualizacao, type FaixaId, type Grupo, type Recebivel, type Situacao,
 } from "@/lib/recebiveis";
 import { data as fmtData, dataHora, moeda } from "@/lib/formato";
@@ -39,12 +39,11 @@ const moedaCurta = (v: number) =>
   : v >= 1000 ? `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : moeda(v);
 
 function NomeCliente({ t }: { t: Recebivel }) {
-  const principal = t.cliente_apelido ?? t.cliente ?? "Cliente não identificado";
+  const { principal, apoio } = nomesDoCliente(t);
   return (
     <>
       <strong>{principal}</strong>
-      {t.cliente_apelido && t.cliente && <div className="pequeno mudo">{t.cliente}</div>}
-      {t.codigo_projeto && <div className="pequeno mudo">{t.codigo_projeto}</div>}
+      {apoio.map((v) => <div key={v} className="pequeno mudo">{v}</div>)}
     </>
   );
 }

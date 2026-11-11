@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { COLUNAS, type LinhaPainel } from "@/lib/tipos";
 import { moeda, data as fmtData, dataHora } from "@/lib/formato";
 import { desmarcarNota, marcarNota, mostrarCard, ocultarCard } from "./acoes";
+import { nomesDoCliente } from "@/lib/recebiveis";
 
 const DIAS_ALERTA = 5;
 
@@ -144,8 +145,8 @@ function Cartao({ l, coluna }: { l: LinhaPainel; coluna: string }) {
           </span>
         )}
       </div>
-      <div className="cliente">{l.cliente_apelido ?? l.cliente ?? "—"}</div>
-      {l.cliente_apelido && l.cliente && <div className="razao">{l.cliente}</div>}
+      <div className="cliente">{nomesDoCliente(l).principal}</div>
+      {nomesDoCliente(l).apoio.filter((v) => v !== l.codigo_projeto).map((v) => <div key={v} className="razao">{v}</div>)}
       <div className="linha-info">
         <span>{moeda(l.valor_total)}</span>
         <span>{l.responsavel ?? "sem responsável"}</span>

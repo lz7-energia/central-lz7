@@ -58,3 +58,22 @@ export function mesAtual(hoje: string) {
   const fim = new Date(Date.UTC(a, m, 0)).getUTCDate();
   return { inicio: `${hoje.slice(0, 7)}-01`, fim: `${hoje.slice(0, 7)}-${String(fim).padStart(2, "0")}` };
 }
+
+/**
+ * Nome para mostrar: apelido do Flow → razão social → código do projeto (que no Flow já traz o nome,
+ * ex.: "WB260131COL - SILAS EMANOEL MORAIS (9.76 KWp)"). As linhas de apoio só aparecem se acrescentarem algo.
+ */
+export function nomesDoCliente(t: { cliente_apelido: string | null; cliente: string | null; codigo_projeto: string | null }) {
+  const limpo = (v: string | null) => (v ?? "").trim();
+  const principal = limpo(t.cliente_apelido) || limpo(t.cliente) || limpo(t.codigo_projeto) || "Cliente não identificado";
+  const vistos = [principal.toLowerCase()];
+  const apoio: string[] = [];
+  for (const v of [limpo(t.cliente), limpo(t.codigo_projeto)]) {
+    const baixo = v.toLowerCase();
+    if (v && !vistos.some((x) => x.includes(baixo))) {
+      apoio.push(v);
+      vistos.push(baixo);
+    }
+  }
+  return { principal, apoio };
+}
