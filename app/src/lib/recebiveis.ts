@@ -1,18 +1,30 @@
 export type EstadoTitulo = "vencido" | "a_vencer" | "recebido";
-export type SituacaoCobranca = "sem_contato" | "cobrado" | "negociando" | "promessa" | "juridico" | "outro";
+export type Grupo = "inadimplente" | "negociacao" | "aguardando" | "outro";
 
-export const SITUACOES: Record<SituacaoCobranca, { rotulo: string; cor: string }> = {
-  sem_contato: { rotulo: "Sem contato", cor: "vermelho" },
-  cobrado: { rotulo: "Cobrado", cor: "amarelo" },
-  negociando: { rotulo: "Negociando", cor: "azul" },
-  promessa: { rotulo: "Promessa de pagamento", cor: "verde" },
-  juridico: { rotulo: "Jurídico", cor: "roxo" },
-  outro: { rotulo: "Outro", cor: "cinza" },
+/** Grupos das situações de cobrança (cores validadas para daltonismo; ver skill dataviz). */
+export const GRUPOS: Record<Grupo, { rotulo: string; cor: string; etiqueta: string }> = {
+  inadimplente: { rotulo: "Inadimplente", cor: "#c4320a", etiqueta: "vermelho" },
+  negociacao: { rotulo: "Em negociação", cor: "#2563c9", etiqueta: "azul" },
+  aguardando: { rotulo: "Aguardando terceiro", cor: "#d99a06", etiqueta: "amarelo" },
+  outro: { rotulo: "Outro", cor: "#7c5cc4", etiqueta: "roxo" },
 };
+export const ORDEM_GRUPOS: Grupo[] = ["inadimplente", "negociacao", "aguardando", "outro"];
+
+export type Situacao = { id: string; rotulo: string; grupo: Grupo; ordem: number; ativo: boolean; padrao: boolean };
+
+export const FAIXAS = [
+  { id: "1-30", rotulo: "1 a 30 dias", min: 1, max: 30 },
+  { id: "31-60", rotulo: "31 a 60 dias", min: 31, max: 60 },
+  { id: "61-90", rotulo: "61 a 90 dias", min: 61, max: 90 },
+  { id: "90+", rotulo: "Mais de 90 dias", min: 91, max: Infinity },
+] as const;
+export type FaixaId = (typeof FAIXAS)[number]["id"];
+export const faixaDe = (dias: number | null) => FAIXAS.find((f) => (dias ?? 0) >= f.min && (dias ?? 0) <= f.max)?.id ?? "1-30";
 
 export type Recebivel = {
   flow_id: string;
   cliente: string | null;
+  cliente_apelido: string | null;
   codigo_projeto: string | null;
   pedido_flow_id: string | null;
   vencimento: string | null;
@@ -23,7 +35,7 @@ export type Recebivel = {
   situacao_flow: string | null;
   estado: EstadoTitulo;
   dias_atraso: number | null;
-  cobranca_situacao: SituacaoCobranca;
+  cobranca_situacao: string;
   previsao: string | null;
   motivo: string | null;
   alterado_por: string | null;
