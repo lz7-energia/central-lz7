@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
-import { GRUPOS, mesAtual, type Grupo, type Recebivel } from "@/lib/recebiveis";
+import { GRUPOS, mesAtual, nomesDoCliente, type Grupo, type Recebivel } from "@/lib/recebiveis";
 import { hojeSP } from "@/lib/formato";
 
 // Planilha (CSV no padrão do Excel em português: separador ";" e vírgula decimal).
@@ -25,10 +25,10 @@ export async function GET(request: NextRequest) {
     const s = String(v ?? "");
     return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const cabecalho = ["Apelido", "Cliente", "Projeto", "Título (Flow)", "Vencimento", "Dias em atraso", "Valor", "Recebido", "Em aberto",
+  const cabecalho = ["Nome", "Razão social", "Projeto", "Título (Flow)", "Vencimento", "Dias em atraso", "Valor", "Recebido", "Em aberto",
     "Situação no Flow", "Cobrança", "Grupo", "Previsão", "Motivo", "Atualizado por", "Recebido em"];
   const linhas = (data as Recebivel[]).map((t) => [
-    t.cliente_apelido, t.cliente, t.codigo_projeto, t.flow_id, br(t.vencimento), t.dias_atraso ?? "", num(t.valor), num(t.valor_recebido),
+    nomesDoCliente(t).principal, t.cliente, t.codigo_projeto, t.flow_id, br(t.vencimento), t.dias_atraso ?? "", num(t.valor), num(t.valor_recebido),
     num(t.valor_aberto), t.situacao_flow, situacao.get(t.cobranca_situacao)?.rotulo ?? t.cobranca_situacao,
     GRUPOS[situacao.get(t.cobranca_situacao)?.grupo as Grupo]?.rotulo ?? "", br(t.previsao), t.motivo,
     t.alterado_por, br(t.recebido_em),
