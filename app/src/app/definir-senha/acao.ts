@@ -12,5 +12,5 @@ export async function definirSenha(_: { erro: string }, form: FormData) {
   if (!data.user) return { erro: "O link expirou. Peça um novo em “Esqueci a senha”." };
   const { error } = await sb.auth.updateUser({ password: senha });
   if (error) return { erro: "Não foi possível salvar a senha. Tente outra." };
-  redirect("/pedidos");
+  redirect("/inicio");
 }

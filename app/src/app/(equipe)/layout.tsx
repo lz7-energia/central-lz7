@@ -12,7 +12,7 @@ export default async function LayoutEquipe({ children }: { children: React.React
     <>
       <header className="topo">
         <div className="topo-dentro">
-          <Link href="/pedidos" className="logo">
+          <Link href="/inicio" className="logo">
             LZ7 <span>Central</span>
           </Link>
           <Nav />

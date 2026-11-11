@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { perfilAtual } from "@/lib/supabase/server";
 
 export default async function Inicio() {
-  // Quem é da equipe e já está logado vai direto pra fila.
-  if (await perfilAtual()) redirect("/pedidos");
+  // Quem é da equipe e já está logado vai direto pra página inicial.
+  if (await perfilAtual()) redirect("/inicio");
 
   return (
     <main className="inicio">

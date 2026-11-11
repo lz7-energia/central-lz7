@@ -8,7 +8,7 @@ export type EstadoLogin = { erro?: string; aviso?: string; email?: string };
 
 function destinoSeguro(v: FormDataEntryValue | null) {
   const s = typeof v === "string" ? v : "";
-  return s.startsWith("/") && !s.startsWith("//") ? s : "/pedidos";
+  return s.startsWith("/") && !s.startsWith("//") ? s : "/inicio";
 }
 
 export async function entrar(_: EstadoLogin, form: FormData): Promise<EstadoLogin> {

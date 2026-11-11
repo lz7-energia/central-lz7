@@ -191,3 +191,49 @@ dl.dados dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
 .cp-nota { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--borda); }
 .cp-nota input { padding: 5px 8px; font-size: 0.85rem; min-width: 0; }
 td.codigo { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; font-weight: 700; }
+
+/* ---------- Página inicial da equipe e páginas das áreas ---------- */
+.saudacao { margin: 8px 0 28px; }
+.saudacao h1 { font-size: 2rem; letter-spacing: -0.02em; }
+.saudacao .mudo { margin-bottom: 4px; }
+.grade-areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.cartao-area {
+  position: relative; display: flex; flex-direction: column; gap: 6px;
+  background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; box-shadow: var(--sombra);
+  padding: 22px; text-decoration: none; color: inherit; min-height: 200px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.cartao-area:hover { transform: translateY(-2px); border-color: var(--cor-area); box-shadow: 0 6px 18px rgba(16, 24, 20, 0.1); }
+.ca-icone { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--fundo-area); color: var(--cor-area); margin-bottom: 6px; flex-shrink: 0; }
+.ca-nome { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; }
+.ca-desc { color: var(--texto-2); font-size: 0.92rem; }
+.ca-numeros { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 2px; font-size: 0.88rem; color: var(--texto-2); }
+.ca-numeros strong { color: var(--texto); font-weight: 700; }
+.ca-numeros .destaque strong { color: var(--aviso); }
+.ca-numeros .atrasado strong { color: var(--perigo); }
+.ca-ir { position: absolute; top: 22px; right: 22px; color: var(--texto-2); font-size: 1.2rem; transition: transform 0.12s ease; }
+.cartao-area:hover .ca-ir { transform: translateX(3px); color: var(--cor-area); }
+.area-fiscal { --cor-area: #0f6b4f; --fundo-area: #e3f1ec; }
+.area-financeiro { --cor-area: #1849a9; --fundo-area: #e0ecff; }
+.area-rh { --cor-area: #93370d; --fundo-area: #fef0c7; }
+.area-adm { --cor-area: #4a1fb8; --fundo-area: #ebe9fe; }
+.cabecalho-area { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.cabecalho-area .ca-icone { margin: 0; width: 56px; height: 56px; }
+.grade-modulos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.modulo { display: flex; flex-direction: column; gap: 4px; background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; text-decoration: none; color: inherit; box-shadow: var(--sombra); }
+a.modulo:hover { border-color: var(--marca); }
+a.modulo strong::after { content: " →"; color: var(--marca); }
+.modulo span { color: var(--texto-2); font-size: 0.88rem; }
+.modulo.em-breve { background: #f8faf9; box-shadow: none; }
+.modulo.em-breve strong { color: var(--texto-2); }
+.modulo.em-breve .etiqueta { font-size: 0.7rem; margin-left: 4px; vertical-align: middle; }
+
+/* Barra do topo no celular: menu em linha própria, rolável */
+@media (max-width: 720px) {
+  .topo-dentro { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 8px 12px; }
+  .nav { order: 3; flex-basis: 100%; overflow-x: auto; white-space: nowrap; }
+  .usuario { margin-left: auto; }
+  .usuario span { display: none; }
+  .pagina { padding: 20px 16px 48px; }
+  .saudacao h1 { font-size: 1.6rem; }
+}
