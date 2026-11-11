@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
-import { GRUPOS, mesAtual, nomesDoCliente, type Grupo, type Recebivel } from "@/lib/recebiveis";
+import { GRUPOS, limitesDoPeriodo, nomesDoCliente, type Grupo, type Periodo, type Recebivel } from "@/lib/recebiveis";
 import { hojeSP } from "@/lib/formato";
 
 // Planilha (CSV no padrão do Excel em português: separador ";" e vírgula decimal).
@@ -11,9 +11,12 @@ export async function GET(request: NextRequest) {
   const hoje = hojeSP();
   const sb = await supabaseUsuario();
   let q = sb.from("recebiveis").select("*").eq("estado", estado).order("vencimento").limit(10000);
+  const periodo = (request.nextUrl.searchParams.get("periodo") ?? "mes") as Periodo;
   if (estado === "recebido") {
-    const { inicio, fim } = mesAtual(hoje);
-    q = q.gte("recebido_em", inicio).lte("recebido_em", fim);
+    const { inicio } = limitesDoPeriodo(hoje, periodo);
+    q = q.gte("recebido_em", inicio).lte("recebido_em", hoje);
+  } else if (estado === "a_vencer") {
+    q = q.lte("vencimento", limitesDoPeriodo(hoje, periodo).fim);
   }
   const [{ data, error }, { data: sits }] = await Promise.all([q, sb.from("cobranca_situacoes").select("id, rotulo, grupo")]);
   const situacao = new Map((sits ?? []).map((x) => [x.id, x]));
@@ -26,15 +29,15 @@ export async function GET(request: NextRequest) {
     return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const cabecalho = ["Nome", "Razão social", "Projeto", "Título (Flow)", "Vencimento", "Dias em atraso", "Valor", "Recebido", "Em aberto",
-    "Situação no Flow", "Cobrança", "Grupo", "Previsão", "Motivo", "Atualizado por", "Recebido em"];
+    "Situação no Flow", "Cobrança", "Grupo", "Previsão", "Motivo", "Atualizado por", "Recebido em", "Baixa manual"];
   const linhas = (data as Recebivel[]).map((t) => [
     nomesDoCliente(t).principal, t.cliente, t.codigo_projeto, t.flow_id, br(t.vencimento), t.dias_atraso ?? "", num(t.valor), num(t.valor_recebido),
     num(t.valor_aberto), t.situacao_flow, situacao.get(t.cobranca_situacao)?.rotulo ?? t.cobranca_situacao,
     GRUPOS[situacao.get(t.cobranca_situacao)?.grupo as Grupo]?.rotulo ?? "", br(t.previsao), t.motivo,
-    t.alterado_por, br(t.recebido_em),
+    t.alterado_por, br(t.recebido_em), t.baixa_manual ? `sim (${t.ajuste_por ?? ""}${t.baixa_obs ? ` · ${t.baixa_obs}` : ""})` : "",
   ].map(cel).join(";"));
   const csv = "﻿" + [cabecalho.join(";"), ...linhas].join("\r\n");
-  const nome = { vencido: "vencidos", a_vencer: "a-vencer", recebido: "recebidos-no-mes" }[estado];
+  const nome = { vencido: "vencidos", a_vencer: `a-vencer-${periodo}`, recebido: `recebidos-${periodo}` }[estado];
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

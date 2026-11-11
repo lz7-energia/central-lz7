@@ -2,38 +2,36 @@
 
 import { Fragment, useMemo, useState, useTransition } from "react";
 import {
-  FAIXAS, GRUPOS, ORDEM_GRUPOS, faixaDe, nomesDoCliente,
-  type Atualizacao, type FaixaId, type Grupo, type Recebivel, type Situacao,
+  FAIXAS, GRUPOS, ORDEM_GRUPOS, faixaDe, limitesDoPeriodo, nomesDoCliente,
+  type Atualizacao, type FaixaId, type Grupo, type Periodo, type Recebivel, type Situacao,
 } from "@/lib/recebiveis";
 import { data as fmtData, dataHora, moeda } from "@/lib/formato";
-import { alterarSituacao, concluirAtualizacao, criarSituacao, salvarCobranca } from "./acoes";
+import {
+  alterarSituacao, concluirAtualizacao, criarSituacao, darBaixa, desfazerBaixa, editarNome, excluirTitulo, restaurarTitulo, salvarCobranca,
+} from "./acoes";
 
-type Aba = "vencidos" | "a_vencer" | "recebidos";
-type Periodo = "dia" | "semana" | "mes" | "ano" | "todos";
-const PERIODOS: { id: Periodo; rotulo: string }[] = [
-  { id: "dia", rotulo: "Hoje" },
-  { id: "semana", rotulo: "Esta semana" },
-  { id: "mes", rotulo: "Este mês" },
-  { id: "ano", rotulo: "Este ano" },
-  { id: "todos", rotulo: "Tudo" },
+type Aba = "vencidos" | "a_vencer" | "recebidos" | "excluidos";
+type Coluna = "cliente" | "vencimento" | "atraso" | "valor" | "previsao" | "recebido";
+type Modo = "cobranca" | "baixa" | "excluir" | "nome";
+
+const PERIODOS_FUTURO: { id: Periodo; rotulo: string }[] = [
+  { id: "dia", rotulo: "Hoje" }, { id: "semana", rotulo: "Esta semana" }, { id: "mes", rotulo: "Este mês" },
+  { id: "ano", rotulo: "Este ano" }, { id: "todos", rotulo: "Tudo" },
 ];
-
-/** Último dia do período (calendário de Brasília; a semana vai até domingo). */
-function fimDoPeriodo(hoje: string, p: Periodo) {
-  const d = new Date(`${hoje}T12:00:00Z`);
-  if (p === "dia") return hoje;
-  if (p === "semana") { d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7)); return d.toISOString().slice(0, 10); }
-  if (p === "mes") return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 12)).toISOString().slice(0, 10);
-  if (p === "ano") return `${hoje.slice(0, 4)}-12-31`;
-  return "9999-12-31";
-}
-const diasEntre = (de: string, ate: string) => Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`)) / 86_400_000);
+const PERIODOS_PASSADO: { id: Periodo; rotulo: string }[] = [
+  { id: "dia", rotulo: "Hoje" }, { id: "semana", rotulo: "Esta semana" }, { id: "mes", rotulo: "Este mês" }, { id: "ano", rotulo: "Este ano" },
+];
+const ORDEM_PADRAO: Record<Aba, { col: Coluna; dir: 1 | -1 }> = {
+  vencidos: { col: "atraso", dir: -1 }, a_vencer: { col: "vencimento", dir: 1 },
+  recebidos: { col: "recebido", dir: -1 }, excluidos: { col: "cliente", dir: 1 },
+};
 
 function somarDias(hoje: string, dias: number) {
   const d = new Date(`${hoje}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
 }
+const diasEntre = (de: string, ate: string) => Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`)) / 86_400_000);
 const moedaCurta = (v: number) =>
   v >= 1_000_000 ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`
   : v >= 1000 ? `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : moeda(v);
@@ -53,38 +51,72 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 }) {
   const [aba, setAba] = useState<Aba>("vencidos");
   const [busca, setBusca] = useState("");
-  const [editando, setEditando] = useState<string | null>(null);
+  const [editando, setEditando] = useState<{ id: string; modo: Modo } | null>(null);
   const [grupo, setGrupo] = useState<Grupo | null>(null);
   const [faixa, setFaixa] = useState<FaixaId | null>(null);
   const [situacao, setSituacao] = useState<string | null>(null);
-  const [periodo, setPeriodo] = useState<Periodo>("mes");
+  const [periodoFuturo, setPeriodoFuturo] = useState<Periodo>("mes");
+  const [periodoPassado, setPeriodoPassado] = useState<Periodo>("mes");
+  const [ordem, setOrdem] = useState(ORDEM_PADRAO.vencidos);
+  const [pendente, iniciar] = useTransition();
 
   const sit = useMemo(() => new Map(situacoes.map((s) => [s.id, s])), [situacoes]);
   const grupoDe = (t: Recebivel): Grupo => sit.get(t.cobranca_situacao)?.grupo ?? "outro";
   const rotuloDe = (id: string) => sit.get(id)?.rotulo ?? id;
 
   const em30 = somarDias(hoje, 30);
+  const mes = limitesDoPeriodo(hoje, "mes");
   const vencidos = titulos.filter((t) => t.estado === "vencido");
   const aVencer = titulos.filter((t) => t.estado === "a_vencer");
   const recebidos = titulos.filter((t) => t.estado === "recebido");
+  const excluidos = titulos.filter((t) => t.estado === "excluido");
   const soma = (l: Recebivel[], campo: "valor_aberto" | "valor_recebido") => l.reduce((s, t) => s + Number(t[campo]), 0);
+  const recebidosMes = recebidos.filter((t) => t.recebido_em && t.recebido_em >= mes.inicio && t.recebido_em <= hoje);
 
-  // Filtros do gráfico (valem para a aba Vencidos)
   const vencidosFiltrados = vencidos.filter((t) =>
     (!grupo || grupoDe(t) === grupo) && (!faixa || faixaDe(t.dias_atraso) === faixa) && (!situacao || t.cobranca_situacao === situacao));
   const filtrosAtivos = Boolean(grupo || faixa || situacao);
-  const fimPeriodo = fimDoPeriodo(hoje, periodo);
-  const aVencerNoPeriodo = aVencer.filter((t) => t.vencimento && t.vencimento <= fimPeriodo);
+  const fimFuturo = limitesDoPeriodo(hoje, periodoFuturo).fim;
+  const aVencerNoPeriodo = aVencer.filter((t) => t.vencimento && t.vencimento <= fimFuturo);
+  const inicioPassado = limitesDoPeriodo(hoje, periodoPassado).inicio;
+  const recebidosNoPeriodo = recebidos.filter((t) => t.recebido_em && t.recebido_em >= inicioPassado && t.recebido_em <= hoje);
+
+  const trocarAba = (a: Aba) => { setAba(a); setEditando(null); setOrdem(ORDEM_PADRAO[a]); };
+  const ordenarPor = (col: Coluna) =>
+    setOrdem((o) => (o.col === col ? { col, dir: (o.dir * -1) as 1 | -1 } : { col, dir: col === "cliente" || col === "vencimento" || col === "previsao" ? 1 : -1 }));
 
   const lista = useMemo(() => {
-    const base = aba === "vencidos" ? vencidosFiltrados : aba === "a_vencer" ? aVencerNoPeriodo : recebidos;
+    const base = aba === "vencidos" ? vencidosFiltrados : aba === "a_vencer" ? aVencerNoPeriodo : aba === "recebidos" ? recebidosNoPeriodo : excluidos;
     const b = busca.trim().toLowerCase();
     const filtrada = b ? base.filter((t) => [t.cliente, t.cliente_apelido, t.codigo_projeto].some((v) => v?.toLowerCase().includes(b))) : base;
-    return [...filtrada].sort((x, y) =>
-      aba === "vencidos" ? (y.dias_atraso ?? 0) - (x.dias_atraso ?? 0)
-      : aba === "a_vencer" ? String(x.vencimento).localeCompare(String(y.vencimento))
-      : String(y.recebido_em).localeCompare(String(x.recebido_em)));
-  }, [aba, busca, vencidosFiltrados, aVencerNoPeriodo, recebidos]);
+    const chave = (t: Recebivel): string | number => {
+      switch (ordem.col) {
+        case "cliente": return nomesDoCliente(t).principal.toLowerCase();
+        case "vencimento": return t.vencimento ?? "";
+        case "atraso": return t.dias_atraso ?? 0;
+        case "valor": return Number(aba === "recebidos" ? t.valor_recebido : t.valor_aberto);
+        case "previsao": return t.previsao ?? "9999";
+        case "recebido": return t.recebido_em ?? "";
+      }
+    };
+    return [...filtrada].sort((x, y) => {
+      const a = chave(x), c = chave(y);
+      const r = typeof a === "number" && typeof c === "number" ? a - c : String(a).localeCompare(String(c), "pt-BR", { numeric: true, sensitivity: "base" });
+      return r * ordem.dir;
+    });
+  }, [aba, busca, ordem, vencidosFiltrados, aVencerNoPeriodo, recebidosNoPeriodo, excluidos]);
+
+  const Cab = ({ col, children }: { col: Coluna; children: React.ReactNode }) => (
+    <th aria-sort={ordem.col === col ? (ordem.dir === 1 ? "ascending" : "descending") : "none"}>
+      <button className="ordenar" onClick={() => ordenarPor(col)} title="Clique para ordenar">
+        {children}
+        <span className={`seta${ordem.col === col ? " ativa" : ""}`}>{ordem.col === col ? (ordem.dir === 1 ? "▲" : "▼") : "↕"}</span>
+      </button>
+    </th>
+  );
+  const abrir = (id: string, modo: Modo) => setEditando(editando?.id === id && editando.modo === modo ? null : { id, modo });
+  const rapido = (fn: () => Promise<{ erro?: string }>) => iniciar(async () => { await fn(); });
+  const colunas = aba === "vencidos" ? 8 : 6;
 
   return (
     <>
@@ -106,24 +138,25 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
         </div>
         <div className="indicador">
           <div className="rotulo">Recebido no mês</div>
-          <div className="numero">{moeda(soma(recebidos, "valor_recebido"))}</div>
-          <div className="detalhe">{recebidos.length} títulos baixados</div>
+          <div className="numero">{moeda(soma(recebidosMes, "valor_recebido"))}</div>
+          <div className="detalhe">{recebidosMes.length} títulos</div>
         </div>
       </div>
 
       <Panorama
         vencidos={vencidos} filtrados={vencidosFiltrados} situacoes={situacoes} grupoDe={grupoDe}
         grupo={grupo} faixa={faixa} situacao={situacao}
-        setGrupo={(g) => { setGrupo(g); setSituacao(null); setAba("vencidos"); }}
-        setFaixa={(f) => { setFaixa(f); setAba("vencidos"); }}
-        setSituacao={(s) => { setSituacao(s); setAba("vencidos"); }}
+        setGrupo={(g) => { setGrupo(g); setSituacao(null); if (aba !== "vencidos") trocarAba("vencidos"); }}
+        setFaixa={(f) => { setFaixa(f); if (aba !== "vencidos") trocarAba("vencidos"); }}
+        setSituacao={(s) => { setSituacao(s); if (aba !== "vencidos") trocarAba("vencidos"); }}
         limpar={() => { setGrupo(null); setFaixa(null); setSituacao(null); }}
       />
 
       <div className="filtros">
         <div className="abas">
-          {([["vencidos", "Vencidos", vencidosFiltrados.length], ["a_vencer", "A vencer", aVencerNoPeriodo.length], ["recebidos", "Recebidos no mês", recebidos.length]] as const).map(([id, rotulo, n]) => (
-            <a key={id} href="#" className={aba === id ? "ativo" : ""} onClick={(e) => { e.preventDefault(); setAba(id); setEditando(null); }}>
+          {([["vencidos", "Vencidos", vencidosFiltrados.length], ["a_vencer", "A vencer", aVencerNoPeriodo.length],
+             ["recebidos", "Recebidos", recebidosNoPeriodo.length], ["excluidos", "Excluídos", excluidos.length]] as const).map(([id, rotulo, n]) => (
+            <a key={id} href="#" className={aba === id ? "ativo" : ""} onClick={(e) => { e.preventDefault(); trocarAba(id); }}>
               {rotulo}<span className="contador">{n}</span>
             </a>
           ))}
@@ -134,48 +167,61 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
             Filtrado: {[grupo && GRUPOS[grupo].rotulo, faixa && FAIXAS.find((f) => f.id === faixa)?.rotulo, situacao && rotuloDe(situacao)].filter(Boolean).join(" · ")}
           </span>
         )}
-        <a className="botao secundario pequeno" href={`/recebiveis/exportar?aba=${aba}`} style={{ marginLeft: "auto" }}>
-          Baixar planilha
-        </a>
+        {aba !== "excluidos" && (
+          <a className="botao secundario pequeno" style={{ marginLeft: "auto" }}
+             href={`/recebiveis/exportar?aba=${aba}&periodo=${aba === "a_vencer" ? periodoFuturo : periodoPassado}`}>
+            Baixar planilha
+          </a>
+        )}
       </div>
 
-      {aba === "a_vencer" && (
+      {(aba === "a_vencer" || aba === "recebidos") && (
         <div className="filtros">
           <div className="abas" role="group" aria-label="Período">
-            {PERIODOS.map((p) => (
-              <a key={p.id} href="#" className={periodo === p.id ? "ativo" : ""} onClick={(e) => { e.preventDefault(); setPeriodo(p.id); }}>
-                {p.rotulo}
-              </a>
-            ))}
+            {(aba === "a_vencer" ? PERIODOS_FUTURO : PERIODOS_PASSADO).map((p) => {
+              const ativo = (aba === "a_vencer" ? periodoFuturo : periodoPassado) === p.id;
+              return (
+                <a key={p.id} href="#" className={ativo ? "ativo" : ""}
+                   onClick={(e) => { e.preventDefault(); if (aba === "a_vencer") setPeriodoFuturo(p.id); else setPeriodoPassado(p.id); }}>
+                  {p.rotulo}
+                </a>
+              );
+            })}
           </div>
-          <span className="previsto">
-            Previsto para receber: <strong>{moeda(soma(aVencerNoPeriodo, "valor_aberto"))}</strong>{" "}
-            <span className="mudo">em {aVencerNoPeriodo.length} título{aVencerNoPeriodo.length === 1 ? "" : "s"}</span>
-          </span>
+          {aba === "a_vencer" ? (
+            <span className="previsto">Previsto para receber: <strong>{moeda(soma(aVencerNoPeriodo, "valor_aberto"))}</strong>{" "}
+              <span className="mudo">em {aVencerNoPeriodo.length} título{aVencerNoPeriodo.length === 1 ? "" : "s"}</span></span>
+          ) : (
+            <span className="previsto">Recebido: <strong>{moeda(soma(recebidosNoPeriodo, "valor_recebido"))}</strong>{" "}
+              <span className="mudo">em {recebidosNoPeriodo.length} título{recebidosNoPeriodo.length === 1 ? "" : "s"}</span></span>
+          )}
         </div>
       )}
 
-      <div className="tabela-caixa">
+      <div className="tabela-caixa" style={pendente ? { opacity: 0.6 } : undefined}>
         <table>
           <thead>
             <tr>
-              <th>Cliente</th>
-              <th>Vencimento</th>
-              {aba === "vencidos" && <th>Atraso</th>}
-              <th>{aba === "recebidos" ? "Recebido" : "Em aberto"}</th>
+              <Cab col="cliente">Cliente</Cab>
+              <Cab col="vencimento">Vencimento</Cab>
+              {aba === "vencidos" && <Cab col="atraso">Atraso</Cab>}
               {aba === "a_vencer" && <th>Vence em</th>}
+              <Cab col="valor">{aba === "recebidos" ? "Recebido" : "Em aberto"}</Cab>
+              {aba === "recebidos" && <Cab col="recebido">Recebido em</Cab>}
               {aba === "vencidos" && <th>Cobrança</th>}
-              {aba === "vencidos" && <th>Previsão</th>}
+              {aba === "vencidos" && <Cab col="previsao">Previsão</Cab>}
               {aba === "vencidos" && <th>Motivo</th>}
-              {aba === "recebidos" && <th>Recebido em</th>}
-              {podeEditar && aba === "vencidos" && <th></th>}
+              {(aba === "recebidos" || aba === "excluidos") && <th>Observação</th>}
+              {podeEditar && <th></th>}
             </tr>
           </thead>
           <tbody>
             {lista.length === 0 && (
               <tr>
-                <td colSpan={9} className="vazio">
-                  {aba === "vencidos" ? (filtrosAtivos ? "Nenhum vencido com esses filtros." : "Nenhum título vencido. 🎉") : aba === "a_vencer" ? "Nenhum título vence neste período." : "Nada aqui."}
+                <td colSpan={colunas + 1} className="vazio">
+                  {aba === "vencidos" ? (filtrosAtivos ? "Nenhum vencido com esses filtros." : "Nenhum título vencido. 🎉")
+                    : aba === "a_vencer" ? "Nenhum título vence neste período."
+                    : aba === "recebidos" ? "Nenhum recebimento neste período." : "Nenhum título excluído."}
                 </td>
               </tr>
             )}
@@ -185,14 +231,13 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                   <td><NomeCliente t={t} /></td>
                   <td>{fmtData(t.vencimento)}</td>
                   {aba === "vencidos" && <td className="atrasado">{t.dias_atraso} dia{t.dias_atraso === 1 ? "" : "s"}</td>}
-                  <td>{moeda(aba === "recebidos" ? t.valor_recebido : t.valor_aberto)}</td>
-                  {aba === "a_vencer" && t.vencimento && (
-                    <td className="mudo">{diasEntre(hoje, t.vencimento) === 0 ? "hoje" : `${diasEntre(hoje, t.vencimento)} dia${diasEntre(hoje, t.vencimento) === 1 ? "" : "s"}`}</td>
+                  {aba === "a_vencer" && (
+                    <td className="mudo">{t.vencimento ? (diasEntre(hoje, t.vencimento) === 0 ? "hoje" : `${diasEntre(hoje, t.vencimento)} dia${diasEntre(hoje, t.vencimento) === 1 ? "" : "s"}`) : "—"}</td>
                   )}
+                  <td>{moeda(aba === "recebidos" ? t.valor_recebido : aba === "excluidos" ? t.valor : t.valor_aberto)}</td>
+                  {aba === "recebidos" && <td>{fmtData(t.recebido_em)}</td>}
                   {aba === "vencidos" && (
-                    <td>
-                      <span className={`etiqueta ${GRUPOS[grupoDe(t)].etiqueta}`}>{rotuloDe(t.cobranca_situacao)}</span>
-                    </td>
+                    <td><span className={`etiqueta ${GRUPOS[grupoDe(t)].etiqueta}`}>{rotuloDe(t.cobranca_situacao)}</span></td>
                   )}
                   {aba === "vencidos" && <td className={t.previsao && t.previsao < hoje ? "atrasado" : ""}>{t.previsao ? fmtData(t.previsao) : <span className="mudo">—</span>}</td>}
                   {aba === "vencidos" && (
@@ -201,19 +246,48 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                       {t.alterado_por && <div className="pequeno mudo">{t.alterado_por} · {dataHora(t.alterado_em)}</div>}
                     </td>
                   )}
-                  {aba === "recebidos" && <td>{fmtData(t.recebido_em)}</td>}
-                  {podeEditar && aba === "vencidos" && (
-                    <td style={{ textAlign: "right" }}>
-                      <button className="botao secundario pequeno" onClick={() => setEditando(editando === t.flow_id ? null : t.flow_id)}>
-                        {editando === t.flow_id ? "Fechar" : "Atualizar"}
-                      </button>
+                  {aba === "recebidos" && (
+                    <td>
+                      {t.baixa_manual ? (
+                        <>
+                          <span className="etiqueta cinza">Baixa manual{t.ajuste_por ? ` · ${t.ajuste_por}` : ""}</span>
+                          {t.baixa_obs && <div className="pequeno mudo">{t.baixa_obs}</div>}
+                        </>
+                      ) : <span className="pequeno mudo">Baixado no Flow</span>}
+                    </td>
+                  )}
+                  {aba === "excluidos" && (
+                    <td>
+                      {t.excluido_motivo ?? <span className="mudo">—</span>}
+                      {t.ajuste_por && <div className="pequeno mudo">{t.ajuste_por} · {dataHora(t.ajuste_em)}</div>}
+                    </td>
+                  )}
+                  {podeEditar && (
+                    <td className="acoes-linha">
+                      {aba === "vencidos" && <button className="botao secundario pequeno" onClick={() => abrir(t.flow_id, "cobranca")}>Atualizar</button>}
+                      {(aba === "vencidos" || aba === "a_vencer") && (
+                        <>
+                          <button className="link-acao" onClick={() => abrir(t.flow_id, "baixa")}>Dar baixa</button>
+                          <button className="link-acao" onClick={() => abrir(t.flow_id, "excluir")}>Excluir</button>
+                        </>
+                      )}
+                      {aba === "recebidos" && t.baixa_manual && (
+                        <button className="link-acao" onClick={() => rapido(() => desfazerBaixa(t.flow_id))}>Desfazer baixa</button>
+                      )}
+                      {aba === "excluidos" && (
+                        <button className="botao secundario pequeno" onClick={() => rapido(() => restaurarTitulo(t.flow_id))}>Restaurar</button>
+                      )}
+                      {aba !== "excluidos" && <button className="link-acao" onClick={() => abrir(t.flow_id, "nome")}>Editar nome</button>}
                     </td>
                   )}
                 </tr>
-                {editando === t.flow_id && (
+                {editando?.id === t.flow_id && (
                   <tr className="linha-edicao">
-                    <td colSpan={9}>
-                      <FormCobranca t={t} situacoes={situacoes} aoSalvar={() => setEditando(null)} />
+                    <td colSpan={colunas + 1}>
+                      {editando.modo === "cobranca" && <FormCobranca t={t} situacoes={situacoes} aoSalvar={() => setEditando(null)} />}
+                      {editando.modo === "baixa" && <FormBaixa t={t} hoje={hoje} aoSalvar={() => setEditando(null)} />}
+                      {editando.modo === "excluir" && <FormExcluir t={t} aoSalvar={() => setEditando(null)} />}
+                      {editando.modo === "nome" && <FormNome t={t} aoSalvar={() => setEditando(null)} />}
                     </td>
                   </tr>
                 )}
@@ -252,6 +326,81 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 
       {podeEditar && <GerenciarSituacoes situacoes={situacoes} />}
     </>
+  );
+}
+
+/* ---------- Formulários de ajuste do título (só na central) ---------- */
+function useEnvio(aoSalvar: () => void) {
+  const [erro, setErro] = useState<string | null>(null);
+  const [pendente, iniciar] = useTransition();
+  const enviar = (fn: () => Promise<{ erro?: string }>) =>
+    iniciar(async () => { setErro(null); const r = await fn(); if (r.erro) setErro(r.erro); else aoSalvar(); });
+  return { erro, pendente, enviar };
+}
+
+function FormBaixa({ t, hoje, aoSalvar }: { t: Recebivel; hoje: string; aoSalvar: () => void }) {
+  const [data, setData] = useState(hoje);
+  const [valor, setValor] = useState(Number(t.valor_aberto || t.valor).toFixed(2).replace(".", ","));
+  const [obs, setObs] = useState("");
+  const { erro, pendente, enviar } = useEnvio(aoSalvar);
+  return (
+    <form className="form-cobranca" onSubmit={(e) => { e.preventDefault(); enviar(() => darBaixa(t.flow_id, data, valor, obs)); }}>
+      <div>
+        <label htmlFor={`bd-${t.flow_id}`}>Recebido em</label>
+        <input id={`bd-${t.flow_id}`} type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+      </div>
+      <div>
+        <label htmlFor={`bv-${t.flow_id}`}>Valor recebido (R$)</label>
+        <input id={`bv-${t.flow_id}`} type="text" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
+      </div>
+      <div style={{ flex: 2 }}>
+        <label htmlFor={`bo-${t.flow_id}`}>Observação</label>
+        <input id={`bo-${t.flow_id}`} type="text" value={obs} onChange={(e) => setObs(e.target.value)} maxLength={500} placeholder="Ex.: PIX no Itaú, ainda não baixado no Flow" />
+      </div>
+      <div style={{ alignSelf: "flex-end" }}>
+        <button className="botao" disabled={pendente}>{pendente ? "Salvando…" : "Dar baixa"}</button>
+      </div>
+      <p className="pequeno mudo" style={{ flexBasis: "100%", margin: 0 }}>A baixa vale só na central. No Flow o título continua como está até ser baixado lá.</p>
+      {erro && <div className="erro" style={{ flexBasis: "100%", margin: 0 }}>{erro}</div>}
+    </form>
+  );
+}
+
+function FormExcluir({ t, aoSalvar }: { t: Recebivel; aoSalvar: () => void }) {
+  const [motivo, setMotivo] = useState("");
+  const { erro, pendente, enviar } = useEnvio(aoSalvar);
+  return (
+    <form className="form-cobranca" onSubmit={(e) => { e.preventDefault(); enviar(() => excluirTitulo(t.flow_id, motivo)); }}>
+      <div style={{ flex: 3 }}>
+        <label htmlFor={`em-${t.flow_id}`}>Por que excluir? (opcional)</label>
+        <input id={`em-${t.flow_id}`} type="text" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} placeholder="Ex.: título duplicado, renegociado em outro título" />
+      </div>
+      <div style={{ alignSelf: "flex-end" }}>
+        <button className="botao perigo" disabled={pendente}>{pendente ? "Excluindo…" : "Excluir da lista"}</button>
+      </div>
+      <p className="pequeno mudo" style={{ flexBasis: "100%", margin: 0 }}>Vai para a aba Excluídos, onde dá para restaurar. O Flow não é alterado.</p>
+      {erro && <div className="erro" style={{ flexBasis: "100%", margin: 0 }}>{erro}</div>}
+    </form>
+  );
+}
+
+function FormNome({ t, aoSalvar }: { t: Recebivel; aoSalvar: () => void }) {
+  const [nome, setNome] = useState(t.nome_exibicao ?? nomesDoCliente(t).principal);
+  const { erro, pendente, enviar } = useEnvio(aoSalvar);
+  return (
+    <form className="form-cobranca" onSubmit={(e) => { e.preventDefault(); enviar(() => editarNome(t.flow_id, nome)); }}>
+      <div style={{ flex: 3 }}>
+        <label htmlFor={`nm-${t.flow_id}`}>Nome que aparece na central</label>
+        <input id={`nm-${t.flow_id}`} type="text" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
+      </div>
+      <div style={{ alignSelf: "flex-end" }} className="acoes">
+        <button className="botao" disabled={pendente}>{pendente ? "Salvando…" : "Salvar nome"}</button>
+        {t.nome_exibicao && (
+          <button type="button" className="botao secundario" disabled={pendente} onClick={() => enviar(() => editarNome(t.flow_id, ""))}>Voltar ao do Flow</button>
+        )}
+      </div>
+      {erro && <div className="erro" style={{ flexBasis: "100%", margin: 0 }}>{erro}</div>}
+    </form>
   );
 }
 

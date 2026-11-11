@@ -81,3 +81,33 @@ export async function alterarSituacao(id: string, mudanca: { rotulo?: string; gr
   revalidatePath("/recebiveis");
   return { ok: true };
 }
+
+// ---- Ajustes manuais do título (só na central; o Flow não é alterado) ----
+async function ajustar(flowId: string, dados: Record<string, unknown>): Promise<Resultado> {
+  const bloqueio = await equipe();
+  if (bloqueio) return bloqueio;
+  const sb = await supabaseUsuario();
+  const { error } = await sb.from("titulo_ajustes").upsert({ titulo_flow_id: flowId, ...dados }, { onConflict: "titulo_flow_id" });
+  if (error) return { erro: "Não foi possível salvar. Tente de novo." };
+  revalidatePath("/recebiveis");
+  return { ok: true };
+}
+
+export async function darBaixa(flowId: string, data: string, valor: string, obs: string): Promise<Resultado> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { erro: "Informe a data do recebimento." };
+  const v = Number(String(valor).replace(/\./g, "").replace(",", "."));
+  if (valor && (!Number.isFinite(v) || v <= 0)) return { erro: "Valor inválido." };
+  return ajustar(flowId, { baixa_manual: true, baixa_data: data, baixa_valor: valor ? Math.round(v * 100) / 100 : null, baixa_obs: obs.trim().slice(0, 500) || null });
+}
+export async function desfazerBaixa(flowId: string): Promise<Resultado> {
+  return ajustar(flowId, { baixa_manual: false, baixa_data: null, baixa_valor: null, baixa_obs: null });
+}
+export async function excluirTitulo(flowId: string, motivo: string): Promise<Resultado> {
+  return ajustar(flowId, { excluido: true, excluido_motivo: motivo.trim().slice(0, 500) || null });
+}
+export async function restaurarTitulo(flowId: string): Promise<Resultado> {
+  return ajustar(flowId, { excluido: false, excluido_motivo: null });
+}
+export async function editarNome(flowId: string, nome: string): Promise<Resultado> {
+  return ajustar(flowId, { nome_exibicao: nome.trim().slice(0, 120) || null });
+}

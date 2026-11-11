@@ -1,4 +1,4 @@
-export type EstadoTitulo = "vencido" | "a_vencer" | "recebido";
+export type EstadoTitulo = "vencido" | "a_vencer" | "recebido" | "excluido";
 export type Grupo = "inadimplente" | "negociacao" | "aguardando" | "outro";
 
 /** Grupos das situações de cobrança (cores validadas para daltonismo; ver skill dataviz). */
@@ -40,6 +40,13 @@ export type Recebivel = {
   motivo: string | null;
   alterado_por: string | null;
   alterado_em: string | null;
+  baixa_manual: boolean;
+  baixa_obs: string | null;
+  excluido: boolean;
+  excluido_motivo: string | null;
+  nome_exibicao: string | null;
+  ajuste_por: string | null;
+  ajuste_em: string | null;
 };
 
 export type Atualizacao = {
@@ -76,4 +83,21 @@ export function nomesDoCliente(t: { cliente_apelido: string | null; cliente: str
     }
   }
   return { principal, apoio };
+}
+
+export type Periodo = "dia" | "semana" | "mes" | "ano" | "todos";
+
+/** Início e fim de um período do calendário de Brasília que contém "hoje" (semana de segunda a domingo). */
+export function limitesDoPeriodo(hoje: string, p: Periodo) {
+  const d = new Date(`${hoje}T12:00:00Z`);
+  const iso = (x: Date) => x.toISOString().slice(0, 10);
+  if (p === "dia") return { inicio: hoje, fim: hoje };
+  if (p === "semana") {
+    const seg = new Date(d); seg.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    const dom = new Date(seg); dom.setUTCDate(seg.getUTCDate() + 6);
+    return { inicio: iso(seg), fim: iso(dom) };
+  }
+  if (p === "mes") return { inicio: `${hoje.slice(0, 7)}-01`, fim: iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 12))) };
+  if (p === "ano") return { inicio: `${hoje.slice(0, 4)}-01-01`, fim: `${hoje.slice(0, 4)}-12-31` };
+  return { inicio: "0000-01-01", fim: "9999-12-31" };
 }
