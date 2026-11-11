@@ -52,14 +52,15 @@ async function todos(recurso: string): Promise<any[]> {
   return itens;
 }
 
-/** Lê todas as linhas de uma tabela da central (o Supabase devolve no máximo 1000 por consulta). */
+/** Lê todas as linhas de uma tabela da central (o Supabase corta cada consulta no "Max rows" do projeto). */
 async function lerTudo(sb: any, tabela: string, colunas: string): Promise<any[]> {
   const linhas: any[] = [];
-  for (let de = 0; ; de += 1000) {
+  for (let de = 0; de < 500_000; ) {
     const { data, error } = await sb.from(tabela).select(colunas).order("flow_id").range(de, de + 999);
     if (error) throw new Error(`${tabela}: ${error.message}`);
-    linhas.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
+    if (!data || data.length === 0) break;
+    linhas.push(...data);
+    de += data.length; // avança pelo que veio de fato (o "Max rows" do projeto pode ser menor que 1000)
   }
   return linhas;
 }

@@ -58,7 +58,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
   const [faixa, setFaixa] = useState<FaixaId | null>(null);
   const [situacao, setSituacao] = useState<string | null>(null);
   const [periodoFuturo, setPeriodoFuturo] = useState<Periodo>("mes");
-  const [periodoPassado, setPeriodoPassado] = useState<Periodo>("mes");
+  const [periodoPassado, setPeriodoPassado] = useState<Periodo>("ano");
   const [ordem, setOrdem] = useState(ORDEM_PADRAO.vencidos);
   const [balde, setBalde] = useState<Balde | null>(null);
   const [deData, setDeData] = useState(`${hoje.slice(0, 7)}-01`);
@@ -175,8 +175,8 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
 
       <div className="filtros">
         <div className="abas">
-          {([["vencidos", "Vencidos", vencidosFiltrados.length], ["a_vencer", "A vencer", aVencerNoPeriodo.length],
-             ["recebidos", "Recebidos", recebidosNoPeriodo.length], ["excluidos", "Excluídos", excluidos.length]] as const).map(([id, rotulo, n]) => (
+          {([["vencidos", "Vencidos", vencidos.length], ["a_vencer", "A vencer", aVencer.length],
+             ["recebidos", "Recebidos", recebidos.length], ["excluidos", "Excluídos", excluidos.length]] as const).map(([id, rotulo, n]) => (
             <a key={id} href="#" className={aba === id ? "ativo" : ""} onClick={(e) => { e.preventDefault(); trocarAba(id); }}>
               {rotulo}<span className="contador">{n}</span>
             </a>
