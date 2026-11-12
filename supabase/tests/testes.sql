@@ -291,3 +291,34 @@ do $$ begin
   if public.planner_travar_sync('11111111-1111-1111-1111-111111111111') then raise exception 'travou duas vezes'; end if;
   raise notice 'OK planner';
 end $$;
+
+-- 12) Arquivos: equipe não vê Societário nem restrito; admin vê tudo
+insert into auth.users values ('44444444-4444-4444-4444-444444444444');
+insert into public.perfis (id, nome, email, papel) values ('44444444-4444-4444-4444-444444444444', 'Admin', 'adm@lz7.com.br', 'admin');
+insert into public.arq_documentos (unidade_id, tipo_id, titulo, arquivo_path, arquivo_nome, restrito) values
+  ((select id from public.arq_unidades where empresa_id='energia' and nome='Londrina'), 'contratos', 'Locação Londrina', 'a/1.pdf', '1.pdf', false),
+  ((select id from public.arq_unidades where empresa_id='energia' and nome='Londrina'), 'societario', 'Contrato social', 'a/2.pdf', '2.pdf', false),
+  ((select id from public.arq_unidades where empresa_id='pandora'), 'outros', 'Procuração', 'a/3.pdf', '3.pdf', true);
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if (select count(*) from public.arq_documentos) <> 1 then raise exception 'equipe vê documento restrito'; end if;
+  begin
+    insert into public.arq_documentos (tipo_id, titulo, arquivo_path, arquivo_nome, enviado_por)
+      values ('societario', 'x', 'a/4.pdf', '4.pdf', '11111111-1111-1111-1111-111111111111');
+    raise exception 'equipe gravou documento restrito';
+  exception when insufficient_privilege then null;
+  end;
+  insert into public.arq_documentos (tipo_id, titulo, arquivo_path, arquivo_nome, enviado_por)
+    values (null, 'A classificar', 'a/5.pdf', '5.pdf', '11111111-1111-1111-1111-111111111111');
+end $$;
+select set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', false);
+do $$ begin
+  if (select count(*) from public.arq_documentos) <> 4 then raise exception 'admin não vê tudo'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if exists (select 1 from public.arq_documentos) or exists (select 1 from public.arq_empresas) then raise exception 'diretoria vê arquivos'; end if;
+end $$;
+reset role;
+do $$ begin raise notice 'OK arquivos'; end $$;

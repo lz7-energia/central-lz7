@@ -47,7 +47,7 @@ export const AREAS: Area[] = [
     descricao: "Solicitações, documentos e apoio",
     modulos: [
       { nome: "Pedidos do ADM", icone: "pedidos", descricao: "Compras, manutenção, equipamentos e documentos", href: "/pedidos?setor=adm" },
-      { nome: "Documentos da empresa", icone: "documentos", descricao: "Pastas, validades e versões" },
+      { nome: "Documentos da empresa", icone: "documentos", descricao: "Por empresa e unidade, com validades e alertas", href: "/arquivos" },
       { nome: "Certificado, contratos e frota", icone: "alerta", descricao: "Vencimentos e alertas" },
       { nome: "Mural e manuais", icone: "mural", descricao: "Comunicados, procedimentos e contatos" },
     ],
