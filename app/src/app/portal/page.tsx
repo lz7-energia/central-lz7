@@ -12,7 +12,8 @@ export default async function Portal() {
   return (
     <main className="pagina estreita">
       <Link href="/" className="logo">
-        LZ7 <span>Central</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="logo-img" src="/logo-lz7-branco.png" alt="LZ7" width={376} height={156} /> <span>Central</span>
       </Link>
       <h1 style={{ marginTop: 18 }}>Abrir um pedido</h1>
       <p className="sub">Escolha o setor, o tipo de pedido e preencha os dados. Você recebe um número de protocolo para acompanhar.</p>

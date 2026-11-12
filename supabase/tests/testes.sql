@@ -231,3 +231,30 @@ do $$ begin
   raise notice 'OK diretoria só lê ajustes';
 end $$;
 reset role;
+
+-- 10) Perfil: cada um edita os próprios dados e a foto, sem mexer no papel
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+select public.atualizar_meu_perfil('Diretor Novo', 'Diretor financeiro', '(11) 99999-0000');
+select public.trocar_minha_foto('33333333-3333-3333-3333-333333333333/foto-1.jpg');
+do $$ begin
+  begin
+    perform public.trocar_minha_foto('11111111-1111-1111-1111-111111111111/foto.jpg');
+    raise exception 'aceitou foto de outra pasta';
+  exception when raise_exception then
+    if sqlerrm = 'aceitou foto de outra pasta' then raise; end if;
+  end;
+  begin
+    update public.perfis set papel = 'admin' where id = auth.uid();
+    if found then raise exception 'mudou o próprio papel'; end if;
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+do $$ begin
+  if (select nome || '|' || cargo || '|' || papel::text || '|' || foto_caminho from public.perfis where id = '33333333-3333-3333-3333-333333333333')
+     <> 'Diretor Novo|Diretor financeiro|diretoria|33333333-3333-3333-3333-333333333333/foto-1.jpg' then
+    raise exception 'perfil não atualizou como esperado';
+  end if;
+  raise notice 'OK perfil';
+end $$;

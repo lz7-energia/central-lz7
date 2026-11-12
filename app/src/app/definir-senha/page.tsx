@@ -9,7 +9,8 @@ export default function DefinirSenha() {
     <main className="inicio">
       <div className="cartao" style={{ textAlign: "left" }}>
         <div className="logo">
-          LZ7 <span>Central</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="logo-img" src="/logo-lz7-branco.png" alt="LZ7" width={376} height={156} /> <span>Central</span>
         </div>
         <h1>Criar senha</h1>
         <p className="sub">Use pelo menos 10 caracteres.</p>

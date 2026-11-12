@@ -14,7 +14,8 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
     <main className="inicio">
       <div className="cartao" style={{ textAlign: "left" }}>
         <Link href="/" className="logo">
-          LZ7 <span>Central</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="logo-img" src="/logo-lz7-branco.png" alt="LZ7" width={376} height={156} /> <span>Central</span>
         </Link>
         <h1>Entrar</h1>
         <p className="sub">Acesso da equipe da central.</p>
