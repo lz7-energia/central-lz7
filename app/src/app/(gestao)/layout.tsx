@@ -8,7 +8,7 @@ export default async function LayoutGestao({ children }: { children: React.React
   if (!perfil) redirect("/entrar");
   return (
     <>
-      <Topo nome={perfil.nome} papel={perfil.papel} />
+      <Topo perfil={perfil} />
       <main className="pagina">{children}</main>
     </>
   );

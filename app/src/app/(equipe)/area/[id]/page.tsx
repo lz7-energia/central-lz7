@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseUsuario } from "@/lib/supabase/server";
-import { areaPorId, IconeArea } from "@/lib/areas";
+import { areaPorId, IconeArea, IconeModulo } from "@/lib/areas";
 import { resumoDasAreas } from "@/lib/resumo";
 import { STATUS, STATUS_ABERTOS, type StatusPedido } from "@/lib/tipos";
 import { data as fmtData, hojeSP } from "@/lib/formato";
@@ -76,15 +76,17 @@ export default async function PaginaArea({ params }: { params: Promise<{ id: str
       </div>
 
       <h2>Módulos</h2>
-      <div className="grade-modulos">
+      <div className={`grade-modulos area-${area.id}`}>
         {area.modulos.map((m) =>
           m.href ? (
             <Link key={m.nome} href={m.href} className="modulo">
+              <span className="mod-icone"><IconeModulo id={m.icone} /></span>
               <strong>{m.nome}</strong>
               <span>{m.descricao}</span>
             </Link>
           ) : (
             <div key={m.nome} className="modulo em-breve" aria-disabled="true">
+              <span className="mod-icone"><IconeModulo id={m.icone} /></span>
               <strong>
                 {m.nome} <span className="etiqueta cinza">em breve</span>
               </strong>

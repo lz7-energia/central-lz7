@@ -35,7 +35,8 @@ export default async function PaginaAprovacao({ searchParams }: { searchParams: 
   return (
     <main className="pagina estreita">
       <Link href="/" className="logo">
-        LZ7 <span>Central</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="logo-img" src="/logo-lz7-branco.png" alt="LZ7" width={376} height={156} /> <span>Central</span>
       </Link>
       {!ap ? (
         <div className="cartao" style={{ marginTop: 18 }}>

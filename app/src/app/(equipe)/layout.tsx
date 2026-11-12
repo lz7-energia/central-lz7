@@ -10,7 +10,7 @@ export default async function LayoutEquipe({ children }: { children: React.React
 
   return (
     <>
-      <Topo nome={perfil.nome} papel={perfil.papel} />
+      <Topo perfil={perfil} />
       <main className="pagina">{children}</main>
     </>
   );

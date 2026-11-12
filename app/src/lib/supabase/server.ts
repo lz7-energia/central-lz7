@@ -24,6 +24,17 @@ export async function supabaseUsuario() {
   );
 }
 
+export type Perfil = {
+  id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria"; ativo: boolean;
+  cargo: string | null; telefone: string | null; foto_caminho: string | null;
+};
+
+/** Endereço público da foto de perfil (bucket "fotos-perfil"). */
+export function urlDaFoto(caminho: string | null | undefined) {
+  if (!caminho) return null;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/fotos-perfil/${caminho}`;
+}
+
 /** Perfil de quem está logado, ou null se não for da equipe. Lido uma vez por carregamento de página (layout e página dividem). */
 export const perfilAtual = cache(async () => {
   const sb = await supabaseUsuario();
@@ -33,9 +44,9 @@ export const perfilAtual = cache(async () => {
   if (!user) return null;
   const { data } = await sb
     .from("perfis")
-    .select("id, nome, email, papel, ativo")
+    .select("id, nome, email, papel, ativo, cargo, telefone, foto_caminho")
     .eq("id", user.id)
     .maybeSingle();
   if (!data || !data.ativo) return null;
-  return data as { id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria"; ativo: boolean };
+  return data as Perfil;
 });

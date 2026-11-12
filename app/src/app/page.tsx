@@ -10,7 +10,8 @@ export default async function Inicio() {
     <main className="inicio">
       <div className="cartao">
         <div className="logo">
-          LZ7 <span>Central</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="logo-img" src="/logo-lz7-branco.png" alt="LZ7" width={376} height={156} /> <span>Central</span>
         </div>
         <h1>Precisa de algo de outra área?</h1>
         <p className="mudo">Abra um pedido para o Financeiro, Fiscal, RH ou ADM e acompanhe pelo número de protocolo.</p>
