@@ -342,3 +342,58 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .atalho-planner .mudo { font-size: 0.9rem; }
 .ap-icone { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--marca-clara); color: var(--marca); flex-shrink: 0; }
 .ap-seta { margin-left: auto; color: var(--marca); font-weight: 700; }
+
+/* Central de arquivos */
+.arq-topo { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.busca-arq { display: flex; gap: 8px; margin-bottom: 18px; }
+.busca-arq input { flex: 1; }
+.grade-empresas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.cartao-empresa { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.ce-topo { background: var(--cor-emp); color: var(--texto-emp); padding: 18px 18px 16px; text-decoration: none; display: flex; flex-direction: column; gap: 2px; }
+.ce-nome { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+.ce-conta { font-size: 0.85rem; opacity: 0.85; }
+.ce-corpo { padding: 6px 8px 10px; display: grid; }
+.ce-unidade { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; text-decoration: none; color: var(--texto); }
+.ce-unidade:hover { background: var(--fundo); }
+.ce-unidade > span:first-child { font-weight: 600; flex: 1; }
+.ce-alerta { font-size: 0.78rem; font-weight: 700; color: #8a4b00; background: #fdf1d8; border-radius: 999px; padding: 1px 8px; }
+.empresa-topo { background: var(--cor-emp); color: var(--texto-emp); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; }
+.empresa-topo h1 { margin: 0; color: inherit; }
+.et-unidade { font-weight: 500; opacity: 0.9; }
+.abas-unidade { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.aba-unidade { border: 1px solid var(--borda); background: var(--superficie); border-radius: 999px; padding: 6px 14px; text-decoration: none; color: var(--texto); font-weight: 600; font: inherit; cursor: pointer; }
+.aba-unidade.ativa { background: var(--texto); color: #fff; border-color: var(--texto); }
+.aba-unidade.nova { color: var(--marca); border-style: dashed; }
+.nova-unidade { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.nova-unidade input { width: 240px; }
+.empresa-grade { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.empresa-grade > .cartao, .empresa-col > .cartao, .empresa-col > .cartao + .cartao { margin: 0; }
+.empresa-col { display: grid; gap: 16px; }
+.dados-topo { display: flex; justify-content: space-between; align-items: baseline; }
+.dados-grade { display: grid; gap: 10px; }
+.dado { display: grid; gap: 2px; }
+.dado-valor { text-align: left; background: var(--fundo); border: 1px solid var(--borda); border-radius: 8px; padding: 7px 10px; font: inherit; cursor: pointer; color: var(--texto); display: flex; justify-content: space-between; gap: 8px; }
+.dado-valor:hover { border-color: var(--marca); }
+.copiar-ic { color: var(--marca); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.soltar { border: 2px dashed #c9d2ce; border-radius: 10px; padding: 18px; text-align: center; color: var(--texto-2); cursor: pointer; margin-bottom: 12px; }
+.soltar.sobre, .soltar:hover { border-color: var(--marca); background: var(--marca-clara); }
+.linha-envio { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0 12px; }
+.grupo-tipo { margin-bottom: 14px; }
+.grupo-tipo h3 { font-size: 0.95rem; margin: 6px 0; }
+.doc { border-top: 1px solid var(--borda); }
+.doc:first-of-type { border-top: 0; }
+.doc-linha { display: flex; align-items: center; gap: 12px; padding: 10px 2px; flex-wrap: wrap; }
+.doc-ic { width: 38px; height: 38px; border-radius: 8px; background: var(--marca-clara); color: var(--marca); font-size: 0.68rem; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
+.doc-corpo { flex: 1; min-width: 180px; }
+.doc-titulo { font-weight: 600; color: var(--texto); text-decoration: none; }
+.doc-titulo:hover { text-decoration: underline; }
+.doc-acoes { display: flex; gap: 12px; }
+.doc-form { background: var(--fundo); border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; }
+.validade { font-size: 0.8rem; font-weight: 600; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.v-ok { background: var(--marca-clara); color: var(--marca); }
+.v-vencendo { background: #fdf1d8; color: #8a4b00; }
+.v-vencido { background: #fde4e4; color: #a32020; }
+.atencao-arq { border-color: #f0c98a; margin-bottom: 16px; }
+.botao.perigo { background: transparent; color: #b42318; border-color: #e9b4ae; }
+.botao.perigo.armado { background: #b42318; color: #fff; }
+@media (max-width: 860px) { .empresa-grade { grid-template-columns: 1fr; } }

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Áreas da equipe: exigem login. O resto (portal, consulta, aprovação) é aberto.
-const PROTEGIDAS = ["/inicio", "/area", "/painel", "/pedidos", "/recebiveis", "/perfil"];
+const PROTEGIDAS = ["/inicio", "/area", "/painel", "/pedidos", "/recebiveis", "/perfil", "/arquivos", "/arquivos-abrir"];
 
 export async function proxy(request: NextRequest) {
   let resposta = NextResponse.next({ request });
@@ -39,5 +39,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/inicio", "/area/:path*", "/painel/:path*", "/pedidos/:path*", "/recebiveis/:path*", "/recebiveis", "/perfil", "/planner", "/planner/api/:path*", "/entrar", "/"],
+  matcher: ["/inicio", "/area/:path*", "/painel/:path*", "/pedidos/:path*", "/recebiveis/:path*", "/recebiveis", "/perfil", "/arquivos", "/arquivos/:path*", "/arquivos-abrir/:path*", "/planner", "/planner/api/:path*", "/entrar", "/"],
 };

@@ -113,6 +113,18 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   recusou — `cuErro` — e a pessoa clicar "Enviar ao ClickUp"). Campos `cu*`/`clickupId` são do servidor: o navegador não os sobrescreve.
 - Importar: Configurações → Dados → Importar tarefas (JSON: lista de tasks ou `{tasks, events, settings, sync}`); importar antes de ligar o ClickUp.
 
+## Central de arquivos (ADM, `/arquivos`)
+
+- Documentos da empresa por **empresa → unidade → tipo** (decisão de 11/11/2026). Empresas em ordem alfabética, com cor:
+  Eletroposto (cinza), Energia (verde), Mob (azul clarinho), Pandora (preto). Energia: Matriz – Wenceslau Braz, Londrina, Ponta Grossa;
+  Mob: Londrina, Wenceslau Braz; Pandora e Eletroposto: unidade única (`arq_unidades.unica`). "+ unidade" cria outras.
+- Cada unidade tem dados para copiar (CNPJ, IE, IM, endereço). Tipos: Contratos, Certidões, Licenças e alvarás, Seguros, Veículos,
+  Certificado digital, Societário (restrito ao admin), Outros. Documento também pode ser marcado restrito (só admin).
+- Arquivos no bucket privado `arquivos-empresa`; envio direto do navegador por link assinado (até 50 MB); abrir/baixar por
+  `/arquivos-abrir/[id]` (o banco confere a permissão e o site redireciona para um link de 5 min). "A classificar" = sem unidade.
+- Validade com aviso (dias antes): selo vencido/vencendo, lista "Vencendo ou vencidos" e **tarefa "Renovar: …" no planner do
+  responsável** (`lib/arquivos-planner.ts`, id `doc-<id>`), que a sincronização do planner leva ao ClickUp.
+
 ## Visual e perfil
 
 - Cor da marca `#124735` (verde do logo); logo branco em `app/public/logo-lz7-branco.png`, ícone do site em `app/src/app/icon.png`.
