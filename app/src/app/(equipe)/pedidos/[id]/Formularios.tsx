@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { atualizarPedido, comentar, type Estado } from "./acoes";
+import { atualizarPedido, comentar, responderPedido, type Estado } from "./acoes";
 import { STATUS, STATUS_EQUIPE, type StatusPedido } from "@/lib/tipos";
 
 type Props = {
@@ -88,6 +88,32 @@ export function FormComentario({ id }: { id: number }) {
         </label>
         <button className="botao secundario" disabled={salvando}>
           {salvando ? "Salvando…" : "Comentar"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Caixa de resposta para pedido novo: aceitar ou recusar. */
+export function FormResposta({ id }: { id: number }) {
+  const [estado, acao, salvando] = useActionState<Estado, FormData>(responderPedido, {});
+  const [recusar, setRecusar] = useState(false);
+  if (estado.ok) return <div className="cartao resposta-pedido"><div className="ok" style={{ margin: 0 }}>{estado.ok}</div></div>;
+  return (
+    <form action={acao} className="cartao resposta-pedido">
+      <h2>Pedido novo</h2>
+      <p className="mudo pequeno" style={{ marginTop: 0 }}>Aceite para começar o atendimento ou recuse explicando o motivo. O solicitante é avisado por e-mail.</p>
+      <input type="hidden" name="id" value={id} />
+      {estado.erro && <div className="erro">{estado.erro}</div>}
+      <div className="campo">
+        <label htmlFor="resp-motivo">{recusar ? "Motivo da recusa (obrigatório)" : "Mensagem para o solicitante (opcional)"}</label>
+        <textarea id="resp-motivo" name="motivo" maxLength={2000} style={{ minHeight: 64 }} required={recusar} />
+      </div>
+      <div className="acoes">
+        <button className="botao" name="decisao" value="aceitar" disabled={salvando} onClick={() => setRecusar(false)}>✓ Aceitar</button>
+        <button className="botao perigo" name="decisao" value="recusar" disabled={salvando}
+                onClick={(e) => { if (!recusar) { e.preventDefault(); setRecusar(true); } }}>
+          {recusar ? "Confirmar recusa" : "✕ Recusar"}
         </button>
       </div>
     </form>

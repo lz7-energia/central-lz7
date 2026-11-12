@@ -394,6 +394,7 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .v-vencendo { background: #fdf1d8; color: #8a4b00; }
 .v-vencido { background: #fde4e4; color: #a32020; }
 .atencao-arq { border-color: #f0c98a; margin-bottom: 16px; }
-.botao.perigo { background: transparent; color: #b42318; border-color: #e9b4ae; }
-.botao.perigo.armado { background: #b42318; color: #fff; }
+.doc-form .botao.perigo { background: transparent; color: #b42318; border-color: #e9b4ae; }
+.doc-form .botao.perigo.armado { background: #b42318; color: #fff; }
 @media (max-width: 860px) { .empresa-grade { grid-template-columns: 1fr; } }
+.resposta-pedido { border: 2px solid var(--marca); }
