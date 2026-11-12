@@ -21,6 +21,10 @@ export function Nav({ diretoria = false }: { diretoria?: boolean }) {
         </Link>
       ))}
       {!diretoria && (
+        // Página própria (fora do app React): link comum.
+        <a href="/planner">Planner</a>
+      )}
+      {!diretoria && (
         <Link href="/portal" target="_blank">
           Portal ↗
         </Link>

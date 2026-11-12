@@ -334,3 +334,11 @@ th .seta.ativa { opacity: 1; color: var(--marca); }
 @media (prefers-reduced-motion: reduce) { .carregando-ponto { animation: none; } }
 
 input:disabled { background: var(--fundo); color: var(--texto-2); }
+
+/* Atalho para o planner no Início */
+.atalho-planner { display: flex; align-items: center; gap: 14px; background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 18px; margin: 0 0 18px; text-decoration: none; color: var(--texto); }
+.atalho-planner:hover { border-color: var(--marca); }
+.atalho-planner strong { display: block; }
+.atalho-planner .mudo { font-size: 0.9rem; }
+.ap-icone { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--marca-clara); color: var(--marca); flex-shrink: 0; }
+.ap-seta { margin-left: auto; color: var(--marca); font-weight: 700; }

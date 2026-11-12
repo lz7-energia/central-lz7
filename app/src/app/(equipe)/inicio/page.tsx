@@ -20,6 +20,13 @@ export default async function Inicio() {
         </h1>
         <p className="sub">Escolha uma área para começar.</p>
       </div>
+      <a href="/planner" className="atalho-planner">
+        <span className="ap-icone" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></svg>
+        </span>
+        <span><strong>Seu planner</strong><span className="mudo">Agenda, matriz de Eisenhower e resumo, ligados ao ClickUp</span></span>
+        <span className="ap-seta" aria-hidden="true">→</span>
+      </a>
 
       <div className="grade-areas">
         {AREAS.map((a) => {

@@ -258,3 +258,36 @@ do $$ begin
   end if;
   raise notice 'OK perfil';
 end $$;
+
+-- 11) Planner: cada um vê só o próprio; diretoria não vê; trava de sincronização
+insert into public.perfis (id, nome, email, papel) values ('22222222-2222-2222-2222-222222222222', 'Bia', 'bia@lz7.com.br', 'equipe')
+  on conflict (id) do nothing;
+insert into public.planner_tasks (user_id, id, data) values
+  ('11111111-1111-1111-1111-111111111111', 't1', '{"id":"t1","title":"Apuração"}'),
+  ('22222222-2222-2222-2222-222222222222', 't2', '{"id":"t2","title":"De outra pessoa"}');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.planner_events (user_id, id, data) values ('11111111-1111-1111-1111-111111111111', 'e1', '{"id":"e1"}');
+do $$ begin
+  if (select count(*) from public.planner_tasks) <> 1 then raise exception 'planner mostra tarefa de outra pessoa'; end if;
+  begin
+    insert into public.planner_tasks (user_id, id, data) values ('22222222-2222-2222-2222-222222222222', 'x', '{}');
+    raise exception 'gravou no planner de outra pessoa';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.planner_sync_state (user_id) values ('11111111-1111-1111-1111-111111111111');
+    raise exception 'navegador gravou o estado de sincronização';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if exists (select 1 from public.planner_tasks) then raise exception 'diretoria vê planner'; end if;
+end $$;
+reset role;
+do $$ begin
+  if not public.planner_travar_sync('11111111-1111-1111-1111-111111111111') then raise exception 'não travou'; end if;
+  if public.planner_travar_sync('11111111-1111-1111-1111-111111111111') then raise exception 'travou duas vezes'; end if;
+  raise notice 'OK planner';
+end $$;
