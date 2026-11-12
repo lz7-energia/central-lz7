@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { supabaseUsuario } from "@/lib/supabase/server";
 import { STATUS, type Campo, type StatusPedido } from "@/lib/tipos";
 import { dataHora, valorCampo } from "@/lib/formato";
-import { FormAtendimento, FormComentario } from "./Formularios";
+import { FormAtendimento, FormComentario, FormResposta } from "./Formularios";
 import { TempoReal } from "../TempoReal";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -155,6 +155,7 @@ export default async function DetalhePedido({ params }: { params: Promise<{ id: 
         </div>
 
         <div>
+          {p.status === "aberto" && <FormResposta id={p.id} />}
           <FormAtendimento
             id={p.id}
             status={p.status}

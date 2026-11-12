@@ -77,6 +77,8 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Formulário aberto, sem login: setor → tipo de pedido → campos do tipo → protocolo.
 - Pedido grava direto no banco e aparece na fila do setor na hora; aviso por e-mail ao responsável.
 - Consulta por protocolo + link; identificação por lista fechada de nomes (`solicitantes`).
+- Pedido novo ("Aberto") mostra **Aceitar / Recusar** na página do pedido: aceitar → "Em andamento" com quem aceitou como responsável;
+  recusar exige motivo (vai por e-mail e aparece na consulta do solicitante). Ação `responderPedido`.
 - Aprovação do gestor por link no e-mail: **desligada em todos os tipos** (decisão de 10/11/2026; aprovações são raras e combinadas direto com os gestores). O recurso existe e pode ser religado por tipo (`tipos_pedido.exige_aprovacao`).
 - Proteção do formulário aberto: limite de envios e verificação anti-robô.
 
