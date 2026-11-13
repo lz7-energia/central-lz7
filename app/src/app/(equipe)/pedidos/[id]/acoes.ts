@@ -90,6 +90,8 @@ export async function responderPedido(_: Estado, form: FormData): Promise<Estado
   const motivo = String(form.get("motivo") || "").trim().slice(0, 2000);
   if (decisao !== "aceitar" && decisao !== "recusar") return { erro: "Escolha aceitar ou recusar." };
   if (decisao === "recusar" && !motivo) return { erro: "Escreva o motivo da recusa: o solicitante vai receber." };
+  const previsao = String(form.get("previsao") || "");
+  if (decisao === "aceitar" && !/^\d{4}-\d{2}-\d{2}$/.test(previsao)) return { erro: "Informe a previsão de conclusão." };
 
   const sb = await supabaseUsuario();
   const { data: atual } = await sb.from("pedidos").select("status, responsavel_id").eq("id", id).single();
@@ -99,6 +101,7 @@ export async function responderPedido(_: Estado, form: FormData): Promise<Estado
   const status: StatusPedido = decisao === "aceitar" ? "em_andamento" : "recusado";
   const mudanca: Record<string, unknown> = { status };
   if (decisao === "aceitar" && !atual.responsavel_id) mudanca.responsavel_id = perfil.id;
+  if (decisao === "aceitar") mudanca.prazo = previsao;
   const { error } = await sb.from("pedidos").update(mudanca).eq("id", id).eq("status", "aberto");
   if (error) return { erro: "Não foi possível salvar." };
   if (motivo) await sb.from("pedido_eventos").insert({ pedido_id: id, tipo: "comentario", texto: motivo, autor: perfil.nome });
@@ -107,10 +110,10 @@ export async function responderPedido(_: Estado, form: FormData): Promise<Estado
     id,
     (pr) => (decisao === "aceitar" ? `Pedido ${pr}: aceito` : `Pedido ${pr}: recusado`),
     decisao === "aceitar"
-      ? `<p>Seu pedido foi <strong>aceito</strong> por ${esc(perfil.nome)} e está em andamento.</p>${motivo ? `<p>${esc(motivo)}</p>` : ""}`
+      ? `<p>Seu pedido foi <strong>aceito</strong> por ${esc(perfil.nome)} e está em andamento.</p><p><strong>Previsão de conclusão:</strong> ${previsao.split("-").reverse().join("/")}</p>${motivo ? `<p>${esc(motivo)}</p>` : ""}`
       : `<p>Seu pedido foi <strong>recusado</strong>.</p><p><strong>Motivo:</strong> ${esc(motivo)}</p>`,
   );
   revalidatePath(`/pedidos/${id}`);
   revalidatePath("/pedidos");
-  return { ok: decisao === "aceitar" ? "Pedido aceito. Você é o responsável." : "Pedido recusado e solicitante avisado." };
+  return { ok: decisao === "aceitar" ? `Aceito, com previsão para ${previsao.split("-").reverse().join("/")}.` : "Pedido recusado e solicitante avisado." };
 }

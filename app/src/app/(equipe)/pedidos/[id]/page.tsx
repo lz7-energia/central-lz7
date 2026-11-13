@@ -155,7 +155,7 @@ export default async function DetalhePedido({ params }: { params: Promise<{ id: 
         </div>
 
         <div>
-          {p.status === "aberto" && <FormResposta id={p.id} />}
+          {p.status === "aberto" && <FormResposta id={p.id} prazo={p.prazo} />}
           <FormAtendimento
             id={p.id}
             status={p.status}

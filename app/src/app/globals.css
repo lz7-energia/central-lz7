@@ -398,3 +398,15 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .doc-form .botao.perigo.armado { background: #b42318; color: #fff; }
 @media (max-width: 860px) { .empresa-grade { grid-template-columns: 1fr; } }
 .resposta-pedido { border: 2px solid var(--marca); }
+.resp-rapida { display: flex; gap: 6px; flex-wrap: wrap; }
+.resp-rapida-form { min-width: 220px; }
+.resp-rapida-form .campo { margin-bottom: 8px; }
+.seg-resposta { display: flex; gap: 0; margin-bottom: 14px; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; }
+.seg-resposta button { flex: 1; padding: 8px; border: 0; background: var(--superficie); font: inherit; font-weight: 600; cursor: pointer; color: var(--texto-2); }
+.seg-resposta button.ativo { background: var(--marca); color: #fff; }
+.seg-resposta button.ativo.recusa { background: var(--perigo); }
+/* Recebíveis: motivo em até 2 linhas (o texto inteiro aparece ao passar o mouse ou clicar) */
+.motivo-cel { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+.motivo-cel.aberto { display: block; -webkit-line-clamp: unset; }
+.col-motivo { min-width: 300px; max-width: 460px; }
+.col-motivo .motivo-cel { -webkit-line-clamp: 3; line-height: 1.4; }

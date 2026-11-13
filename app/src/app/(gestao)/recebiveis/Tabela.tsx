@@ -134,7 +134,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
   );
   const abrir = (id: string, modo: Modo) => setEditando(editando?.id === id && editando.modo === modo ? null : { id, modo });
   const rapido = (fn: () => Promise<{ erro?: string }>) => iniciar(async () => { await fn(); });
-  const colunas = aba === "vencidos" ? 8 : 6;
+  const colunas = aba === "vencidos" ? 7 : 6;
 
   return (
     <>
@@ -243,12 +243,11 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
             <tr>
               <Cab col="cliente">Cliente</Cab>
               <Cab col="vencimento">Vencimento</Cab>
-              {aba === "vencidos" && <Cab col="atraso">Atraso</Cab>}
+              {aba === "vencidos" && <Cab col="atraso">Atraso · previsão</Cab>}
               {aba === "a_vencer" && <th>Vence em</th>}
               <Cab col="valor">{aba === "recebidos" ? "Recebido" : "Em aberto"}</Cab>
               {aba === "recebidos" && <Cab col="recebido">Recebido em</Cab>}
               {aba === "vencidos" && <th>Cobrança</th>}
-              {aba === "vencidos" && <Cab col="previsao">Previsão</Cab>}
               {aba === "vencidos" && <th>Motivo</th>}
               {(aba === "recebidos" || aba === "excluidos") && <th>Observação</th>}
               {podeEditar && <th></th>}
@@ -269,7 +268,14 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                 <tr>
                   <td><NomeCliente t={t} /></td>
                   <td>{fmtData(t.vencimento)}</td>
-                  {aba === "vencidos" && <td className="atrasado">{t.dias_atraso} dia{t.dias_atraso === 1 ? "" : "s"}</td>}
+                  {aba === "vencidos" && (
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <span className="atrasado">{t.dias_atraso} dia{t.dias_atraso === 1 ? "" : "s"}</span>
+                      <div className={`pequeno ${t.previsao ? (t.previsao < hoje ? "atrasado" : "") : "mudo"}`}>
+                        {t.previsao ? `Previsão ${fmtData(t.previsao)}` : "Sem previsão"}
+                      </div>
+                    </td>
+                  )}
                   {aba === "a_vencer" && (
                     <td className="mudo">{t.vencimento ? (diasEntre(hoje, t.vencimento) === 0 ? "hoje" : `${diasEntre(hoje, t.vencimento)} dia${diasEntre(hoje, t.vencimento) === 1 ? "" : "s"}`) : "—"}</td>
                   )}
@@ -278,11 +284,12 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                   {aba === "vencidos" && (
                     <td><span className={`etiqueta ${GRUPOS[grupoDe(t)].etiqueta}`}>{rotuloDe(t.cobranca_situacao)}</span></td>
                   )}
-                  {aba === "vencidos" && <td className={t.previsao && t.previsao < hoje ? "atrasado" : ""}>{t.previsao ? fmtData(t.previsao) : <span className="mudo">—</span>}</td>}
                   {aba === "vencidos" && (
-                    <td style={{ maxWidth: 280 }}>
-                      {t.motivo ?? <span className="mudo">—</span>}
-                      {t.alterado_por && <div className="pequeno mudo">{t.alterado_por} · {dataHora(t.alterado_em)}</div>}
+                    <td className="col-motivo">
+                      {t.motivo
+                        ? <div className="motivo-cel" title={t.motivo} onClick={(e) => e.currentTarget.classList.toggle("aberto")}>{t.motivo}</div>
+                        : <span className="mudo">—</span>}
+                      {t.alterado_por && <div className="pequeno mudo" style={{ whiteSpace: "nowrap" }}>{t.alterado_por.split(" ")[0]} · {dataHora(t.alterado_em)}</div>}
                     </td>
                   )}
                   {aba === "recebidos" && (
