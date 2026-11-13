@@ -289,7 +289,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                       {t.motivo
                         ? <div className="motivo-cel" title={t.motivo} onClick={(e) => e.currentTarget.classList.toggle("aberto")}>{t.motivo}</div>
                         : <span className="mudo">—</span>}
-                      {t.alterado_por && <div className="pequeno mudo" style={{ whiteSpace: "nowrap" }}>{t.alterado_por.split(" ")[0]} · {dataHora(t.alterado_em)}</div>}
+                      {podeEditar && t.alterado_por && <div className="pequeno mudo" style={{ whiteSpace: "nowrap" }}>{t.alterado_por.split(" ")[0]} · {dataHora(t.alterado_em)}</div>}
                     </td>
                   )}
                   {aba === "recebidos" && (
@@ -305,7 +305,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                   {aba === "excluidos" && (
                     <td>
                       {t.excluido_motivo ?? <span className="mudo">—</span>}
-                      {t.ajuste_por && <div className="pequeno mudo">{t.ajuste_por} · {dataHora(t.ajuste_em)}</div>}
+                      {podeEditar && t.ajuste_por && <div className="pequeno mudo">{t.ajuste_por} · {dataHora(t.ajuste_em)}</div>}
                     </td>
                   )}
                   {podeEditar && (
