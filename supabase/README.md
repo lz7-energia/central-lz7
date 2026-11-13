@@ -19,7 +19,7 @@ Projetos (região São Paulo):
   receber, e grava nas tabelas espelho. Segredo necessário (Edge Functions → Secrets): `FLOW_API_TOKEN`.
 - **Verify JWT desligado** na função: o agendamento chama sem chave. A própria função recusa chamadas com menos
   de 10 minutos de intervalo, então chamar o endereço repetidas vezes não pesa o Flow.
-- `agendar-sincronizacao.sql`: agenda no pg_cron (a cada 30 min, 7h–20h, segunda a sábado). Em produção, trocar a URL.
+- `agendar-sincronizacao.sql`: agenda no pg_cron (a cada 30 min, 8h à meia-noite de Brasília, segunda a sábado; três agendamentos por causa do UTC). Em produção, trocar a URL.
 - Cada execução fica registrada em `sincronizacoes` (recurso `flow`); o painel avisa quando a última falhou.
 
 ## Recebíveis (Financeiro)

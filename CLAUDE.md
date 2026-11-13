@@ -54,8 +54,8 @@ Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
 - `/pagars/` existe (não usado ainda). `/nfes` responde 405 a GET. **Download de XML/PDF da NF-e ainda não mapeado** (testar `documentosSaida/{id}`).
 - `developers.everflow.io` é outra empresa (marketing), não é este ERP.
 
-Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dados para o banco da central a cada
-30 min (7h–20h, seg–sáb); as telas leem do banco. Detalhes em `supabase/README.md`.
+Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada com o nome automático `hyper-function`; só GET no Flow) copia os dados para o banco da central a cada
+30 min (8h–00h de Brasília, seg–sáb; `supabase/agendar-sincronizacao.sql`); as telas leem do banco. Detalhes em `supabase/README.md`.
 
 ## Fase 1
 
