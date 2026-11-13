@@ -8,6 +8,8 @@ import { mergeSettings, type Evento, type Tarefa } from "./regras";
 export const CAMPOS_DO_SERVIDOR = [
   "clickupId", "clickupUrl", "syncedAt", "cuUpdated", "cuName", "cuDesc", "cuDue", "cuPrio", "cuDone",
   "cuCreating", "cuNeedReopen", "cuRemoved", "cuErro",
+  // tarefas entre a equipe (lib/planner/equipe.ts)
+  "soCentral", "paraRecusas", "de", "origem", "origemHash",
 ] as const;
 
 export type Estado = { tasks: Tarefa[]; events: Evento[]; settings: any; sync: any; status: any };

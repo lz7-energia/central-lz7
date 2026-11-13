@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { perfilAtual } from "@/lib/supabase/server";
+import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 import { AREAS, IconeArea } from "@/lib/areas";
 import { cumprimento, dataPorExtenso, resumoDasAreas } from "@/lib/resumo";
 
@@ -8,7 +8,11 @@ export const metadata: Metadata = { title: "Início" };
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
-  const [perfil, resumo] = await Promise.all([perfilAtual(), resumoDasAreas()]);
+  const sb = await supabaseUsuario();
+  const [perfil, resumo, { data: avisos }] = await Promise.all([
+    perfilAtual(), resumoDasAreas(),
+    sb.from("planner_avisos").select("id, texto").is("lido_em", null).order("criado_em", { ascending: false }).limit(5),
+  ]);
   const primeiroNome = perfil?.nome.split(" ")[0] ?? "";
 
   return (
@@ -24,7 +28,15 @@ export default async function Inicio() {
         <span className="ap-icone" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></svg>
         </span>
-        <span><strong>Seu planner</strong><span className="mudo">Agenda, matriz de Eisenhower e resumo, ligados ao ClickUp</span></span>
+        <span>
+          <strong>Seu planner</strong>
+          <span className="mudo">Agenda, matriz de Eisenhower e resumo, ligados ao ClickUp</span>
+          {!!avisos?.length && (
+            <span className="ap-avisos">
+              {avisos.map((a) => <span key={a.id}>🔔 {a.texto}</span>)}
+            </span>
+          )}
+        </span>
         <span className="ap-seta" aria-hidden="true">→</span>
       </a>
 

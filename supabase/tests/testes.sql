@@ -338,3 +338,19 @@ do $$ begin
 end $$;
 reset role;
 do $$ begin raise notice 'OK recrutamento'; end $$;
+
+-- 14) Avisos do planner: cada um só vê os seus
+insert into public.planner_avisos (user_id, de_id, texto) values
+  ('11111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', 'para ana'),
+  ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'para outro');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if (select count(*) from public.planner_avisos) <> 1 then raise exception 'aviso de outra pessoa visível'; end if;
+end $$;
+update public.planner_avisos set lido_em = now();
+reset role;
+do $$ begin
+  if (select count(*) from public.planner_avisos where lido_em is not null) <> 1 then raise exception 'marcou aviso de outro como lido'; end if;
+end $$;
+do $$ begin raise notice 'OK avisos'; end $$;

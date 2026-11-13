@@ -164,6 +164,7 @@ function applyState(j){
   S.events=new Map((j.events||[]).map(e=>[e.id,e]));
   S.settings=mergeSettings(j.settings);S.sync=j.sync||{};S.usage=(S.sync&&S.sync.usage)||{stamps:[]};
   S.cuConfigured=!!j.clickupConfigurado;S.lastStatus=j.status||{};
+  S.equipe=j.equipe||[];S.eu=j.pessoa||{};S.avisos=j.avisos||[];
   if(!S.lastSyncAt&&S.lastStatus.em&&S.lastStatus.status==='ok')S.lastSyncAt=new Date(S.lastStatus.em).getTime();
   holCache={};applyTheme();
 }
@@ -250,6 +251,7 @@ function card(o,opt={}){
   if(t.desc&&t.desc.trim())meta.push('📝');
   if(t.comments&&t.comments.length)meta.push('💬 '+t.comments.length);
   if(t.rec&&t.rec.type!=='none'&&t.rec.type!=='daily')meta.push('↻');
+  if(t.para&&t.para.length)meta.push((t.tipo==='call'?'📞 com ':'→ ')+t.para.map(id=>primeiro(nomeDe(id))).join(', '));
   const drag=(!t.rec||t.rec.type==='none')?' draggable="true"':'';
   return `<div class="card q${o.q} st-${o.stage}${o.done?' is-done':''}${opt.compact?' compact':''}" data-action="open-occ" data-key="${esc(o.key)}"${drag} title="${esc(t.title)}">
 <button class="chk" data-action="toggle-done" data-key="${esc(o.key)}" aria-label="${o.done?'Reabrir':'Concluir'}">${o.done?'✓':''}</button>
@@ -268,14 +270,20 @@ function render(){
   const allBtn=document.querySelector('#modes [data-mode=all]');if(allBtn)allBtn.style.display=S.ui.tab==='matrix'?'':'none';
   renderNav();
   if(S.mode==='loading'){$('#counters').innerHTML='';$('#view').innerHTML='<div class="loading">Carregando seu planner…</div>';return;}
-  if(home){$('#counters').innerHTML='';$('#view').innerHTML=renderHome();return;}
+  if(home){$('#counters').innerHTML='';$('#view').innerHTML=avisosHTML()+renderHome();return;}
   const base=periodOccs();
   const nf=S.ui.cats.size+S.ui.quads.size+(S.ui.status!=='all'?1:0);
   const fb=$('#fbtn');fb.textContent='Filtros'+(nf?' ('+nf+')':'')+(S.ui.showFilters?' ▴':' ▾');fb.classList.toggle('on',S.ui.showFilters||nf>0);
   if(S.ui.showFilters)renderCounters(base);else $('#counters').innerHTML='';
   const list=filt(base);
-  $('#view').innerHTML=S.ui.tab==='summary'?renderSummary():S.ui.tab==='matrix'?renderMatrix(list):renderAgenda(list);
+  $('#view').innerHTML=avisosHTML()+(S.ui.tab==='summary'?renderSummary():S.ui.tab==='matrix'?renderMatrix(list):renderAgenda(list));
 }
+/* ---------- equipe: tarefas e calls entre as pessoas (Central LZ7) ---------- */
+const nomeDe=id=>{const c=(S.equipe||[]).find(x=>x.id===id);return c?c.nome:'alguém';};
+const primeiro=n=>(n||'').trim().split(/\s+/)[0];
+function avisosHTML(){const a=S.avisos||[];if(!a.length)return'';return`<div class="eq-avisos"><div class="eq-avisos-h"><b>🔔 ${a.length===1?'1 novidade':a.length+' novidades'} da equipe</b><button class="ghost" data-action="eq-lidos">Ok, vi</button></div>${a.map(x=>`<div class="eq-aviso"${x.tarefa_id&&S.tasks.has(x.tarefa_id)?` data-action="eq-abrir" data-id="${esc(x.tarefa_id)}"`:''}>${esc(x.texto)}</div>`).join('')}</div>`;}
+function eqStatusTxt(st){return!st||st==='pendente'?'⏳ pendente':st==='concluiu'?'✓ concluiu':'✕ '+st;}
+
 function renderNav(){
   const m=S.ui.mode,c=S.ui.cursor;let label='Tarefas atuais';
   if(m==='day')label=fmt(c,{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
@@ -516,6 +524,7 @@ ${recFields(e)}
 ${rt!=='none'&&rt!=='daily'&&rt!=='bday'?'<p class="hint">Se o prazo cair em fim de semana ou feriado, a tarefa antecipa para o dia útil anterior.</p>':''}
 <div class="row2"><div class="fld"><label for="f-time">Hora (opcional)</label><input type="time" id="f-time" value="${esc(e.time||'')}"></div>
 ${daily?'':`<div class="fld"><label for="f-ud">Vira urgente quantos dias antes</label><input type="number" id="f-ud" min="0" max="60" value="${typeof e.urgentDays==='number'?e.urgentDays:''}" placeholder="Padrão (${S.settings.urgentDays} dias)"><span class="hint">0 = só no próprio dia</span></div>`}</div>
+${eqForm(e)}
 ${daily?'':`<div class="fld"><span class="flabel">Importância</span><div class="radios"><label><input type="radio" name="f-imp" value="1"${e.important?' checked':''}> Importante</label><label><input type="radio" name="f-imp" value="0"${!e.important?' checked':''}> Não importante</label></div></div>`}
 <div class="fld"><span class="flabel">Subtarefas${(e.subs||[]).length>1?' · arraste ⋮⋮ ou use as setas para reordenar':''}</span><div class="subs">${(e.subs||[]).map((s,i,arr)=>`<div class="subrow" draggable="true" data-sub-row="${esc(s.id)}"><span class="handle" aria-hidden="true">⋮⋮</span><input type="text" data-sub-input="${esc(s.id)}" value="${esc(s.text)}"><button class="ghost mv" data-action="mv-sub" data-sid="${esc(s.id)}" data-dir="-1" aria-label="Subir"${i===0?' disabled':''}>▲</button><button class="ghost mv" data-action="mv-sub" data-sid="${esc(s.id)}" data-dir="1" aria-label="Descer"${i===arr.length-1?' disabled':''}>▼</button><button class="ghost" data-action="del-sub" data-sid="${esc(s.id)}" aria-label="Remover">✕</button></div>`).join('')}
 <div class="subrow"><input type="text" id="f-newsub" placeholder="Nova subtarefa"><button data-action="add-sub">Adicionar</button></div></div></div>
@@ -528,6 +537,7 @@ ${E.err?`<p class="err">${esc(E.err)}</p>`:''}
   const rec=$('#f-rec');rec.addEventListener('change',()=>{readForm();const e2=S.edit.t,st=e2.start||todayS();e2.rec={type:rec.value};if(rec.value==='weekly')e2.rec.weekday=dow(st);if(rec.value==='monthly')e2.rec.day=+st.slice(8);if(rec.value==='bday')e2.rec.n=5;renderTaskModal();});
   const ns=$('#f-newsub');ns.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addSub();}});
   const ff=$('#f-file');if(ff)ff.addEventListener('change',()=>uploadFiles(ff.files));
+  const eqt=$('#f-eqtipo');if(eqt)eqt.addEventListener('change',()=>{readForm();renderTaskModal();});
   const ov=document.querySelector('.overlay');if(ov)ov.scrollTop=sc;
   if(isNew&&!sc)setTimeout(()=>{const f=$('#f-title');f&&f.focus({preventScroll:true});},30);
 }
@@ -545,6 +555,7 @@ function renderTaskView(sc){
 ${subs.map(s=>`<label><input type="checkbox" data-action="toggle-sub" data-sid="${esc(s.id)}"${sd.includes(s.id)?' checked':''}> <span${sd.includes(s.id)?' class="strike"':''}>${esc(s.text)}</span></label>`).join('')}
 <div class="subrow" style="margin-top:6px"><input type="text" id="v-newsub" placeholder="Adicionar subtarefa"><button data-action="add-sub-v">Adicionar</button></div>
 <div style="margin-top:10px"><button class="${o.done?'':'primary'}" data-action="toggle-done" data-key="${esc(o.key)}">${o.done?'Reabrir':'✓ Concluir'}${t.rec&&t.rec.type!=='none'?' esta ocorrência':''}</button></div></div>
+${eqView(t)}
 ${t.desc&&t.desc.trim()?`<div class="sec">Descrição</div><div class="vdesc">${esc(t.desc)}</div>`:''}
 ${files.length?`<div class="sec">Anexos</div><div class="files">${files.map(f=>`<div class="filerow"><a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a><span class="hint">${fmtSize(f.size)}</span></div>`).join('')}</div>`:''}
 <div class="sec">Comentários${cm.length?' ('+cm.length+')':''}</div>
@@ -556,6 +567,15 @@ ${t.clickupUrl?`<p class="hint"><a href="${esc(t.clickupUrl)}" target="_blank" r
   const ns=$('#v-newsub');ns.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addSubView();}});
   const ov=document.querySelector('.overlay');if(ov)ov.scrollTop=sc||0;
 }
+function eqView(t){
+  if(t.origem){const E=S.edit;return`<div class="eq-box"><div>${t.tipo==='call'?'📞 <b>'+esc(t.de&&t.de.nome)+'</b> convidou você para esta call.':'<b>'+esc(t.de&&t.de.nome)+'</b> te passou esta tarefa.'}</div>${E.recusando?`<textarea id="v-motivo" rows="2" placeholder="Motivo (vai para ${esc(primeiro(t.de&&t.de.nome))})"></textarea><div class="eq-acoes"><button class="danger" data-action="eq-recusar-ok">Confirmar recusa</button><button class="ghost" data-action="eq-recusar-nao">Voltar</button></div>${E.erroRecusa?`<p class="err">${esc(E.erroRecusa)}</p>`:''}`:`<div class="eq-acoes"><button class="ghost" data-action="eq-recusar">Recusar…</button></div>`}</div>`;}
+  if(!t.para||!t.para.length)return'';
+  const st=t.paraStatus||{},rep=t.rec&&t.rec.type!=='none';
+  return`<div class="eq-box"><div class="sec" style="margin-top:0">${t.tipo==='call'?'📞 Call com':'Passada para'}</div>${t.para.map(id=>`<div class="eq-pessoa"><span>${esc(nomeDe(id))}</span>${t.tipo==='call'?(String(st[id]||'').startsWith('recusou')?`<span class="eq-st recusou">✕ ${esc(st[id])}</span>`:''):rep?'':`<span class="eq-st ${String(st[id]||'pendente').split(':')[0]}">${esc(eqStatusTxt(st[id]))}</span>`}</div>`).join('')}</div>`;
+}
+async function eqRecusar(){const m=($('#v-motivo')||{}).value||'';if(!m.trim()){S.edit.erroRecusa='Escreva o motivo.';renderTaskModal();return;}
+  const id=S.edit.t.id;try{const r=await api('/equipe',{method:'POST',body:{acao:'recusar',id,motivo:m}});if(r&&r.erro){S.edit.erroRecusa=r.erro;renderTaskModal();return;}}catch(e){S.edit.erroRecusa='Não foi possível recusar.';renderTaskModal();return;}
+  S.tasks.delete(id);closeModal();render();toast('Recusada. Avisamos quem mandou.');}
 function addSubView(){const inp=$('#v-newsub'),txt=inp?inp.value.trim():'';if(!txt)return;const st=S.tasks.get(S.edit.t.id);if(!st)return;saveTask({...st,subs:[...(st.subs||[]),{id:uid('s'),text:txt}],updatedAt:Date.now()});renderTaskModal();const n=$('#v-newsub');n&&n.focus({preventScroll:true});}
 function addComment(){const inp=$('#v-comment'),txt=inp?inp.value.trim():'';if(!txt)return;const st=S.tasks.get(S.edit.t.id);if(!st)return;saveTask({...st,comments:[...(st.comments||[]),{id:uid('c'),text:txt,at:Date.now(),occ:S.edit.occDate||null}],updatedAt:Date.now()});renderTaskModal();}
 function delComment(cid){const st=S.tasks.get(S.edit.t.id);if(!st)return;saveTask({...st,comments:(st.comments||[]).filter(c=>c.id!==cid),updatedAt:Date.now()});renderTaskModal();}
@@ -590,8 +610,15 @@ function moveSub(sid,to){
   const [it]=a.splice(i,1);a.splice(Math.max(0,Math.min(a.length,to)),0,it);
   renderTaskModal();
 }
+function eqForm(e){
+  if(e.origem)return`<p class="hint eq-hint">Recebida de <b>${esc((e.de&&e.de.nome)||'alguém')}</b>. Se essa pessoa mudar título, data ou descrição, a sua cópia acompanha.</p>`;
+  if(!(S.equipe||[]).length)return'';
+  const tp=e.para&&e.para.length||e.eqAberto?(e.tipo==='call'?'call':'tarefa'):'eu',sel=new Set(e.para||[]);
+  return`<div class="fld eq-fld"><label for="f-eqtipo">Para quem</label><select id="f-eqtipo"><option value="eu"${tp==='eu'?' selected':''}>Só para mim</option><option value="tarefa"${tp==='tarefa'?' selected':''}>Passar tarefa para alguém da equipe</option><option value="call"${tp==='call'?' selected':''}>Call ou conversa com a equipe</option></select>${tp==='eu'?'':`<div class="eq-pessoas">${S.equipe.map(c=>`<label><input type="checkbox" name="f-eqp" value="${esc(c.id)}"${sel.has(c.id)?' checked':''}> ${esc(c.nome)}</label>`).join('')}</div><span class="hint">${tp==='call'?'Entra no planner de todos os escolhidos (e no seu), com a hora.':'Entra no planner de quem você escolher; aqui fica para você acompanhar quem já concluiu.'}</span>`}</div>`;
+}
 function readForm(){
   const e=S.edit.t,v=id=>{const el=document.getElementById(id);return el?el.value:undefined;};
+  if(v('f-eqtipo')!==undefined){const tp=v('f-eqtipo');if(tp==='eu'){e.para=[];delete e.tipo;e.eqAberto=false;}else{e.tipo=tp;e.eqAberto=true;const marc=[...document.querySelectorAll('input[name=f-eqp]')];if(marc.length)e.para=marc.filter(x=>x.checked).map(x=>x.value);}}
   if(v('f-title')!==undefined)e.title=v('f-title').trim();
   if(v('f-desc')!==undefined)e.desc=v('f-desc');
   if(v('f-cat')!==undefined)e.cat=v('f-cat');
@@ -612,8 +639,11 @@ function saveTaskForm(){
   else if(!e.start)err='A data é obrigatória.';
   else if(r.type==='monthly'&&!(r.day>=1&&r.day<=31))err='Informe um dia do mês entre 1 e 31.';
   else if(r.type==='bday'&&!(r.n>=1&&r.n<=23))err='Informe qual dia útil (1 a 23).';
+  else if(e.eqAberto&&!(e.para&&e.para.length))err='Escolha pelo menos uma pessoa da equipe.';
+  else if(e.eqAberto&&e.tipo==='call'&&!e.time)err='Informe a hora da call.';
   if(err){S.edit.err=err;renderTaskModal();return;}
   const stored=e.id?S.tasks.get(e.id):null;
+  delete e.eqAberto;
   const t={...e,subs:(e.subs||[]).filter(s=>s.text.trim()),done:stored?stored.done||{}:{},subDone:stored?stored.subDone||{}:{},comments:stored?stored.comments||[]:[],updatedAt:Date.now()};
   if(!t.id){t.id=uid('t');t.createdAt=Date.now();}
   saveTask(t);toast('Tarefa salva');
@@ -736,6 +766,11 @@ document.addEventListener('click',ev=>{
     case 'add-comment':addComment();break;
     case 'del-comment':delComment(el.dataset.cid);break;
     case 'save-task':saveTaskForm();break;
+    case 'eq-lidos':{const ids=(S.avisos||[]).map(x=>x.id);S.avisos=[];render();api('/equipe',{method:'POST',body:{acao:'lidos',ids}}).catch(()=>{});break;}
+    case 'eq-abrir':openTask(el.dataset.id);break;
+    case 'eq-recusar':S.edit.recusando=true;S.edit.erroRecusa='';renderTaskModal();break;
+    case 'eq-recusar-nao':S.edit.recusando=false;renderTaskModal();break;
+    case 'eq-recusar-ok':eqRecusar();break;
     case 'add-sub':addSub();break;
     case 'mv-sub':{const a=S.edit.t.subs||[],i=a.findIndex(x=>x.id===el.dataset.sid);moveSub(el.dataset.sid,i+(+el.dataset.dir));break;}
     case 'del-file':removeFile(el.dataset.fid);break;

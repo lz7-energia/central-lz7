@@ -127,7 +127,7 @@ class Rodada {
       const t = this.tasks.get(id); if (!t) continue;
       try {
         if (t.clickupId) { if (!this.noPush(t)) await this.pushTask(t); }
-        else if (!t.cuRemoved && (t.cuForce || (t.createdAt || 0) > (this.sync.activatedAt || Infinity))) await this.createRemote(t);
+        else if (!t.cuRemoved && !t.soCentral && (t.cuForce || (t.createdAt || 0) > (this.sync.activatedAt || Infinity))) await this.createRemote(t);
       } catch (e) {
         if (e instanceof ErroClickUp && e.recusado) { console.warn("ClickUp recusou", t.title, e.message); continue; }
         throw e;

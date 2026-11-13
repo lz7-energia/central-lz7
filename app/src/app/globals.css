@@ -491,3 +491,4 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
   body { background: #fff; }
 }
 @media (max-width: 1000px) { .cand-grade { grid-template-columns: 1fr; } .nova-pergunta { grid-template-columns: 1fr; } }
+.ap-avisos { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 0.86rem; color: var(--marca-escura); font-weight: 600; }
