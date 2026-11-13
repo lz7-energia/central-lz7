@@ -1,6 +1,7 @@
 import "server-only";
 // Leitura simples do currículo (PDF com texto): nome, e-mail, telefone e cidade. A recrutadora confere antes de salvar.
 import { extractText, getDocumentProxy } from "unpdf";
+import { padronizarNome } from "./rh";
 
 const UFS = "AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO";
 const IGNORAR = /curr[ií]culo|curriculum|vitae|resumo|perfil|objetivo|dados pessoais|contato|e-?mail|telefone|endere/i;
@@ -38,5 +39,5 @@ export function extrair(texto: string): Leitura {
       break;
     }
   }
-  return { nome, email, whatsapp, cidade, lido: true };
+  return { nome: padronizarNome(nome), email, whatsapp, cidade, lido: true };
 }

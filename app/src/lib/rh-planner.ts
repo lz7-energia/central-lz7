@@ -36,7 +36,7 @@ async function gravar(userId: string, id: string, campos: any | null) {
 export async function refletirCandidatoNoPlanner(candidatoId: number, recrutadorAntigo?: string | null) {
   const sb = supabaseServico();
   const { data: c } = await sb.from("rh_candidatos")
-    .select("id, nome, whatsapp, etapa, entrevista_em, recrutador_id, criado_por, contratado_em, bonus_pago_em, indicado_por, canal_id, rh_vagas(cargo, area, local), rh_canais(eh_indicacao)")
+    .select("id, nome, whatsapp, etapa, entrevista_em, recrutador_id, criado_por, contratado_em, bonus_pago_em, indicado_por, canal_id, historico, rh_vagas(cargo, area, local), rh_canais(eh_indicacao)")
     .eq("id", candidatoId).maybeSingle();
   const pessoas = new Set<string>();
   const idEnt = `rh-ent-${candidatoId}`, idBonus = `rh-bonus-${candidatoId}`;
@@ -45,7 +45,7 @@ export async function refletirCandidatoNoPlanner(candidatoId: number, recrutador
   const vaga = v ? `${v.cargo} · ${v.area}${v.local ? " " + v.local : ""}` : "vaga";
   if (c?.recrutador_id) {
     pessoas.add(c.recrutador_id);
-    const vale = c.entrevista_em && ["inscrito", "triagem", "gestor"].includes(c.etapa);
+    const vale = !c.historico && c.entrevista_em && ["abordado", "inscrito", "triagem", "gestor"].includes(c.etapa);
     if (vale) {
       const { data, hora } = fuso(c.entrevista_em!);
       await gravar(c.recrutador_id, idEnt, {
@@ -58,7 +58,7 @@ export async function refletirCandidatoNoPlanner(candidatoId: number, recrutador
   const dono = c?.recrutador_id || c?.criado_por;
   if (dono) {
     pessoas.add(dono);
-    const bonus = (c?.rh_canais as any)?.eh_indicacao && c?.etapa === "aprovado" && c?.contratado_em && !c?.bonus_pago_em ? dataDoBonus(c.contratado_em) : null;
+    const bonus = !c?.historico && (c?.rh_canais as any)?.eh_indicacao && c?.etapa === "aprovado" && c?.contratado_em && !c?.bonus_pago_em ? dataDoBonus(c.contratado_em) : null;
     await gravar(dono, idBonus, bonus ? {
       title: `Bônus de indicação: ${c!.indicado_por || "quem indicou"} (indicou ${c!.nome})`, start: bonus, time: "", important: true, urgentDays: 7,
       desc: `${c!.nome} completa 3 meses em ${bonus.split("-").reverse().join("/")}. Se continuar na empresa, ${c!.indicado_por || "quem indicou"} ganha o bônus.\n${SITE}/rh/candidatos/${c!.id}`,

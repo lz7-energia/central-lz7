@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function PaginaVaga({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const sb = await supabaseUsuario();
-  const [{ data: v }, { data: cs }, { canais }] = await Promise.all([
+  const [{ data: v }, { data: cs }, { canais, motivos }] = await Promise.all([
     sb.from("rh_vagas").select("*").eq("id", id).maybeSingle(),
     sb.from("rh_candidatos").select("*").eq("vaga_id", id).order("criado_em"),
     carregarListas(),
@@ -50,7 +50,7 @@ export default async function PaginaVaga({ params }: { params: Promise<{ id: str
         </div>
       </div>
       {vaga.descricao && <p className="pequeno" style={{ whiteSpace: "pre-wrap" }}>{vaga.descricao}</p>}
-      <div style={{ margin: "16px 0" }}><NovoCandidato vagaId={vaga.id} canais={canais} /></div>
+      <div style={{ margin: "16px 0" }}><NovoCandidato vagaId={vaga.id} canais={canais} motivos={motivos} /></div>
       <div className="funil">
         {ETAPAS.map((e) => {
           const col = candidatos.filter((c) => c.etapa === e.id);
