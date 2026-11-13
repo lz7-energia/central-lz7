@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Candidato, Canal, Etapa, Mensagem, Motivo, Pergunta, Vaga } from "@/lib/rh";
-import { ETAPAS, linkWhatsapp, preencherMensagem } from "@/lib/rh";
+import { EM_ABERTO, ETAPAS, linkWhatsapp, preencherMensagem } from "@/lib/rh";
 import {
   apagarCandidato, criarCandidato, fecharVaga, lerCurriculo, marcarBonusPago, marcarEntrevista, moverCandidato,
   prepararCurriculo, procurarRepetidos, salvarCandidato, salvarItem, salvarVaga, type Repetido, type Resultado,
@@ -42,6 +42,7 @@ export function FormVaga({ vaga, perguntas }: { vaga: Vaga | null; perguntas: Pe
           <select name="contrato" defaultValue={vaga?.contrato ?? "PJ"}><option>PJ</option><option>Cooperativa</option><option>Outro</option></select></div>
         <div className="campo"><label>Aberta em</label><input name="aberta_em" type="date" defaultValue={vaga?.aberta_em ?? hojeLocal()} /></div>
         <div className="campo"><label>Previsão de fechamento</label><input name="previsao" type="date" defaultValue={vaga?.previsao ?? ""} /></div>
+        <div className="campo"><label>Fechada em <span className="mudo pequeno">(só para vaga antiga)</span></label><input name="fechada_em" type="date" defaultValue={vaga?.fechada_em ?? ""} /></div>
         <div className="campo" style={{ gridColumn: "1 / -1" }}><label>Descrição (opcional)</label><textarea name="descricao" rows={2} defaultValue={vaga?.descricao ?? ""} maxLength={2000} /></div>
       </div>
       <h3>Perguntas da triagem</h3>
@@ -99,7 +100,7 @@ function Repetidos({ lista }: { lista: Repetido[] }) {
 }
 
 /* ---------- adicionar candidato (anexa o currículo, lê, confere, salva) ---------- */
-export function NovoCandidato({ vagaId, canais }: { vagaId: number; canais: Canal[] }) {
+export function NovoCandidato({ vagaId, canais, motivos }: { vagaId: number; canais: Canal[]; motivos: Motivo[] }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [lendo, setLendo] = useState("");
@@ -107,6 +108,8 @@ export function NovoCandidato({ vagaId, canais }: { vagaId: number; canais: Cana
   const [dados, setDados] = useState({ nome: "", whatsapp: "", email: "", cidade: "" });
   const [repetidos, setRepetidos] = useState<Repetido[]>([]);
   const [canal, setCanal] = useState("");
+  const [modo, setModo] = useState<"inscrito" | "abordado" | "historico">("inscrito");
+  const [resultado, setResultado] = useState("aprovado");
   const [chave, setChave] = useState(0);
   const entrada = useRef<HTMLInputElement>(null);
   const [estado, acao, salvando] = useActionState(async (s: Resultado, f: FormData) => {
@@ -136,10 +139,17 @@ export function NovoCandidato({ vagaId, canais }: { vagaId: number; canais: Cana
     <section className="cartao novo-candidato" key={chave}>
       <div className="dados-topo"><h2>Novo candidato</h2><button type="button" className="link-acao" onClick={() => setAberto(false)}>Fechar</button></div>
       <Aviso r={estado} />
+      <div className="modo-cand">
+        {([["inscrito", "Candidato inscrito"], ["abordado", "Busca ativa (eu fui atrás)"], ["historico", "Histórico (processo antigo)"]] as const).map(([id, t]) => (
+          <button key={id} type="button" className={modo === id ? "ativo" : ""} onClick={() => setModo(id)}>{t}</button>
+        ))}
+      </div>
+      {modo === "abordado" && <p className="mudo pequeno" style={{ marginTop: 0 }}>Entra em <strong>Abordados</strong>. Quando a pessoa topar, passe para Inscritos ou marque a entrevista; se não quiser, marque <strong>Sem interesse</strong>.</p>}
+      {modo === "historico" && <p className="mudo pequeno" style={{ marginTop: 0 }}>Para registrar processos antigos (da planilha). Entra direto no resultado final, com as datas reais, e <strong>não cria tarefa no planner</strong>.</p>}
       <div className="soltar" role="button" tabIndex={0} onClick={() => entrada.current?.click()}
            onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) anexar(f); }}>
         <input ref={entrada} type="file" hidden accept=".pdf,.doc,.docx,image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) anexar(f); e.target.value = ""; }} />
-        {arquivo ? <span>📎 <strong>{arquivo.nome}</strong> · clique para trocar</span> : <span>Arraste o currículo aqui ou <u>clique para anexar</u> (PDF é lido automaticamente)</span>}
+        {arquivo ? <span>📎 <strong>{arquivo.nome}</strong> · clique para trocar</span> : <span>Arraste o currículo aqui ou <u>clique para anexar</u> (PDF é lido automaticamente){modo !== "inscrito" ? " · opcional" : ""}</span>}
       </div>
       {lendo && <p className="mudo pequeno">{lendo}</p>}
       <Repetidos lista={repetidos} />
@@ -147,6 +157,7 @@ export function NovoCandidato({ vagaId, canais }: { vagaId: number; canais: Cana
         <input type="hidden" name="vaga_id" value={vagaId} />
         <input type="hidden" name="curriculo_path" value={arquivo?.path ?? ""} />
         <input type="hidden" name="curriculo_nome" value={arquivo?.nome ?? ""} />
+        <input type="hidden" name="modo" value={modo} />
         <div className="linha-envio">
           <div className="campo"><label>Nome</label><input name="nome" required value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} /></div>
           <div className="campo"><label>WhatsApp</label><input name="whatsapp" type="tel" value={dados.whatsapp} onBlur={conferirRepetido} onChange={(e) => setDados({ ...dados, whatsapp: e.target.value })} /></div>
@@ -157,10 +168,40 @@ export function NovoCandidato({ vagaId, canais }: { vagaId: number; canais: Cana
               <option value="">—</option>{canais.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select></div>
           {ehIndicacao && <div className="campo"><label>Quem indicou</label><input name="indicado_por" required placeholder="Nome de quem indicou" /></div>}
+          {modo !== "inscrito" && <div className="campo"><label>Link do perfil (LinkedIn, BNE…)</label><input name="perfil_url" type="url" placeholder="https://" /></div>}
+          {modo === "abordado" && <div className="campo"><label>Abordado em</label><input name="contatado_em" type="date" defaultValue={hojeLocal()} /></div>}
+          {modo === "historico" && (
+            <>
+              <div className="campo"><label>Data da inscrição</label><input name="inscrito_em" type="date" required /></div>
+              <div className="campo"><label>Data da entrevista (se teve)</label><input name="entrevista_data" type="date" /></div>
+              <div className="campo"><label>Como terminou</label>
+                <select name="resultado" value={resultado} onChange={(e) => setResultado(e.target.value)}>
+                  <option value="aprovado">Aprovado / contratado</option><option value="reprovado">Não aprovado</option>
+                  <option value="sem_interesse">Sem interesse (o candidato não quis)</option>
+                  <option value="inscrito">Ainda em aberto: Inscritos</option><option value="triagem">Ainda em aberto: Triagem</option><option value="gestor">Ainda em aberto: Aprovação do gestor</option>
+                </select></div>
+              {resultado === "aprovado" && (
+                <>
+                  <div className="campo"><label>Data da contratação</label><input name="contratado_em" type="date" required /></div>
+                  {ehIndicacao && <label className="pequeno lgpd"><input type="checkbox" name="bonus_pago" defaultChecked /> Bônus de indicação já foi pago</label>}
+                </>
+              )}
+              {(resultado === "reprovado" || resultado === "sem_interesse") && (
+                <>
+                  <div className="campo"><label>Parou em</label>
+                    <select name="parou_em" defaultValue="triagem"><option value="abordado">Abordados</option><option value="inscrito">Inscritos</option><option value="triagem">Triagem</option><option value="gestor">Aprovação do gestor</option></select></div>
+                  <div className="campo"><label>Motivo</label>
+                    <select name="motivo_id" required defaultValue=""><option value="">Escolha…</option>
+                      {motivos.filter((m) => m.ativo && m.tipo === (resultado === "reprovado" ? "nao_aprovado" : "sem_interesse")).map((m) => <option key={m.id} value={m.id}>{m.texto}</option>)}
+                    </select></div>
+                </>
+              )}
+            </>
+          )}
           <div className="campo" style={{ gridColumn: "1 / -1" }}><label>Observação (opcional)</label><input name="observacao" maxLength={2000} /></div>
         </div>
         <label className="pequeno lgpd"><input type="checkbox" name="lgpd" defaultChecked /> O candidato autorizou guardar o currículo para processos seletivos (LGPD)</label>
-        <div className="acoes"><button className="botao" disabled={salvando || !!lendo.startsWith("Env") || lendo.startsWith("Lendo")}>{salvando ? "Salvando…" : "Salvar em Inscritos"}</button></div>
+        <div className="acoes"><button className="botao" disabled={salvando || !!lendo.startsWith("Env") || lendo.startsWith("Lendo")}>{salvando ? "Salvando…" : modo === "historico" ? "Salvar no histórico" : modo === "abordado" ? "Salvar em Abordados" : "Salvar em Inscritos"}</button></div>
       </form>
     </section>
   );
@@ -172,7 +213,9 @@ export function CartaoCandidato({ c, canal }: { c: Candidato; canal: string | nu
     <Link href={`/rh/candidatos/${c.id}`} className="cand-card">
       <strong>{c.nome}</strong>
       <span className="mudo pequeno">{[c.cidade, canal].filter(Boolean).join(" · ")}</span>
-      {c.entrevista_em && ["inscrito", "triagem", "gestor"].includes(c.etapa) && <span className="cand-ent">🗓 {new Date(c.entrevista_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}
+      {c.historico && <span className="cand-hist">histórico{c.contratado_em ? ` · contratado ${br(c.contratado_em)}` : c.inscrito_em ? ` · ${br(c.inscrito_em)}` : ""}</span>}
+      {c.etapa === "abordado" && c.contatado_em && <span className="mudo pequeno">Abordado em {br(c.contatado_em)}</span>}
+      {c.entrevista_em && !c.historico && EM_ABERTO.includes(c.etapa) && <span className="cand-ent">🗓 {new Date(c.entrevista_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}
       {c.nota && <span className="cand-nota">{"★".repeat(c.nota)}<span className="mudo">{"★".repeat(5 - c.nota)}</span></span>}
     </Link>
   );
@@ -200,10 +243,11 @@ export function PainelCandidato({ c, vaga, perguntas, motivos, canais, mensagens
   const [ent, setEnt] = useState(entInicial);
   const [motivo, setMotivo] = useState("");
   const [contratado, setContratado] = useState(hojeLocal());
-  const [modo, setModo] = useState<"" | "aprovar" | "reprovar">("");
+  const [modo, setModo] = useState<"" | "aprovar" | "reprovar" | "sem_interesse">("");
   const fazer = (fn: () => Promise<Resultado>) => iniciar(async () => { const r = await fn(); setEstado(r); if (!r.erro) router.refresh(); });
   const ehIndicacao = canais.find((x) => x.id === c.canal_id)?.eh_indicacao;
-  const aberto = ["inscrito", "triagem", "gestor"].includes(c.etapa);
+  const aberto = EM_ABERTO.includes(c.etapa);
+  const motivosDe = (tipo: "nao_aprovado" | "sem_interesse") => motivos.filter((m) => m.ativo && m.tipo === tipo);
 
   return (
     <div className="cand-grade">
@@ -222,6 +266,12 @@ export function PainelCandidato({ c, vaga, perguntas, motivos, canais, mensagens
             <div className="campo"><label>Como chegou</label>
               <select name="canal_id" defaultValue={c.canal_id ?? ""}><option value="">—</option>{canais.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></div>
             <div className="campo"><label>Quem indicou</label><input name="indicado_por" defaultValue={c.indicado_por ?? ""} placeholder="Se veio por indicação" /></div>
+            <div className="campo"><label>Link do perfil {c.perfil_url && <a href={c.perfil_url} target="_blank" rel="noopener" className="pequeno">abrir ↗</a>}</label><input name="perfil_url" type="url" defaultValue={c.perfil_url ?? ""} placeholder="LinkedIn, BNE…" /></div>
+            <div className="linha-datas">
+              <div className="campo"><label>Inscrição</label><input name="inscrito_em" type="date" defaultValue={c.inscrito_em ?? c.criado_em.slice(0, 10)} /></div>
+              <div className="campo"><label>Abordado em</label><input name="contatado_em" type="date" defaultValue={c.contatado_em ?? ""} /></div>
+              {c.etapa === "aprovado" && <div className="campo"><label>Contratação</label><input name="contratado_em" type="date" defaultValue={c.contratado_em ?? ""} /></div>}
+            </div>
             <label className="pequeno lgpd"><input type="checkbox" name="lgpd" defaultChecked={c.lgpd_autorizou} /> Autorizou guardar o currículo (LGPD)</label>
             <button className="botao secundario pequeno" disabled={salvando}>{salvando ? "Salvando…" : "Salvar dados"}</button>
           </form>
@@ -297,14 +347,17 @@ export function PainelCandidato({ c, vaga, perguntas, motivos, canais, mensagens
           <div className="etapas-linha">
             {ETAPAS.map((e) => <span key={e.id} className={`etapa-pill${e.id === c.etapa ? " atual" : ""}${e.id === "reprovado" && c.etapa === "reprovado" ? " ruim" : ""}`}>{e.nome}</span>)}
           </div>
-          {c.etapa === "reprovado" && <p className="pequeno">Parou em <strong>{ETAPAS.find((e) => e.id === c.parou_em)?.nome}</strong> · {motivos.find((m) => m.id === c.motivo_id)?.texto}</p>}
+          {c.historico && <p className="pequeno mudo">Cadastro de histórico: não gera tarefas no planner.</p>}
+          {(c.etapa === "reprovado" || c.etapa === "sem_interesse") && <p className="pequeno">Parou em <strong>{ETAPAS.find((e) => e.id === c.parou_em)?.nome}</strong> · {motivos.find((m) => m.id === c.motivo_id)?.texto}</p>}
           {c.etapa === "aprovado" && <p className="pequeno">Contratado em <strong>{br(c.contratado_em)}</strong>{ehIndicacao && c.indicado_por ? ` · indicação de ${c.indicado_por}` : ""}</p>}
           {aberto && (
             <div className="acoes-etapa">
+              {c.etapa === "abordado" && <button type="button" className="botao" disabled={pend} onClick={() => fazer(() => moverCandidato(c.id, "inscrito"))}>Topou → Inscritos</button>}
               {c.etapa === "inscrito" && <button type="button" className="botao" disabled={pend} onClick={() => fazer(() => moverCandidato(c.id, "triagem"))}>Chamar para entrevista → Triagem</button>}
               {c.etapa === "triagem" && <button type="button" className="botao" disabled={pend} onClick={() => fazer(() => moverCandidato(c.id, "gestor"))}>Enviar para aprovação do gestor →</button>}
               {c.etapa === "gestor" && <button type="button" className="botao" disabled={pend} onClick={() => setModo("aprovar")}>✓ Gestor aprovou</button>}
-              <button type="button" className="botao secundario" disabled={pend} onClick={() => setModo("reprovar")}>✕ Não passou</button>
+              {c.etapa !== "abordado" && <button type="button" className="botao secundario" disabled={pend} onClick={() => { setMotivo(""); setModo("reprovar"); }}>✕ Não passou</button>}
+              <button type="button" className="botao secundario" disabled={pend} onClick={() => { setMotivo(""); setModo("sem_interesse"); }}>Sem interesse / desistiu</button>
             </div>
           )}
           {modo === "aprovar" && (
@@ -314,11 +367,11 @@ export function PainelCandidato({ c, vaga, perguntas, motivos, canais, mensagens
               <button type="button" className="botao" disabled={pend} onClick={() => fazer(() => moverCandidato(c.id, "aprovado", { contratado_em: contratado }))}>Confirmar aprovação</button>
             </div>
           )}
-          {modo === "reprovar" && (
+          {(modo === "reprovar" || modo === "sem_interesse") && (
             <div className="sub-form">
-              <label className="pequeno">Motivo</label>
-              <select value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Escolha…</option>{motivos.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.texto}</option>)}</select>
-              <button type="button" className="botao perigo" disabled={pend || !motivo} onClick={() => fazer(() => moverCandidato(c.id, "reprovado", { motivo_id: Number(motivo) }))}>Confirmar</button>
+              <label className="pequeno">{modo === "reprovar" ? "Motivo de não aprovação" : "Por que não teve interesse"}</label>
+              <select value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Escolha…</option>{motivosDe(modo === "reprovar" ? "nao_aprovado" : "sem_interesse").map((m) => <option key={m.id} value={m.id}>{m.texto}</option>)}</select>
+              <button type="button" className="botao perigo" disabled={pend || !motivo} onClick={() => fazer(() => moverCandidato(c.id, modo === "reprovar" ? "reprovado" : "sem_interesse", { motivo_id: Number(motivo) }))}>Confirmar</button>
             </div>
           )}
           {!aberto && <button type="button" className="link-acao" disabled={pend} onClick={() => fazer(() => moverCandidato(c.id, c.parou_em ?? "triagem"))}>Voltar para {ETAPAS.find((e) => e.id === (c.parou_em ?? "triagem"))?.nome}</button>}
@@ -354,7 +407,7 @@ export function BonusPago({ id, pago }: { id: number; pago: boolean }) {
 
 /* ---------- configurações ---------- */
 type Tabela = "rh_perguntas" | "rh_motivos" | "rh_canais" | "rh_mensagens";
-export function ListaEditavel({ tabela, itens, titulo, ajuda }: { tabela: Tabela; itens: Record<string, unknown>[]; titulo: string; ajuda?: string }) {
+export function ListaEditavel({ tabela, itens, titulo, ajuda, novoExtra }: { tabela: Tabela; itens: Record<string, unknown>[]; titulo: string; ajuda?: string; novoExtra?: Record<string, unknown> }) {
   const router = useRouter();
   const [estado, setEstado] = useState<Resultado>({});
   const [pend, iniciar] = useTransition();
@@ -388,7 +441,7 @@ export function ListaEditavel({ tabela, itens, titulo, ajuda }: { tabela: Tabela
         </form>
       ))}
       <form className="item-lista novo" action={(f) => salvar({
-        [campoTexto]: String(f.get("t") || ""), ordem: 90, ...(tabela === "rh_mensagens" ? { texto: String(f.get("m") || "") } : {}),
+        [campoTexto]: String(f.get("t") || ""), ordem: 90, ...(novoExtra || {}), ...(tabela === "rh_mensagens" ? { texto: String(f.get("m") || "") } : {}),
         ...(tabela === "rh_perguntas" ? { tipo: String(f.get("tipo")), opcoes: String(f.get("opcoes") || "").split(/[;\n]/).map((s) => s.trim()).filter(Boolean) } : {}),
       })}>
         <input name="t" placeholder={tabela === "rh_mensagens" ? "Título da mensagem nova" : "Novo item"} required />

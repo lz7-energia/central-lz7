@@ -84,7 +84,7 @@ p { margin: 0 0 12px; }
 label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.92rem; }
 .obrig { color: var(--perigo); margin-left: 2px; }
 .campo { margin-bottom: 18px; }
-input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="password"], input[type="number"],
+input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="password"], input[type="number"],
 input[type="date"], input[type="search"], select, textarea {
   width: 100%; font: inherit; color: inherit; background: #fff;
   border: 1px solid #c9d2ce; border-radius: 8px; padding: 9px 12px;
@@ -434,7 +434,7 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .pergunta-op input { width: auto; margin-top: 3px; }
 .nova-pergunta { display: grid; grid-template-columns: 2fr 130px 2fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 
-.funil { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.funil { display: grid; grid-template-columns: repeat(7, minmax(165px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
 .funil-col { background: #f1f4f3; border-radius: var(--raio); padding: 8px; min-height: 140px; display: flex; flex-direction: column; gap: 8px; }
 .funil-topo { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.88rem; padding: 6px 4px 8px; border-top: 3px solid; border-radius: 4px; }
 .cand-card { display: flex; flex-direction: column; gap: 3px; background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 9px 10px; text-decoration: none; color: var(--texto); box-shadow: var(--sombra); }
@@ -492,3 +492,8 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 }
 @media (max-width: 1000px) { .cand-grade { grid-template-columns: 1fr; } .nova-pergunta { grid-template-columns: 1fr; } }
 .ap-avisos { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 0.86rem; color: var(--marca-escura); font-weight: 600; }
+.modo-cand { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.modo-cand button { border: 1px solid var(--borda); background: var(--superficie); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 0.88rem; cursor: pointer; color: var(--texto-2); }
+.modo-cand button.ativo { background: var(--marca); border-color: var(--marca); color: #fff; font-weight: 600; }
+.cand-hist { font-size: 0.74rem; color: #6b5a00; background: #fbf3d0; border-radius: 6px; padding: 1px 6px; align-self: flex-start; }
+.linha-datas { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0 8px; }

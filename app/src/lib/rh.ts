@@ -1,16 +1,29 @@
 // Recrutamento e seleção: tipos e regras usadas pelas telas.
-export type Etapa = "inscrito" | "triagem" | "gestor" | "aprovado" | "reprovado";
+export type Etapa = "abordado" | "inscrito" | "triagem" | "gestor" | "aprovado" | "reprovado" | "sem_interesse";
 export const ETAPAS: { id: Etapa; nome: string; cor: string }[] = [
-  { id: "inscrito", nome: "Inscritos", cor: "cinza" },
-  { id: "triagem", nome: "Triagem", cor: "azul" },
-  { id: "gestor", nome: "Aprovação do gestor", cor: "amarelo" },
-  { id: "aprovado", nome: "Aprovados", cor: "verde" },
-  { id: "reprovado", nome: "Não aprovados", cor: "vermelho" },
+  { id: "abordado", nome: "Abordados", cor: "#8b5cf6" },
+  { id: "inscrito", nome: "Inscritos", cor: "#9aa5a1" },
+  { id: "triagem", nome: "Triagem", cor: "#3b82f6" },
+  { id: "gestor", nome: "Aprovação do gestor", cor: "#e0a800" },
+  { id: "aprovado", nome: "Aprovados", cor: "#124735" },
+  { id: "reprovado", nome: "Não aprovados", cor: "#c0392b" },
+  { id: "sem_interesse", nome: "Sem interesse", cor: "#e67e22" },
 ];
+/** Etapas em que o candidato ainda está no processo. */
+export const EM_ABERTO: Etapa[] = ["abordado", "inscrito", "triagem", "gestor"];
+
+/** "MARIA DA SILVA" / "maria da silva" → "Maria da Silva" (igual à função rh_nome_padrao do banco). */
+export function padronizarNome(n: string) {
+  const x = (n || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR")
+    .replace(/(^|[\s'-])(\p{L})/gu, (_, a, l) => a + l.toLocaleUpperCase("pt-BR"))
+    .replace(/ (Da|De|Do|Das|Dos|E)(?= )/g, (m) => m.toLowerCase())
+    .replace(/ (Da|De|Do|Das|Dos|E)(?= )/g, (m) => m.toLowerCase());
+  return x;
+}
 export const nomeEtapa = (e: string | null) => ETAPAS.find((x) => x.id === e)?.nome ?? "—";
 
 export type Pergunta = { id: number; texto: string; tipo: "sim_nao" | "escolha" | "numero" | "texto"; opcoes: string[]; padrao: boolean; ativo: boolean; ordem: number };
-export type Motivo = { id: number; texto: string; ativo: boolean; ordem: number };
+export type Motivo = { id: number; texto: string; tipo: "nao_aprovado" | "sem_interesse"; ativo: boolean; ordem: number };
 export type Canal = { id: number; nome: string; eh_indicacao: boolean; ativo: boolean; ordem: number };
 export type Mensagem = { id: number; titulo: string; texto: string; ativo: boolean; ordem: number };
 export type Vaga = {
@@ -23,6 +36,7 @@ export type Candidato = {
   etapa: Etapa; parou_em: Etapa | null; motivo_id: number | null; respostas: Record<string, string>; nota: number | null;
   observacao: string | null; consideracao_gestor: string | null; entrevista_em: string | null; recrutador_id: string | null;
   contratado_em: string | null; bonus_pago_em: string | null; lgpd_autorizou: boolean; criado_em: string; atualizado_em: string;
+  perfil_url: string | null; contatado_em: string | null; inscrito_em: string | null; historico: boolean;
 };
 
 export const tituloVaga = (v: Pick<Vaga, "cargo" | "area" | "local">) => `${v.cargo} · ${v.area}${v.local ? " " + v.local : ""}`;

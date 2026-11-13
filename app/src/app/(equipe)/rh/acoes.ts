@@ -5,7 +5,8 @@ import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 import { supabaseServico } from "@/lib/supabase/servico";
 import { lerCurriculoPdf, type Leitura } from "@/lib/rh-curriculo";
 import { refletirCandidatoNoPlanner } from "@/lib/rh-planner";
-import type { Etapa } from "@/lib/rh";
+import { EM_ABERTO, dataDoBonus, padronizarNome, type Etapa } from "@/lib/rh";
+import { hojeSP } from "@/lib/formato";
 
 export type Resultado = { erro?: string; ok?: string; id?: number };
 const BUCKET = "rh-curriculos";
@@ -32,7 +33,8 @@ export async function salvarVaga(_: Resultado, f: FormData): Promise<Resultado> 
   if (!cargo) return { erro: "Informe o cargo." };
   const previsao = txt(f.get("previsao"), 10);
   const aberta = txt(f.get("aberta_em"), 10);
-  if ((previsao && !DATA.test(previsao)) || (aberta && !DATA.test(aberta))) return { erro: "Data inválida." };
+  const fechada = txt(f.get("fechada_em"), 10);
+  if ((previsao && !DATA.test(previsao)) || (aberta && !DATA.test(aberta)) || (fechada && !DATA.test(fechada))) return { erro: "Data inválida." };
   // Perguntas marcadas + novas criadas na hora (entram na lista geral).
   const perguntas = f.getAll("perguntas").map(Number).filter(Boolean);
   const novas = f.getAll("nova_pergunta").map((v) => String(v).trim()).filter(Boolean).slice(0, 20);
@@ -50,6 +52,7 @@ export async function salvarVaga(_: Resultado, f: FormData): Promise<Resultado> 
     quantidade: Math.max(1, Math.min(200, Number(f.get("quantidade")) || 1)), gestor: txt(f.get("gestor"), 80) || null,
     contrato: txt(f.get("contrato"), 40) || "PJ", descricao: txt(f.get("descricao"), 2000) || null,
     previsao: previsao || null, perguntas, ...(aberta ? { aberta_em: aberta } : {}),
+    ...(f.has("fechada_em") ? { fechada_em: fechada || null } : {}),
   };
   const r = id
     ? await sb.from("rh_vagas").update(campos).eq("id", id).select("id").single()
@@ -114,11 +117,38 @@ export async function criarCandidato(_: Resultado, f: FormData): Promise<Resulta
   const p = await quem();
   if (!p) return { erro: "Sessão expirada. Entre de novo." };
   const vagaId = Number(f.get("vaga_id"));
-  const nome = txt(f.get("nome"), 120);
+  const nome = padronizarNome(txt(f.get("nome"), 120));
   if (!nome) return { erro: "Informe o nome do candidato." };
   const lgpd = f.get("lgpd") === "on";
+  // Modo: inscrito (normal), abordado (busca ativa) ou historico (cadastro retroativo, sem planner).
+  const modo = String(f.get("modo") || "inscrito");
+  const data_ = (k: string) => { const v = txt(f.get(k), 10); return v && DATA.test(v) ? v : null; };
+  const extra: Record<string, unknown> = { perfil_url: txt(f.get("perfil_url"), 500) || null };
+  if (modo === "abordado") Object.assign(extra, { etapa: "abordado", contatado_em: data_("contatado_em") || hojeSP() });
+  if (modo === "historico") {
+    const resultado = String(f.get("resultado") || "");
+    if (!["aprovado", "reprovado", "sem_interesse", "inscrito", "triagem", "gestor"].includes(resultado)) return { erro: "Escolha como terminou." };
+    const inscrito = data_("inscrito_em");
+    if (!inscrito) return { erro: "Informe a data da inscrição." };
+    Object.assign(extra, { historico: true, etapa: resultado, inscrito_em: inscrito });
+    const ent = data_("entrevista_data");
+    if (ent) extra.entrevista_em = new Date(`${ent}T12:00:00-03:00`).toISOString();
+    if (resultado === "aprovado") {
+      const contr = data_("contratado_em");
+      if (!contr) return { erro: "Informe a data da contratação." };
+      extra.contratado_em = contr;
+      if (f.get("bonus_pago") === "on") extra.bonus_pago_em = dataDoBonus(contr);
+    }
+    if (resultado === "reprovado" || resultado === "sem_interesse") {
+      const motivo = Number(f.get("motivo_id")) || null;
+      if (!motivo) return { erro: "Escolha o motivo." };
+      const parou = String(f.get("parou_em") || "triagem");
+      Object.assign(extra, { motivo_id: motivo, parou_em: ["abordado", "inscrito", "triagem", "gestor"].includes(parou) ? parou : "triagem" });
+    }
+  }
   const sb = await supabaseUsuario();
   const { data, error } = await sb.from("rh_candidatos").insert({
+    ...extra,
     vaga_id: vagaId, nome, whatsapp: txt(f.get("whatsapp"), 30) || null, email: txt(f.get("email"), 120) || null,
     cidade: txt(f.get("cidade"), 80) || null, canal_id: Number(f.get("canal_id")) || null, indicado_por: txt(f.get("indicado_por"), 120) || null,
     curriculo_path: txt(f.get("curriculo_path"), 300) || null, curriculo_nome: txt(f.get("curriculo_nome"), 200) || null,
@@ -126,7 +156,7 @@ export async function criarCandidato(_: Resultado, f: FormData): Promise<Resulta
   }).select("id").single();
   if (error) return { erro: "Não foi possível salvar o candidato." };
   atualizar(vagaId);
-  return { ok: `${nome} entrou em Inscritos.`, id: data.id };
+  return { ok: modo === "historico" ? `${nome} entrou no histórico.` : `${nome} entrou em ${modo === "abordado" ? "Abordados" : "Inscritos"}.`, id: data.id };
 }
 
 export async function salvarCandidato(_: Resultado, f: FormData): Promise<Resultado> {
@@ -136,6 +166,13 @@ export async function salvarCandidato(_: Resultado, f: FormData): Promise<Result
   const campos: Record<string, unknown> = {};
   for (const k of ["nome", "whatsapp", "email", "cidade", "indicado_por"]) if (f.has(k)) campos[k] = txt(f.get(k), 120) || null;
   if (f.has("nome") && !campos.nome) return { erro: "Informe o nome." };
+  if (campos.nome) campos.nome = padronizarNome(String(campos.nome));
+  if (f.has("perfil_url")) campos.perfil_url = txt(f.get("perfil_url"), 500) || null;
+  for (const k of ["contatado_em", "inscrito_em", "contratado_em"]) if (f.has(k)) {
+    const v = txt(f.get(k), 10);
+    if (v && !DATA.test(v)) return { erro: "Data inválida." };
+    if (k !== "contratado_em" || v) campos[k] = v || null;
+  }
   if (f.has("canal_id")) campos.canal_id = Number(f.get("canal_id")) || null;
   if (f.has("observacao")) campos.observacao = txt(f.get("observacao"), 4000) || null;
   if (f.has("consideracao_gestor")) campos.consideracao_gestor = txt(f.get("consideracao_gestor"), 4000) || null;
@@ -161,10 +198,10 @@ export async function moverCandidato(id: number, etapa: Etapa, extra: { motivo_i
   const { data: c } = await sb.from("rh_candidatos").select("etapa, vaga_id, recrutador_id").eq("id", id).single();
   if (!c) return { erro: "Candidato não encontrado." };
   const campos: Record<string, unknown> = { etapa };
-  if (etapa === "reprovado") {
+  if (etapa === "reprovado" || etapa === "sem_interesse") {
     if (!extra.motivo_id) return { erro: "Escolha o motivo." };
     campos.motivo_id = extra.motivo_id;
-    campos.parou_em = ["inscrito", "triagem", "gestor"].includes(c.etapa) ? c.etapa : "gestor";
+    campos.parou_em = EM_ABERTO.includes(c.etapa) ? c.etapa : "gestor";
   } else {
     campos.motivo_id = null;
     campos.parou_em = null;
@@ -193,7 +230,7 @@ export async function marcarEntrevista(id: number, quando: string | null): Promi
     recrutador_id: quando ? p.id : c.recrutador_id,
   };
   // Marcar entrevista de quem está em "Inscritos" já passa para a Triagem.
-  if (quando && c.etapa === "inscrito") campos.etapa = "triagem";
+  if (quando && (c.etapa === "inscrito" || c.etapa === "abordado")) campos.etapa = "triagem";
   const { error } = await sb.from("rh_candidatos").update(campos).eq("id", id);
   if (error) return { erro: "Não foi possível salvar." };
   await refletirCandidatoNoPlanner(id, c.recrutador_id);
@@ -232,7 +269,7 @@ export async function salvarItem(tabela: Lista, item: Record<string, unknown>): 
   if (!["rh_perguntas", "rh_motivos", "rh_canais", "rh_mensagens"].includes(tabela)) return { erro: "Lista inválida." };
   const permitidos: Record<Lista, string[]> = {
     rh_perguntas: ["texto", "tipo", "opcoes", "padrao", "ativo", "ordem"],
-    rh_motivos: ["texto", "ativo", "ordem"],
+    rh_motivos: ["texto", "tipo", "ativo", "ordem"],
     rh_canais: ["nome", "eh_indicacao", "ativo", "ordem"],
     rh_mensagens: ["titulo", "texto", "ativo", "ordem"],
   };

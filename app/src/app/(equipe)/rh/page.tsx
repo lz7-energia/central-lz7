@@ -56,7 +56,7 @@ export default async function Vagas({ searchParams }: { searchParams: Promise<{ 
                 <div className="vaga-funil">
                   {ETAPAS.map((e) => {
                     const n = dela.filter((c) => c.etapa === e.id).length;
-                    return <span key={e.id} title={e.nome} style={{ borderColor: e.cor }}>{e.nome} <strong>{n}</strong></span>;
+                    return <span key={e.id} title={e.nome} style={{ borderLeftColor: e.cor }}>{e.nome} <strong>{n}</strong></span>;
                   })}
                 </div>
               </div>

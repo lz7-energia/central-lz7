@@ -149,6 +149,12 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   some quando o candidato sai do funil. Indicação contratada gera `rh-bonus-<id>` com data = contratação + 3 meses, até
   "Marcar como pago" (`lib/rh-planner.ts`). Lista "Bônus de indicação" na página de vagas.
 - Ficha para o gestor: `/rh/candidatos/[id]/ficha` (imprimir / salvar em PDF).
+- **Busca ativa:** etapa `abordado` (coluna Abordados: LinkedIn Open to Work, BNE…; `perfil_url`, `contatado_em`) e `sem_interesse`
+  (o candidato não quis; motivos `rh_motivos.tipo = 'sem_interesse'`, separados dos de não aprovação). "Topou → Inscritos" ou marcar entrevista.
+- **Histórico** (processos antigos da planilha): "Adicionar candidato" → Histórico, com data de inscrição, entrevista, resultado final,
+  contratação e bônus já pago; `historico = true` não cria tarefa no planner. Vaga antiga: campo "Fechada em".
+- Nomes padronizados ("MARIA DA SILVA" → "Maria da Silva"): `padronizarNome` (`lib/rh.ts`) = `rh_nome_padrao()` no banco.
+- Nome do arquivo do currículo sem acento (o armazenamento do Supabase recusa).
 - Só a equipe (RLS `eh_equipe()`); diretoria não vê. Banco de talentos: fora por enquanto.
 
 ## Visual e perfil

@@ -14,7 +14,8 @@ export default async function Config() {
       <div className="config-grade">
         <ListaEditavel tabela="rh_perguntas" titulo="Perguntas da triagem" itens={perguntas} ajuda="Lista geral. Cada vaga escolhe quais usa; “já vem marcada” = sugerida em vaga nova." />
         <ListaEditavel tabela="rh_mensagens" titulo="Mensagens de WhatsApp" itens={mensagens} ajuda="Use {nome}, {vaga}, {cidade} e {entrevista}: o site troca pelos dados do candidato." />
-        <ListaEditavel tabela="rh_motivos" titulo="Motivos de não aprovação" itens={motivos} />
+        <ListaEditavel tabela="rh_motivos" titulo="Motivos de não aprovação" itens={motivos.filter((m) => m.tipo === "nao_aprovado")} ajuda="Quando a empresa não segue com o candidato." novoExtra={{ tipo: "nao_aprovado" }} />
+        <ListaEditavel tabela="rh_motivos" titulo="Motivos de sem interesse" itens={motivos.filter((m) => m.tipo === "sem_interesse")} ajuda="Quando o candidato não quis (busca ativa ou desistência)." novoExtra={{ tipo: "sem_interesse" }} />
         <ListaEditavel tabela="rh_canais" titulo="Como o candidato chegou" itens={canais} ajuda="Marque “é indicação” para pedir quem indicou e controlar o bônus de 3 meses." />
       </div>
     </>
