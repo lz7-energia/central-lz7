@@ -72,10 +72,11 @@ export async function fecharVaga(id: number, fechar: boolean): Promise<Resultado
 export async function prepararCurriculo(nome: string, tamanho: number) {
   if (!(await quem())) return { erro: "Sessão expirada. Entre de novo." };
   if (tamanho > 20 * 1048576) return { erro: "O currículo passa de 20 MB." };
-  const limpo = nome.replace(/[^\w.\- ()À-ú]/g, "_").slice(0, 120);
+  // O armazenamento do Supabase só aceita letras sem acento no nome do arquivo: "Currículo João.pdf" → "Curriculo_Joao.pdf".
+  const limpo = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").slice(-100) || "curriculo";
   const path = `${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}-${limpo}`;
   const { data, error } = await supabaseServico().storage.from(BUCKET).createSignedUploadUrl(path);
-  if (error || !data) return { erro: "Não foi possível preparar o envio." };
+  if (error || !data) return { erro: `Não foi possível preparar o envio${error?.message ? ` (${error.message})` : ""}.` };
   return { path, url: data.signedUrl };
 }
 
