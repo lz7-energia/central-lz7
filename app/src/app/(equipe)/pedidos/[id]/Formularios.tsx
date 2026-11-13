@@ -61,7 +61,7 @@ export function FormAtendimento({ id, status, responsavelId, prazo, equipe }: Pr
         </select>
       </div>
       <div className="campo">
-        <label htmlFor="prazo">Prazo</label>
+        <label htmlFor="prazo">Previsão de conclusão</label>
         <input id="prazo" name="prazo" type="date" defaultValue={prazo ?? ""} />
       </div>
       <button className="botao" disabled={salvando}>
@@ -94,27 +94,52 @@ export function FormComentario({ id }: { id: number }) {
   );
 }
 
-/** Caixa de resposta para pedido novo: aceitar ou recusar. */
-export function FormResposta({ id }: { id: number }) {
+/** Aceitar (com previsão de conclusão) ou recusar (com motivo) um pedido novo. Usado na página do pedido e na fila. */
+export function FormResposta({ id, prazo, compacto = false }: { id: number; prazo: string | null; compacto?: boolean }) {
   const [estado, acao, salvando] = useActionState<Estado, FormData>(responderPedido, {});
-  const [recusar, setRecusar] = useState(false);
-  if (estado.ok) return <div className="cartao resposta-pedido"><div className="ok" style={{ margin: 0 }}>{estado.ok}</div></div>;
+  const [modo, setModo] = useState<"" | "aceitar" | "recusar">(compacto ? "" : "aceitar");
+  if (estado.ok) return <div className={compacto ? "ok pequeno" : "cartao resposta-pedido"}>{compacto ? estado.ok : <div className="ok" style={{ margin: 0 }}>{estado.ok}</div>}</div>;
+  if (compacto && !modo) return (
+    <div className="resp-rapida">
+      <button type="button" className="botao pequeno" onClick={() => setModo("aceitar")}>✓ Aceitar</button>
+      <button type="button" className="botao secundario pequeno" onClick={() => setModo("recusar")}>✕ Recusar</button>
+    </div>
+  );
   return (
-    <form action={acao} className="cartao resposta-pedido">
-      <h2>Pedido novo</h2>
-      <p className="mudo pequeno" style={{ marginTop: 0 }}>Aceite para começar o atendimento ou recuse explicando o motivo. O solicitante é avisado por e-mail.</p>
+    <form action={acao} className={compacto ? "resp-rapida-form" : "cartao resposta-pedido"}>
+      {!compacto && <h2>Pedido novo</h2>}
+      {!compacto && <p className="mudo pequeno" style={{ marginTop: 0 }}>Aceite informando quando vai concluir, ou recuse explicando o motivo. O solicitante vê a resposta na consulta do pedido.</p>}
       <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="decisao" value={modo} />
       {estado.erro && <div className="erro">{estado.erro}</div>}
-      <div className="campo">
-        <label htmlFor="resp-motivo">{recusar ? "Motivo da recusa (obrigatório)" : "Mensagem para o solicitante (opcional)"}</label>
-        <textarea id="resp-motivo" name="motivo" maxLength={2000} style={{ minHeight: 64 }} required={recusar} />
-      </div>
+      {!compacto && (
+        <div className="seg-resposta" role="group" aria-label="Resposta">
+          <button type="button" className={modo === "aceitar" ? "ativo" : ""} onClick={() => setModo("aceitar")}>✓ Aceitar</button>
+          <button type="button" className={modo === "recusar" ? "ativo recusa" : ""} onClick={() => setModo("recusar")}>✕ Recusar</button>
+        </div>
+      )}
+      {modo === "aceitar" ? (
+        <div className="campo">
+          <label htmlFor={`prev-${id}`}>Previsão de conclusão</label>
+          <input id={`prev-${id}`} name="previsao" type="date" required defaultValue={prazo ?? ""} />
+        </div>
+      ) : (
+        <div className="campo">
+          <label htmlFor={`mot-${id}`}>Motivo da recusa</label>
+          <textarea id={`mot-${id}`} name="motivo" required maxLength={2000} style={{ minHeight: compacto ? 50 : 64 }} />
+        </div>
+      )}
+      {modo === "aceitar" && !compacto && (
+        <div className="campo">
+          <label htmlFor={`msg-${id}`}>Mensagem para o solicitante (opcional)</label>
+          <textarea id={`msg-${id}`} name="motivo" maxLength={2000} style={{ minHeight: 50 }} />
+        </div>
+      )}
       <div className="acoes">
-        <button className="botao" name="decisao" value="aceitar" disabled={salvando} onClick={() => setRecusar(false)}>✓ Aceitar</button>
-        <button className="botao perigo" name="decisao" value="recusar" disabled={salvando}
-                onClick={(e) => { if (!recusar) { e.preventDefault(); setRecusar(true); } }}>
-          {recusar ? "Confirmar recusa" : "✕ Recusar"}
+        <button className={`botao${compacto ? " pequeno" : ""}${modo === "recusar" ? " perigo" : ""}`} disabled={salvando}>
+          {salvando ? "Salvando…" : modo === "aceitar" ? "Aceitar pedido" : "Recusar pedido"}
         </button>
+        {compacto && <button type="button" className="botao secundario pequeno" onClick={() => setModo("")}>Cancelar</button>}
       </div>
     </form>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FormResposta } from "./[id]/Formularios";
 import { supabaseUsuario } from "@/lib/supabase/server";
 import { STATUS, STATUS_ABERTOS, type StatusPedido } from "@/lib/tipos";
 import { data as fmtData, dataHora, hojeSP } from "@/lib/formato";
@@ -110,7 +111,7 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
               <th>Solicitante</th>
               <th>Status</th>
               <th>Responsável</th>
-              <th>Prazo</th>
+              <th>Previsão</th>
               <th>Aberto em</th>
             </tr>
           </thead>
@@ -139,7 +140,9 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
                   <td>
                     <span className={`etiqueta ${STATUS[p.status].cor}`}>{STATUS[p.status].rotulo}</span>
                   </td>
-                  <td>{p.responsavel?.nome ?? <span className="mudo">—</span>}</td>
+                  <td>
+                    {p.status === "aberto" ? <FormResposta id={p.id} prazo={p.prazo} compacto /> : p.responsavel?.nome ?? <span className="mudo">—</span>}
+                  </td>
                   <td className={atrasado ? "atrasado" : ""}>
                     {fmtData(p.prazo)}
                     {atrasado && <div className="pequeno">atrasado</div>}

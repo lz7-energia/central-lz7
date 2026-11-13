@@ -280,9 +280,11 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                   )}
                   {aba === "vencidos" && <td className={t.previsao && t.previsao < hoje ? "atrasado" : ""}>{t.previsao ? fmtData(t.previsao) : <span className="mudo">—</span>}</td>}
                   {aba === "vencidos" && (
-                    <td style={{ maxWidth: 280 }}>
-                      {t.motivo ?? <span className="mudo">—</span>}
-                      {t.alterado_por && <div className="pequeno mudo">{t.alterado_por} · {dataHora(t.alterado_em)}</div>}
+                    <td style={{ maxWidth: 260 }}>
+                      {t.motivo
+                        ? <div className="motivo-cel" title={t.motivo} onClick={(e) => e.currentTarget.classList.toggle("aberto")}>{t.motivo}</div>
+                        : <span className="mudo">—</span>}
+                      {t.alterado_por && <div className="pequeno mudo" style={{ whiteSpace: "nowrap" }}>{t.alterado_por.split(" ")[0]} · {dataHora(t.alterado_em)}</div>}
                     </td>
                   )}
                   {aba === "recebidos" && (

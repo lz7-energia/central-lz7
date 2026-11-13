@@ -77,8 +77,9 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Formulário aberto, sem login: setor → tipo de pedido → campos do tipo → protocolo.
 - Pedido grava direto no banco e aparece na fila do setor na hora; aviso por e-mail ao responsável.
 - Consulta por protocolo + link; identificação por lista fechada de nomes (`solicitantes`).
-- Pedido novo ("Aberto") mostra **Aceitar / Recusar** na página do pedido: aceitar → "Em andamento" com quem aceitou como responsável;
-  recusar exige motivo (vai por e-mail e aparece na consulta do solicitante). Ação `responderPedido`.
+- Pedido novo ("Aberto") mostra **Aceitar / Recusar** na fila e na página do pedido: aceitar pede a **previsão de conclusão**
+  (vira o `prazo`, que o solicitante vê como "Previsão") e põe quem aceitou como responsável; recusar exige motivo
+  (vai por e-mail e aparece na consulta do solicitante). Ação `responderPedido`.
 - Aprovação do gestor por link no e-mail: **desligada em todos os tipos** (decisão de 10/11/2026; aprovações são raras e combinadas direto com os gestores). O recurso existe e pode ser religado por tipo (`tipos_pedido.exige_aprovacao`).
 - Proteção do formulário aberto: limite de envios e verificação anti-robô.
 
@@ -90,7 +91,7 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   aguardando terceiro, outro. "Panorama dos vencidos": barras por situação (cor do grupo) e por faixa de atraso, com filtros.
 - Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano, tudo) com o total previsto;
   gráfico "Previsão de recebimentos" pelo vencimento (por dia, mês ou ano; clique filtra) e totais dos próximos 7/30/90 dias.
-- A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo. "Concluir atualização" registra
+- A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo (na tabela, o motivo aparece em até 2 linhas; clique ou passe o mouse para ler inteiro). "Concluir atualização" registra
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
 - Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
   **baixa manual** (data, valor, observação → vai para Recebidos), **excluir** (aba Excluídos, com restaurar) e **nome para exibir**.
