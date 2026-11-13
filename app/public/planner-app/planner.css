@@ -252,3 +252,18 @@ button:disabled{opacity:.3;cursor:default}
 .brand .back{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;margin-right:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;vertical-align:3px}
 .brand .back:hover{color:var(--text);border-color:var(--muted)}
 .upl.small{padding:6px 10px;font-size:13px}
+/* Central LZ7: tarefas e calls entre a equipe */
+.eq-avisos{background:var(--evs);border:1px solid var(--ev);color:var(--text);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.eq-avisos-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px}
+.eq-aviso{padding:4px 0;border-top:1px solid var(--border);font-size:.92em}
+.eq-aviso[data-action]{cursor:pointer;text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
+.eq-pessoas{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 4px}
+.eq-pessoas label{display:flex;gap:6px;align-items:center;font-weight:400}
+.eq-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.eq-box textarea{width:100%;margin-top:8px}
+.eq-acoes{display:flex;gap:8px;margin-top:8px}
+.eq-pessoa{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--border)}
+.eq-pessoa:first-of-type{border-top:0}
+.eq-st{font-size:.88em;color:var(--muted)}
+.eq-st.concluiu{color:#2e7d4f;font-weight:600}
+.eq-st.recusou{color:var(--alert)}

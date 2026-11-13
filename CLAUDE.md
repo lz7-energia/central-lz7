@@ -114,6 +114,12 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   com `x-cron-secret` = `PLANNER_CRON_SECRET`). Trava por pessoa (`planner_travar_sync`).
 - **Nunca duplicar no ClickUp:** `cuCreating` é gravado no banco antes de criar; com ele, não cria de novo (só se o ClickUp
   recusou — `cuErro` — e a pessoa clicar "Enviar ao ClickUp"). Campos `cu*`/`clickupId` são do servidor: o navegador não os sobrescreve.
+- **Tarefas e calls entre a equipe** (`lib/planner/equipe.ts`): no formulário, "Para quem" = só para mim / passar tarefa /
+  call (uma ou mais pessoas; call exige hora). Entra direto no planner de cada um como cópia `eq-<tarefa>-<pessoa>` (campos
+  `de`, `origem`, `origemHash`), com aviso em `planner_avisos` (faixa no topo do planner e no atalho da Início).
+  Tarefa passada: a original vira acompanhamento (`soCentral`, não vai ao ClickUp; mostra concluiu / pendente / recusou).
+  Call: fica no planner (e no ClickUp) de todos. Quem recebe pode **Recusar** com motivo (`paraRecusas`, aviso a quem mandou);
+  concluir avisa quem mandou; editar a original atualiza as cópias; excluir a original some das outras pessoas.
 - Importar: Configurações → Dados → Importar tarefas (JSON: lista de tasks ou `{tasks, events, settings, sync}`); importar antes de ligar o ClickUp.
 
 ## Central de arquivos (ADM, `/arquivos`)
