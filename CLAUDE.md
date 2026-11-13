@@ -91,7 +91,7 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
   aguardando terceiro, outro. "Panorama dos vencidos": barras por situação (cor do grupo) e por faixa de atraso, com filtros.
 - Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano, tudo) com o total previsto;
   gráfico "Previsão de recebimentos" pelo vencimento (por dia, mês ou ano; clique filtra) e totais dos próximos 7/30/90 dias.
-- A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo (na tabela, o motivo aparece em até 2 linhas; clique ou passe o mouse para ler inteiro). "Concluir atualização" registra
+- A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo (na tabela: previsão logo abaixo do atraso; motivo em coluna larga, até 3 linhas, clique ou mouse para ler inteiro). "Concluir atualização" registra
   quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
 - Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
   **baixa manual** (data, valor, observação → vai para Recebidos), **excluir** (aba Excluídos, com restaurar) e **nome para exibir**.

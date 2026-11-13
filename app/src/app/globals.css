@@ -408,3 +408,5 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 /* Recebíveis: motivo em até 2 linhas (o texto inteiro aparece ao passar o mouse ou clicar) */
 .motivo-cel { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
 .motivo-cel.aberto { display: block; -webkit-line-clamp: unset; }
+.col-motivo { min-width: 300px; max-width: 460px; }
+.col-motivo .motivo-cel { -webkit-line-clamp: 3; line-height: 1.4; }
