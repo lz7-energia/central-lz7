@@ -55,7 +55,7 @@ Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
 - `developers.everflow.io` é outra empresa (marketing), não é este ERP.
 
 Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dados para o banco da central a cada
-30 min (7h–20h, seg–sáb); as telas leem do banco. Detalhes em `supabase/README.md`.
+30 min (8h–00h de Brasília, seg–sáb; `supabase/agendar-sincronizacao.sql`); as telas leem do banco. Detalhes em `supabase/README.md`.
 
 ## Fase 1
 
