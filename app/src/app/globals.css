@@ -410,3 +410,84 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .motivo-cel.aberto { display: block; -webkit-line-clamp: unset; }
 .col-motivo { min-width: 300px; max-width: 460px; }
 .col-motivo .motivo-cel { -webkit-line-clamp: 3; line-height: 1.4; }
+
+/* ---------- Recrutamento (RH) ---------- */
+.vagas-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.vaga-card { display: flex; gap: 14px; background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; box-shadow: var(--sombra); text-decoration: none; color: var(--texto); transition: border-color .15s, transform .15s; }
+.vaga-card:hover { border-color: var(--marca); transform: translateY(-1px); }
+.vaga-qtd { flex: 0 0 64px; height: 64px; border-radius: 12px; background: var(--marca); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; }
+.vaga-qtd strong { font-size: 1.6rem; }
+.vaga-qtd span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; opacity: .85; }
+.vaga-corpo { min-width: 0; flex: 1; }
+.vaga-corpo h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.vaga-info { display: flex; flex-direction: column; gap: 2px; font-size: 0.86rem; color: var(--texto-2); }
+.vaga-funil { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+.vaga-funil span { font-size: 0.74rem; border: 1px solid var(--borda); border-left-width: 3px; border-radius: 6px; padding: 2px 7px; color: var(--texto-2); }
+.vaga-funil strong { color: var(--texto); }
+.rh-selo { display: inline-block; font-size: 0.78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #eef1f0; color: var(--texto-2); }
+.rh-selo.ok { background: var(--marca-clara); color: var(--marca-escura); }
+.rh-selo.alerta { background: #fff4e5; color: #9a5b00; }
+
+.form-vaga h3 { margin: 18px 0 4px; }
+.lista-perguntas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 4px 16px; margin-bottom: 10px; }
+.pergunta-op { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; padding: 5px 0; cursor: pointer; }
+.pergunta-op input { width: auto; margin-top: 3px; }
+.nova-pergunta { display: grid; grid-template-columns: 2fr 130px 2fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+.funil { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.funil-col { background: #f1f4f3; border-radius: var(--raio); padding: 8px; min-height: 140px; display: flex; flex-direction: column; gap: 8px; }
+.funil-topo { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.88rem; padding: 6px 4px 8px; border-top: 3px solid; border-radius: 4px; }
+.cand-card { display: flex; flex-direction: column; gap: 3px; background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 9px 10px; text-decoration: none; color: var(--texto); box-shadow: var(--sombra); }
+.cand-card:hover { border-color: var(--marca); }
+.cand-ent { font-size: 0.78rem; color: var(--marca-escura); font-weight: 600; }
+.cand-nota { font-size: 0.8rem; color: #d99a00; letter-spacing: 1px; }
+.cand-nota .mudo { color: #d8dcdb; }
+
+.novo-candidato .soltar { border: 2px dashed var(--borda); border-radius: var(--raio); padding: 22px; text-align: center; cursor: pointer; color: var(--texto-2); margin-bottom: 10px; background: #fafcfb; }
+.novo-candidato .soltar:hover { border-color: var(--marca); color: var(--marca); }
+.lgpd { display: flex; gap: 8px; align-items: center; font-weight: 400; margin: 6px 0 12px; }
+.lgpd input { width: auto; }
+.aviso-repetido { background: #fff4e5; border: 1px solid #f5d39a; color: #7a4800; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 3px; }
+
+.cand-grade { display: grid; grid-template-columns: 1fr 1.25fr 0.9fr; gap: 14px; align-items: start; }
+.cand-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.cand-col .cartao h2 { margin-top: 0; font-size: 1.05rem; }
+.cand-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.zap-previa { background: #f0faf3; border: 1px solid #cdebd6; border-radius: 10px; padding: 10px 12px; font-size: 0.9rem; white-space: pre-wrap; }
+.botao.zap { background: #1fa855; border-color: #1fa855; }
+.linha-ent { display: flex; gap: 8px; flex-wrap: wrap; }
+.linha-ent input { width: auto; }
+.radios-sn { display: flex; gap: 18px; }
+.radios-sn label { display: flex; gap: 6px; align-items: center; font-weight: 400; }
+.radios-sn input { width: auto; }
+.etapas-linha { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.etapa-pill { font-size: 0.86rem; padding: 5px 10px; border-radius: 8px; color: var(--texto-2); background: #f1f4f3; }
+.etapa-pill.atual { background: var(--marca); color: #fff; font-weight: 600; }
+.etapa-pill.atual.ruim { background: var(--perigo); }
+.acoes-etapa { display: flex; flex-direction: column; gap: 8px; }
+.sub-form { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borda); }
+.perigo-txt { color: var(--perigo); align-self: flex-start; }
+
+.config-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; align-items: start; }
+.item-lista { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--borda); }
+.item-lista.inativo { opacity: .5; }
+.item-lista.novo { border-bottom: 0; background: #fafcfb; padding: 10px; border-radius: 8px; margin-top: 8px; }
+.item-lista .acoes { display: flex; gap: 12px; align-items: center; }
+.item-lista label { display: flex; gap: 6px; align-items: center; font-weight: 400; }
+.item-lista label input { width: auto; }
+
+.ficha { max-width: 800px; margin: 0 auto; background: #fff; padding: 28px 34px; }
+.ficha-topo { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--marca); padding-bottom: 10px; margin-bottom: 14px; }
+.ficha-topo h1 { margin: 2px 0 0; }
+.ficha h2 { font-size: 1rem; margin: 18px 0 6px; color: var(--marca-escura); }
+.ficha th { width: 22%; text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.ficha-resp th { width: 55%; }
+.ficha-texto { white-space: pre-wrap; margin: 0; }
+.ficha-linhas { min-height: 110px; white-space: pre-wrap; background-image: repeating-linear-gradient(transparent 0 27px, #d5dbd9 27px 28px); line-height: 28px; }
+.ficha-assin { display: flex; justify-content: space-between; margin-top: 36px; padding-top: 8px; border-top: 1px solid #999; font-size: 0.9rem; }
+@media print {
+  .nao-imprimir, header.topo, nav, .barra-topo { display: none !important; }
+  .ficha { padding: 0; }
+  body { background: #fff; }
+}
+@media (max-width: 1000px) { .cand-grade { grid-template-columns: 1fr; } .nova-pergunta { grid-template-columns: 1fr; } }

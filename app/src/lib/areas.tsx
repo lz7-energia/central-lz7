@@ -36,7 +36,7 @@ export const AREAS: Area[] = [
     descricao: "Recrutamento e seleção",
     modulos: [
       { nome: "Pedidos do RH", icone: "pedidos", descricao: "Vagas, substituições e declarações", href: "/pedidos?setor=rh" },
-      { nome: "Vagas e candidatos", icone: "vagas", descricao: "Funil: inscritos → triagem → entrevista → fechado" },
+      { nome: "Vagas e candidatos", icone: "vagas", descricao: "Vagas abertas, currículos e funil de seleção", href: "/rh" },
       { nome: "Agenda de entrevistas", icone: "agenda", descricao: "Autoagendamento entre os entrevistadores" },
       { nome: "Contratos PJ", icone: "contrato", descricao: "Contrato gerado e assinatura eletrônica" },
     ],

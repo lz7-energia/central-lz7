@@ -128,6 +128,23 @@ Sincronização: Edge Function `flow-sincronizar` (só GET no Flow) copia os dad
 - Validade com aviso (dias antes): selo vencido/vencendo, lista "Vencendo ou vencidos" e **tarefa "Renovar: …" no planner do
   responsável** (`lib/arquivos-planner.ts`, id `doc-<id>`), que a sincronização do planner leva ao ClickUp.
 
+## Recrutamento e seleção (RH, `/rh`)
+
+- Vagas em cards ("3 vagas Vendedor · Comercial WB"): aberta em / dias aberta, previsão (vermelho se passou), gestor, contrato,
+  preenchidas e contagem por etapa. Abertas / Fechadas. A recrutadora cria as vagas.
+- Funil por vaga: Inscritos → Triagem (entrevista da recrutadora: perguntas, nota 1–5, observações) → Aprovação do gestor
+  (consideração final) → Aprovados (data de contratação) / Não aprovados (motivo da lista + etapa onde parou, `parou_em`).
+- Adicionar candidato: anexa o currículo (bucket privado `rh-curriculos`, link assinado, até 20 MB); PDF com texto é lido
+  no servidor (`lib/rh-curriculo.ts`, unpdf) e preenche nome, WhatsApp, e-mail e cidade. A vaga já vem preenchida.
+  Aviso de candidato repetido (mesmo e-mail ou últimos 8 dígitos do telefone). Abrir currículo: `/rh-curriculo/[id]` (RLS + link de 5 min).
+- Listas configuráveis em `/rh/config`: perguntas (lista geral; cada vaga marca quais usa e pode criar novas na hora),
+  motivos, canais (canal "é indicação" pede quem indicou), mensagens de WhatsApp com `{nome} {vaga} {cidade} {entrevista}`.
+- Entrevista marcada (data e hora) vira tarefa `rh-ent-<id>` no planner da recrutadora (quem marcou) e vai ao ClickUp;
+  some quando o candidato sai do funil. Indicação contratada gera `rh-bonus-<id>` com data = contratação + 3 meses, até
+  "Marcar como pago" (`lib/rh-planner.ts`). Lista "Bônus de indicação" na página de vagas.
+- Ficha para o gestor: `/rh/candidatos/[id]/ficha` (imprimir / salvar em PDF).
+- Só a equipe (RLS `eh_equipe()`); diretoria não vê. Banco de talentos: fora por enquanto.
+
 ## Visual e perfil
 
 - Cor da marca `#124735` (verde do logo); logo branco em `app/public/logo-lz7-branco.png`, ícone do site em `app/src/app/icon.png`.

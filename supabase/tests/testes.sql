@@ -322,3 +322,19 @@ do $$ begin
 end $$;
 reset role;
 do $$ begin raise notice 'OK arquivos'; end $$;
+
+-- 13) Recrutamento: equipe usa; diretoria não vê; repetido por telefone normalizado
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+insert into public.rh_vagas (cargo, local, quantidade) values ('Vendedor', 'WB', 3);
+insert into public.rh_candidatos (vaga_id, nome, whatsapp) values ((select max(id) from public.rh_vagas), 'Joaquim', '(43) 99999-1111');
+insert into public.rh_candidatos (vaga_id, nome, whatsapp) values ((select max(id) from public.rh_vagas), 'Joaquim 2', '43999991111');
+do $$ begin
+  if (select count(distinct whatsapp_norm) from public.rh_candidatos) <> 1 then raise exception 'telefone não normalizou'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if exists (select 1 from public.rh_vagas) or exists (select 1 from public.rh_candidatos) then raise exception 'diretoria vê recrutamento'; end if;
+end $$;
+reset role;
+do $$ begin raise notice 'OK recrutamento'; end $$;
