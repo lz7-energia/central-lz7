@@ -184,7 +184,16 @@ export function classificarEmitidaServico(valor: number | null, pisInf: number |
   return divergencia(c, pisInf, cofinsInf);
 }
 
-export const competencia = (data: string | null) => (data && /^\d{4}-\d{2}/.test(data) ? data.slice(0, 7) : null);
+/** Data no horário de Brasília: "2026-11-01T01:30:00Z" (31/10 às 22h30 em Brasília) vira "2026-10-31". Sem fuso, vale como veio. */
+export const dataSP = (data: string | null | undefined): string | null => {
+  if (!data) return null;
+  if (/T\d{2}:\d{2}.*(Z|[+-]\d{2}:?\d{2})$/.test(data)) {
+    const d = new Date(data);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  }
+  return /^\d{4}-\d{2}-\d{2}/.test(data) ? data.slice(0, 10) : null;
+};
+export const competencia = (data: string | null) => dataSP(data)?.slice(0, 7) ?? null;
 const soDigitos = (s: string | null) => (s ? s.replace(/\D/g, "") || null : null);
 
 /* ---------- sincronização ---------- */
@@ -239,7 +248,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       // O Supabase devolve no máximo 1000 linhas por consulta: lê em páginas.
       const atuais: any[] = [];
       for (let de = 0; ; de += 1000) {
-        const { data, error } = await sb.from("fiscal_notas").select("id, origem, flow_id, status, decisao, numero, categoria, emitente_cnpj, credito, credito_origem, credito_em").order("id").range(de, de + 999);
+        const { data, error } = await sb.from("fiscal_notas").select("id, origem, flow_id, status, decisao, numero, categoria, emitente_cnpj, dest_nome, credito, credito_origem, credito_em").order("id").range(de, de + 999);
         if (error) throw new Error(`ler notas: ${error.message}`);
         atuais.push(...(data ?? []));
         if ((data ?? []).length < 1000) break;
@@ -326,7 +335,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
         const valor = x.vNF ?? num(e.valorTotal);
         const base = {
           chave: e.chaveNfe, numero: String(x.numero ?? e.numeroNota ?? ""), tipo_doc: servico ? "nfse" : (x.tipo === "nfe" && e.nfeCompleta !== false ? "nfe" : "resumo"),
-          direcao: "entrada", data_emissao: (e.dataEmissao ?? "").slice(0, 10) || null, competencia: competencia(e.dataEmissao),
+          direcao: "entrada", data_emissao: dataSP(e.dataEmissao), competencia: competencia(e.dataEmissao),
           emitente_cnpj: soDigitos(x.emitCnpj ?? e.documentoEmitente), emitente_nome: x.emitNome ?? e.nomeEmitente ?? null,
           dest_cnpj: soDigitos(x.destCnpj ?? e.cnpjDestinatario), dest_nome: x.destNome ?? e.nomeEmpresaDestinataria ?? null,
           cfops: x.cfops, csts: x.csts, ncms: x.ncms, descricao: x.descricao,
@@ -343,10 +352,32 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       // 2) Notas de produto emitidas pela LZ7
       const docs = (await paginas("v1/documentosSaida/?sortField=numeroNota&sortType=desc&carregarValorTotalNota=true&carregarCfops=true", (d) => (d.dataEmissao ?? "9") < DESDE))
         .filter((d) => (d.dataEmissao ?? "") >= DESDE && !d.homologacao);
+      // Só vale nota AUTORIZADA na Sefaz. O Flow guarda também documentos "FINALIZADO" (nunca transmitidos) com o mesmo
+      // número de uma nota autorizada; eles não são nota fiscal e saem da central (visto na tela do Flow em 14/11/2026).
+      // Vale também para notas já gravadas: um documento que deixou de ser válido sai da apuração.
+      const situacao = (d: any) => String(d.situacaoDocumento ?? d.situacao ?? "");
+      // Situações do Flow (código da tela, 14/11/2026): "Autorizado", "Autorizado (Carta de Correção)", "Autorizado (ECONF)",
+      // "Autorizado (Eventos)", "Aguardando Aprovação Carta Correção", "Aguardando Cancelamento", "Erro Cancelamento" = nota válida;
+      // "Cancelado" = cancelada; "Em digitação", "Finalizado", "Rejeitada", "Aguardando Autorização" = ainda não é nota.
+      const valida = (d: any) => { const x = situacao(d); return !x || /^autorizado|aguardando aprova|aguardando cancel|erro cancel/i.test(x); };
+      const cancelada = (d: any) => !!d.dataCancelamento || /^cancelad/i.test(situacao(d));
+      const naoAutorizados = docs.filter((d) => !cancelada(d) && !valida(d)).map((d) => String(d.id));
+      resumo.situacoesSaida = Object.fromEntries([...new Set(docs.map(situacao))].map((x) => [x || "(vazio)", docs.filter((d) => situacao(d) === x).length]));
+      if (naoAutorizados.length) {
+        const sair = atuais.filter((n: any) => n.origem === "saida_produto" && naoAutorizados.includes(String(n.flow_id)));
+        if (sair.length) {
+          await sb.from("fiscal_notas").delete().eq("origem", "saida_produto").in("flow_id", sair.map((n: any) => n.flow_id));
+          for (const n of sair) { porChave.delete(`saida_produto|${n.flow_id}`); atuais.splice(atuais.indexOf(n), 1); }
+          await log(null, null, `${sair.length} documento(s) de saída não autorizados na Sefaz (em digitação, finalizado ou rejeitado) retirados da apuração: NF ${sair.map((n: any) => n.numero).join(", ")}`);
+          resumo.naoAutorizadosRetirados = sair.length;
+        }
+      }
+      const nomeDest = (x: any) => x?.cliente?.nomeRazaoSocial ?? x?.destinatarioRemetente?.nomeRazaoSocial ?? x?.nomeDestinatarioRemetente ?? x?.nomeCliente ?? null;
       const camposDetalhe = new Set<string>();
       for (const d of docs) {
         const id = String(d.id);
-        if (d.dataCancelamento) { await cancelar("saida_produto", id, d.dataCancelamento, d.motivoCancelamento ?? d.justificativaCancelamento ?? null); continue; }
+        if (naoAutorizados.includes(id)) continue;
+        if (cancelada(d)) { await cancelar("saida_produto", id, d.dataCancelamento ?? null, d.motivoCancelamento ?? d.justificativaCancelamento ?? null); continue; }
         const ant: any = porChave.get(`saida_produto|${id}`);
         let det: any = null;
         if (!ant || ant.status === "pendente") {
@@ -354,7 +385,11 @@ if (typeof (globalThis as any).Deno !== "undefined") {
           downloads++;
           det = await flow(`v1/documentosSaida/${id}`).catch(() => null);
           Object.keys(det ?? {}).forEach((k) => camposDetalhe.add(k));
-        } else continue; // já classificada: não muda (cancelamento é tratado acima)
+        } else { // já classificada: não muda a classificação; só completa o destinatário se faltava
+          const nome = nomeDest(d);
+          if (nome && !ant.dest_nome) { await sb.from("fiscal_notas").update({ dest_nome: nome }).eq("id", ant.id); ant.dest_nome = nome; }
+          continue;
+        }
         const v = det ?? d;
         const cfops = unicos([...(Array.isArray(d.cfops) ? d.cfops : String(d.cfops ?? "").split(/[,;\s]+/)), ...(Array.isArray(v.itens) ? v.itens.map((i: any) => String(i.cfop ?? "")) : [])].map(String));
         const valor = num(v.valorTotalNotaFiscal ?? d.valorTotalNotaFiscal);
@@ -362,9 +397,9 @@ if (typeof (globalThis as any).Deno !== "undefined") {
         const icmsInf = num(v.valorTotalIcms ?? v.valorIcms ?? v.valorTotalICMS), ipiInf = num(v.valorTotalIpi ?? v.valorIpi ?? v.valorTotalIPI);
         const linha = {
           chave: d.chaveDanfe ?? null, numero: String(d.numeroNota ?? ""), tipo_doc: "nfe", direcao: /entrada/i.test(d.entradaSaida ?? "") ? "entrada" : "saida",
-          data_emissao: (d.dataEmissao ?? "").slice(0, 10) || null, competencia: competencia(d.dataEmissao),
+          data_emissao: dataSP(d.dataEmissao), competencia: competencia(d.dataEmissao),
           emitente_cnpj: "41466492000192", emitente_nome: "LZ7 ENERGIA LTDA",
-          dest_cnpj: soDigitos(v.cliente?.cnpjCpf ?? v.destinatarioRemetente?.cnpjCpf ?? null), dest_nome: v.cliente?.nomeRazaoSocial ?? v.destinatarioRemetente?.nomeRazaoSocial ?? null,
+          dest_cnpj: soDigitos(v.cliente?.cnpjCpf ?? v.destinatarioRemetente?.cnpjCpf ?? null), dest_nome: nomeDest(v) ?? nomeDest(d),
           cfops, valor_produtos: num(v.valorTotalProdutos), valor_total: valor,
           pis_xml: pisInf, cofins_xml: cofinsInf, icms_xml: icmsInf, ipi_xml: ipiInf, xml_completo: !!det,
           extras: { entradaSaida: d.entradaSaida, situacaoDocumento: d.situacaoDocumento, serie: d.serieNota },
@@ -393,7 +428,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
         const data = n.dataAutorizacao ?? n.dataCompetencia ?? n.dataCadastro;
         const valor = num(n.valorTotal);
         const linha = {
-          chave: null, numero: String(n.numeroNf ?? ""), tipo_doc: "nfse", direcao: "saida", data_emissao: (data ?? "").slice(0, 10) || null, competencia: competencia(data),
+          chave: null, numero: String(n.numeroNf ?? ""), tipo_doc: "nfse", direcao: "saida", data_emissao: dataSP(data), competencia: competencia(data),
           emitente_cnpj: soDigitos(n.cnpjEmpresaEmissora) ?? "41466492000192", emitente_nome: "LZ7 ENERGIA LTDA",
           dest_cnpj: soDigitos(n.cliente?.cnpjCpf ?? null), dest_nome: n.cliente?.nomeRazaoSocial ?? null, descricao: x.descricao,
           valor_servicos: valor, valor_total: valor, pis_xml: num(n.servicoValorPis) ?? x.vPIS, cofins_xml: num(n.servicoValorCofins) ?? x.vCOFINS, iss_xml: iss,

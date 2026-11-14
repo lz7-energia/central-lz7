@@ -151,6 +151,9 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   Só resumo/DANFE → **pendente** (fora dos totais).
   Divergente = calculado × informado > R$ 0,01 (só sinaliza). CC-e anexada à nota (texto vem na lista); cancelada sai dos totais com log.
   Deduplicação: mesmo número + mesmo emitente na mesma categoria. Campo ausente = null ("Não informado").
+  Saídas: só nota autorizada. Documento "FINALIZADO" do Flow (nunca transmitido, às vezes com o mesmo número de uma autorizada) é retirado
+  (`situacaoDocumento`: vale "Autorizado…", "Aguardando aprovação/cancelamento", "Erro cancelamento"; "Cancelado" cancela;
+  "Em digitação", "Finalizado", "Rejeitada", "Aguardando autorização" ficam fora). Datas no horário de Brasília (`dataSP`).
 - Decisão na pendência (`fiscal_decidir`): lançar pelo modelo fixo / aguardar XML / mover para Despesas, com quem e quando; XML completo
   que chega depois volta a valer a regra. Tabelas `fiscal_notas`, `fiscal_xml` (XML original), `fiscal_log`; só leitura para a equipe.
 - **Crédito como o escritório** (relatórios de 10/2026): não cumulativo = vendas de produtos × 1,65% / 7,60% − crédito das compras
