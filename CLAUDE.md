@@ -143,13 +143,21 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   `v1/notasFiscaisServico/` + `linkDownloadXml`. Endereços confirmados em 14/11/2026 (tela do Flow + explorador v7).
 - Regras (planilha "PIS E COFINS - Outubro.xlsx"), no `index.ts` da função (testáveis com tsx): Tabela 1 saída produtos e 3 entrada
   produtos = valor total × 1,65% / 7,60%; 2 saída serviços = × 0,65% / 3,00% sempre; 4 entrada serviços = só o informado;
-  6 despesas = XML completo com PIS e COFINS zerados ou CFOP atípico (remessa/retorno conserto, à ordem, devolução); 5 saldo = (1+2) − 3.
-  CFOP do fornecedor mapeado para compra: 5102/6102/5405/6405; fora disso, uso/consumo ou só resumo/DANFE → **pendente** (fora dos totais).
+  6 despesas = CFOP atípico (remessa/retorno conserto, à ordem, devolução); 5 apuração (ver crédito abaixo).
+  Só resumo/DANFE → **pendente** (fora dos totais).
   Divergente = calculado × informado > R$ 0,01 (só sinaliza). CC-e anexada à nota (texto vem na lista); cancelada sai dos totais com log.
   Deduplicação: mesmo número + mesmo emitente na mesma categoria. Campo ausente = null ("Não informado").
 - Decisão na pendência (`fiscal_decidir`): lançar pelo modelo fixo / aguardar XML / mover para Despesas, com quem e quando; XML completo
   que chega depois volta a valer a regra. Tabelas `fiscal_notas`, `fiscal_xml` (XML original), `fiscal_log`; só leitura para a equipe.
-- Cards de simulação (não cumulativo × cumulativo) são só comparação; o oficial é o saldo da Tabela 5.
+- **Crédito como o escritório** (relatórios de 10/2026): não cumulativo = vendas de produtos × 1,65% / 7,60% − crédito das compras
+  marcadas "toma crédito"; serviços emitidos = cumulativo (0,65% / 3,00%, guia separada). Crédito nota a nota (`fiscal_notas.credito`,
+  base = soma dos itens `base_credito`): compra de mercadoria (CFOP do fornecedor 5101/5102/6101/6102/54xx/64xx) toma; combustível,
+  consumo e consumidor final (5929, 5656, 6106, 6108…) não toma; fora das listas → pendente. O PIS destacado pelo fornecedor não decide
+  (o escritório credita compra de Simples). Decisão da equipe ou do escritório (`credito_origem` manual/escritorio) nunca é sobrescrita
+  e vira sugestão para o mesmo fornecedor (`historico`). Serviços recebidos não tomam crédito.
+- **Conferência com o escritório:** a equipe envia os PDFs (relação de entradas/saídas de PIS e COFINS, memória de cálculo, DARF);
+  `lib/fiscal-escritorio.ts` lê o texto (unpdf) → `fiscal_escritorio_notas` / `fiscal_escritorio_apuracao` (`fiscal_importar_escritorio`).
+  `conferir()` (`lib/fiscal.ts`) lista as diferenças nota a nota; "Seguir o escritório" = `fiscal_marcar_credito(ids, credito, 'escritorio')`.
 
 ## Recrutamento e seleção (RH, `/rh`)
 

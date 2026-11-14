@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Nota, TABELAS } from "@/lib/fiscal";
-import { decidir, sincronizarAgora, type Resultado } from "./acoes";
+import type { Divergencia, Nota, TABELAS } from "@/lib/fiscal";
+import { decidir, importarEscritorio, marcarCredito, sincronizarAgora, type Resultado } from "./acoes";
 
 const brl = (v: number | null | undefined) => (v === null || v === undefined ? "Não informado" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
 const ni = (v: unknown) => (v === null || v === undefined || v === "" || (Array.isArray(v) && !v.length) ? "Não informado" : Array.isArray(v) ? v.join(", ") : String(v));
@@ -42,6 +42,7 @@ function Detalhe({ n }: { n: Nota }) {
         <div><dt>Valor dos serviços</dt><dd>{brl(n.valor_servicos)}</dd></div>
         <div><dt>Valor total</dt><dd>{brl(n.valor_total)}</dd></div>
         <div><dt>Base de cálculo</dt><dd>{brl(n.base_calculo)}</dd></div>
+        {n.direcao === "entrada" && n.tipo_doc !== "nfse" && <div><dt>Base do crédito (itens)</dt><dd>{brl(n.base_credito)}</dd></div>}
         <div><dt>PIS informado</dt><dd>{brl(n.pis_xml)}</dd></div>
         <div><dt>COFINS informado</dt><dd>{brl(n.cofins_xml)}</dd></div>
         <div><dt>ICMS informado</dt><dd>{brl(n.icms_xml)}</dd></div>
@@ -61,7 +62,8 @@ type Tab = (typeof TABELAS)[number];
 export function TabelaFiscal({ tabela, notas, total }: { tabela: Tab; notas: Nota[]; total: { qtd: number; valor: number; pis: number; cofins: number; icms: number; ipi: number; iss: number } }) {
   const [aberta, setAberta] = useState<number | null>(null);
   const cols = tabela.colunas;
-  const nomeCol: Record<string, string> = { pis: "PIS", cofins: "COFINS", icms: "ICMS", ipi: "IPI", iss: "ISS", piscofins: "PIS/COFINS" };
+  const credito = tabela.id === "entrada_produtos";
+  const nomeCol: Record<string, string> = credito ? { pis: "Crédito PIS", cofins: "Crédito COFINS", icms: "ICMS", ipi: "IPI" } : { pis: "PIS", cofins: "COFINS", icms: "ICMS", ipi: "IPI", iss: "ISS", piscofins: "PIS/COFINS" };
   const val = (n: Nota, c: string) => (c === "piscofins" ? (n.pis ?? 0) + (n.cofins ?? 0) : (n as never)[c]);
   const tot = (c: string) => (c === "piscofins" ? total.pis + total.cofins : (total as never)[c]);
   return (
@@ -69,7 +71,7 @@ export function TabelaFiscal({ tabela, notas, total }: { tabela: Tab; notas: Not
       <h2>Tabela {tabela.n} — {tabela.titulo} <span className="mudo pequeno">({notas.length})</span></h2>
       {notas.length === 0 ? <p className="mudo pequeno" style={{ margin: 0 }}>Nenhuma nota neste mês.</p> : (
         <div className="tabela-caixa"><table>
-          <thead><tr><th>Discriminação</th><th className="num">{tabela.id.startsWith("saida") ? "Valor de saída" : "Valor"}</th>{cols.map((c) => <th key={c} className="num">{nomeCol[c]}</th>)}<th></th></tr></thead>
+          <thead><tr><th>Discriminação</th>{credito && <th>Crédito</th>}<th className="num">{tabela.id.startsWith("saida") ? "Valor de saída" : "Valor"}</th>{cols.map((c) => <th key={c} className="num">{nomeCol[c]}</th>)}<th></th></tr></thead>
           <tbody>
             {notas.map((n) => (
               <Fragment key={n.id}>
@@ -78,15 +80,16 @@ export function TabelaFiscal({ tabela, notas, total }: { tabela: Tab; notas: Not
                     <strong>NF {n.numero}</strong> · {n.direcao === "saida" ? n.dest_nome || "Não informado" : n.emitente_nome || "Não informado"}
                     <div className="mudo pequeno">{dataBr(n.data_emissao)}{n.cfops?.length ? ` · CFOP ${n.cfops.join(", ")}` : ""}{n.correcoes?.length ? " · tem carta de correção" : ""}</div>
                   </td>
+                  {credito && <td onClick={(e) => e.stopPropagation()}><BotaoCredito n={n} /></td>}
                   <td className="num">{brl(n.valor_total)}</td>
                   {cols.map((c) => <td key={c} className="num">{brl(val(n, c))}{n.status === "divergente" && (c === "pis" || c === "cofins") && <div className="fis-inf">inf. {brl(c === "pis" ? n.pis_xml : n.cofins_xml)}</div>}</td>)}
                   <td>{n.status === "divergente" && <span className="fis-tag div">Divergente</span>}<span className="fis-seta">{aberta === n.id ? "▴" : "▾"}</span></td>
                 </tr>
-                {aberta === n.id && <tr className="fis-aberta"><td colSpan={cols.length + 3}><Detalhe n={n} /></td></tr>}
+                {aberta === n.id && <tr className="fis-aberta"><td colSpan={cols.length + (credito ? 4 : 3)}><Detalhe n={n} /></td></tr>}
               </Fragment>
             ))}
           </tbody>
-          <tfoot><tr className="fis-total"><td>Total</td><td className="num">{brl(total.valor)}</td>{cols.map((c) => <td key={c} className="num">{brl(tot(c))}</td>)}<td></td></tr></tfoot>
+          <tfoot><tr className="fis-total"><td>Total</td>{credito && <td></td>}<td className="num">{brl(total.valor)}</td>{cols.map((c) => <td key={c} className="num">{brl(tot(c))}</td>)}<td></td></tr></tfoot>
         </table></div>
       )}
     </section>
@@ -116,13 +119,105 @@ export function Pendentes({ notas }: { notas: Nota[] }) {
             <span className="fis-seta">{aberta === n.id ? "▴" : "▾"}</span>
           </div>
           <div className="fis-pend-acoes">
-            <button className="botao pequeno" disabled={pend} onClick={() => agir(n.id, "modelo")}>Lançar pelo modelo fixo</button>
+            {n.direcao === "entrada" && n.base_credito !== null && n.xml_completo ? (<>
+              <button className="botao pequeno" disabled={pend} onClick={() => iniciar(async () => { setMsg(await marcarCredito([n.id], true)); router.refresh(); })}>Toma crédito</button>
+              <button className="botao secundario pequeno" disabled={pend} onClick={() => iniciar(async () => { setMsg(await marcarCredito([n.id], false)); router.refresh(); })}>Não toma crédito</button>
+            </>) : <>
+            <button className="botao pequeno" disabled={pend} onClick={() => agir(n.id, "modelo")}>{n.direcao === "entrada" ? "Lançar com crédito (valor total)" : "Lançar pelo modelo fixo"}</button>
             <button className="botao secundario pequeno" disabled={pend} onClick={() => agir(n.id, "aguardar")}>Aguardar o XML</button>
             <button className="botao secundario pequeno" disabled={pend} onClick={() => agir(n.id, "despesas")}>Mover para Despesas</button>
+            </>}
           </div>
           {aberta === n.id && <Detalhe n={n} />}
         </div>
       ))}
     </section>
+  );
+}
+
+const ORIGEM: Record<string, string> = { regra: "pela regra", historico: "como nas notas anteriores do fornecedor", escritorio: "seguindo o escritório", manual: "marcado na tela" };
+
+/** Chave "toma / não toma crédito" na linha da Tabela 3. */
+function BotaoCredito({ n }: { n: Nota }) {
+  const router = useRouter();
+  const [pend, iniciar] = useTransition();
+  const trocar = () => iniciar(async () => { await marcarCredito([n.id], !n.credito); router.refresh(); });
+  return (
+    <div className="fis-credito">
+      <button type="button" className={`fis-chip ${n.credito ? "sim" : "nao"}`} disabled={pend} onClick={trocar} title="Clique para trocar">
+        {pend ? "…" : n.credito ? "Toma" : "Não toma"}
+      </button>
+      {n.credito_origem && <div className="mudo pequeno">{ORIGEM[n.credito_origem]}</div>}
+    </div>
+  );
+}
+
+/** Envio dos PDFs do escritório (relação de entradas e saídas, memória de cálculo, DARF). */
+export function ImportarEscritorio() {
+  const router = useRouter();
+  const [r, enviar, pend] = useActionState(async (s: Resultado, fd: FormData) => { const x = await importarEscritorio(s, fd); router.refresh(); return x; }, {});
+  return (
+    <form action={enviar} className="fis-importar">
+      <input type="file" name="arquivos" accept="application/pdf" multiple required />
+      <button className="botao" disabled={pend}>{pend ? "Lendo os PDFs…" : "Enviar relatórios do escritório"}</button>
+      {r.ok && <div className="ok">{r.ok}</div>}
+      {r.erro && <div className="erro">{r.erro}</div>}
+    </form>
+  );
+}
+
+const TITULO_DIV: Record<Divergencia["tipo"], string> = {
+  credito_so_escritorio: "O escritório tomou crédito e a central não",
+  credito_so_central: "A central toma crédito e o escritório não",
+  fora_do_escritorio: "Com crédito na central, mas fora do relatório do escritório (candidatas à compensação)",
+  base_diferente: "Base do crédito diferente",
+  saida_so_escritorio: "Vendas só no relatório do escritório",
+  saida_so_central: "Vendas só na central",
+  saida_valor: "Vendas com valor diferente",
+};
+
+/** Lista de diferenças nota a nota, com "seguir o escritório". */
+export function Conferencia({ divergencias }: { divergencias: Divergencia[] }) {
+  const router = useRouter();
+  const [pend, iniciar] = useTransition();
+  const [msg, setMsg] = useState<Resultado>({});
+  const seguir = (ids: number[], credito: boolean) => iniciar(async () => { setMsg(await marcarCredito(ids, credito, "escritorio")); router.refresh(); });
+  const paraTomar = divergencias.filter((d) => d.tipo === "credito_so_escritorio" && d.notaId).map((d) => d.notaId!);
+  const paraTirar = divergencias.filter((d) => d.tipo === "credito_so_central" && d.notaId).map((d) => d.notaId!);
+  if (!divergencias.length) return <p className="ok" style={{ margin: 0 }}>Nenhuma diferença nota a nota.</p>;
+  const grupos = (Object.keys(TITULO_DIV) as Divergencia["tipo"][]).map((t) => [t, divergencias.filter((d) => d.tipo === t)] as const).filter(([, l]) => l.length);
+  return (
+    <div>
+      {msg.erro && <div className="erro">{msg.erro}</div>}
+      {msg.ok && <div className="ok">{msg.ok}</div>}
+      {(paraTomar.length > 0 || paraTirar.length > 0) && (
+        <div className="fis-pend-acoes" style={{ marginBottom: 12 }}>
+          <button className="botao pequeno" disabled={pend} onClick={() => iniciar(async () => {
+            const r1 = paraTomar.length ? await marcarCredito(paraTomar, true, "escritorio") : {};
+            const r2 = paraTirar.length ? await marcarCredito(paraTirar, false, "escritorio") : {};
+            setMsg(r1.erro || r2.erro ? { erro: r1.erro || r2.erro } : { ok: "Marcações do escritório aplicadas." }); router.refresh();
+          })}>
+            Seguir o escritório em todas ({paraTomar.length + paraTirar.length})
+          </button>
+        </div>
+      )}
+      {grupos.map(([t, l]) => (
+        <div key={t} className="fis-conf-grupo">
+          <h3>{TITULO_DIV[t]} <span className="mudo pequeno">({l.length})</span></h3>
+          <div className="tabela-caixa"><table>
+            <thead><tr><th>Nota</th><th className="num">Escritório</th><th className="num">Central</th><th></th></tr></thead>
+            <tbody>{l.map((d, i) => (
+              <tr key={i}>
+                <td><strong>NF {d.numero}</strong> · {d.nome}<div className="mudo pequeno">{d.texto}</div></td>
+                <td className="num">{d.escritorio === null ? "—" : brl(d.escritorio)}</td>
+                <td className="num">{d.central === null ? "—" : brl(d.central)}</td>
+                <td>{d.notaId && (d.tipo === "credito_so_escritorio" || d.tipo === "credito_so_central") &&
+                  <button className="botao secundario pequeno" disabled={pend} onClick={() => seguir([d.notaId!], d.tipo === "credito_so_escritorio")}>Seguir o escritório</button>}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        </div>
+      ))}
+    </div>
   );
 }

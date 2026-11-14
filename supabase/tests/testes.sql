@@ -393,3 +393,40 @@ do $$ begin if (select count(*) from public.fiscal_notas) <> 0 then raise except
 reset role;
 delete from public.fiscal_log; delete from public.fiscal_notas;
 do $$ begin raise notice 'OK fiscal'; end $$;
+
+-- 17) Fiscal: toma / não toma crédito e relatórios do escritório
+insert into public.fiscal_notas (origem, flow_id, numero, tipo_doc, direcao, status, categoria, competencia, valor_total, base_credito, credito, credito_origem, pis, cofins, xml_completo)
+values ('recebida', 'c1', '513', 'nfe', 'entrada', 'ok', 'entrada_produtos', '2026-10', 11765.50, 11387.50, false, 'regra', 0, 0, true),
+       ('recebida', 'c2', '777', 'nfe', 'entrada', 'pendente', null, '2026-10', 100, 90, null, null, null, null, true),
+       ('saida_produto', 's1', '964', 'nfe', 'saida', 'ok', 'saida_produtos', '2026-10', 1000, null, null, null, 16.5, 76, true);
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if public.fiscal_marcar_credito(array(select id from public.fiscal_notas where flow_id in ('c1', 'c2', 's1')), true, 'escritorio') <> 2
+    then raise exception 'marcar crédito: deveria mexer só nas duas entradas'; end if;
+end $$;
+select public.fiscal_importar_escritorio('{"relacoes":[{"tributo":"pis","competencia":"2026-10","direcao":"entrada","notas":[{"dia":"28","numero":"513","cfop":"1101","emitente":"NDF","valor_contabil":11765.5,"base":11387.5,"valor":187.89}]}],
+  "memorias":[{"tributo":"pis","competencia":"2026-10","debito_nc":27553.08,"credito":12180.25,"nc_a_pagar":15372.83,"cumulativo_a_pagar":133.11,"total_a_pagar":15505.94}],
+  "darfs":[{"competencia":"2026-10","vencimento":"25/11/2026","itens":[{"codigo":"6912","tributo":"pis","regime":"nc","valor":15372.83}]}]}'::jsonb);
+reset role;
+do $$ declare n public.fiscal_notas; a public.fiscal_escritorio_apuracao; begin
+  select * into n from public.fiscal_notas where flow_id = 'c1';
+  if not n.credito or n.credito_origem <> 'escritorio' or n.pis <> 187.89 or n.cofins <> 865.45 then raise exception 'crédito c1 errado: % % %', n.credito, n.pis, n.cofins; end if;
+  select * into n from public.fiscal_notas where flow_id = 'c2';
+  if n.status <> 'ok' or n.categoria <> 'entrada_produtos' or n.pis <> 1.49 then raise exception 'pendente com crédito errada: % % %', n.status, n.categoria, n.pis; end if;
+  select * into n from public.fiscal_notas where flow_id = 's1';
+  if n.credito is not null or n.pis <> 16.5 then raise exception 'saída não devia mudar'; end if;
+  select * into a from public.fiscal_escritorio_apuracao where competencia = '2026-10' and tributo = 'pis';
+  if a.nc_a_pagar <> 15372.83 or a.darf_nc <> 15372.83 or a.credito <> 12180.25 then raise exception 'apuração do escritório errada'; end if;
+  if (select count(*) from public.fiscal_escritorio_notas) <> 1 then raise exception 'relação do escritório errada'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if (select count(*) from public.fiscal_escritorio_notas) <> 0 then raise exception 'diretoria vê o escritório'; end if;
+  begin perform public.fiscal_marcar_credito(array[1::bigint], true); raise exception 'diretoria marcou crédito';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+delete from public.fiscal_escritorio_notas; delete from public.fiscal_escritorio_apuracao; delete from public.fiscal_log; delete from public.fiscal_notas;
+do $$ begin raise notice 'OK fiscal crédito'; end $$;
