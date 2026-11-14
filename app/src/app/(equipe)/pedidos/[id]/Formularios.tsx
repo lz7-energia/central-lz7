@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { atualizarPedido, comentar, responderPedido, type Estado } from "./acoes";
+import { atualizarPedido, comentar, concluirPedido, linkAcompanhamento, responderPedido, type Estado, type ResultadoLink } from "./acoes";
 import { STATUS, STATUS_EQUIPE, type StatusPedido } from "@/lib/tipos";
 
 type Props = {
@@ -142,5 +142,58 @@ export function FormResposta({ id, prazo, compacto = false }: { id: number; praz
         {compacto && <button type="button" className="botao secundario pequeno" onClick={() => setModo("")}>Cancelar</button>}
       </div>
     </form>
+  );
+}
+
+/** Concluir o pedido (feito e pronto) e mandar o link de acompanhamento para quem pediu. */
+export function CartaoConcluir({ id, status, protocolo, nome, email }: { id: number; status: StatusPedido; protocolo: string; nome: string | null; email: string | null }) {
+  const [estado, acao, salvando] = useActionState<ResultadoLink, FormData>(concluirPedido, {});
+  const [link, setLink] = useState<ResultadoLink>({});
+  const [gerando, setGerando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const atual = link.link ?? estado.link;
+  const concluido = status === "concluido";
+  const pedir = async (enviar: boolean) => { setGerando(true); setCopiado(false); setLink(await linkAcompanhamento(id, enviar)); setGerando(false); };
+  const texto = atual ? `Olá${nome ? `, ${nome.split(" ")[0]}` : ""}! Acompanhe o seu pedido ${protocolo} por este link: ${atual}` : "";
+  return (
+    <div className="cartao">
+      <h2>{concluido ? "Pedido concluído" : "Concluir pedido"}</h2>
+      {!concluido && status !== "aguardando_aprovacao" && (
+        <form action={acao}>
+          <input type="hidden" name="id" value={id} />
+          <div className="campo">
+            <label htmlFor="msg-concluir">Mensagem para o solicitante (opcional)</label>
+            <textarea id="msg-concluir" name="mensagem" maxLength={2000} style={{ minHeight: 56 }} placeholder="Ex.: a nota já foi emitida e está no seu e-mail." />
+          </div>
+          <button className="botao" disabled={salvando}>{salvando ? "Concluindo…" : "✓ Marcar como feito e pronto"}</button>
+          <p className="mudo pequeno" style={{ margin: "6px 0 0" }}>
+            {email ? `O solicitante recebe por e-mail (${email}) o aviso e o link de acompanhamento.` : "O solicitante não tem e-mail cadastrado: copie o link abaixo e mande por WhatsApp."}
+          </p>
+        </form>
+      )}
+      {estado.erro && <div className="erro">{estado.erro}</div>}
+      {estado.ok && <div className="ok">{estado.ok}</div>}
+      <div style={{ marginTop: concluido ? 0 : 14 }}>
+        <strong className="pequeno">Link de acompanhamento</strong>
+        {!atual ? (
+          <div className="acoes" style={{ marginTop: 6 }}>
+            <button type="button" className="botao secundario pequeno" disabled={gerando} onClick={() => pedir(false)}>{gerando ? "Gerando…" : "Gerar link"}</button>
+            {email && <button type="button" className="botao secundario pequeno" disabled={gerando} onClick={() => pedir(true)}>Enviar por e-mail</button>}
+          </div>
+        ) : (
+          <>
+            <input readOnly value={atual} onFocus={(e) => e.currentTarget.select()} style={{ width: "100%", marginTop: 6 }} />
+            <div className="acoes" style={{ marginTop: 6 }}>
+              <button type="button" className="botao secundario pequeno" onClick={async () => { await navigator.clipboard.writeText(atual); setCopiado(true); }}>{copiado ? "Copiado ✓" : "Copiar"}</button>
+              <a className="botao secundario pequeno" href={`https://wa.me/?text=${encodeURIComponent(texto)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+              {email && !link.enviado && !estado.enviado && <button type="button" className="botao secundario pequeno" disabled={gerando} onClick={() => pedir(true)}>Enviar por e-mail</button>}
+            </div>
+          </>
+        )}
+        {link.erro && <div className="erro">{link.erro}</div>}
+        {link.ok && <div className="ok">{link.ok}</div>}
+        <p className="mudo pequeno" style={{ margin: "6px 0 0" }}>O link do e-mail de confirmação continua valendo.</p>
+      </div>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 /** Plataforma de colaboradores (cadastro, folha, recibos): só a equipe da Central e o administrador. Diretoria não vê. */
 export async function pessoaColab() {
   const p = await perfilAtual();
-  if (!p || !p.ativo || (p.papel !== "equipe" && p.papel !== "admin")) return null;
+  if (!p || !p.ativo || !["equipe", "admin", "diretoria"].includes(p.papel)) return null;
   return p;
 }
 export const negado = () => NextResponse.json({ erro: "Sem permissão. Faça login de novo." }, { status: 401 });

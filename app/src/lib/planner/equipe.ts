@@ -24,7 +24,7 @@ export function quando(t: { start?: string; time?: string }) {
 const hash = (t: Tarefa) => JSON.stringify([...CAMPOS.map((c) => t[c] ?? null), t.tipo || "tarefa", [...(t.para || [])].sort()]);
 
 export async function colegas(): Promise<Colega[]> {
-  const { data } = await supabaseServico().from("perfis").select("id, nome, email").eq("ativo", true).in("papel", ["equipe", "admin"]).order("nome");
+  const { data } = await supabaseServico().from("perfis").select("id, nome, email").eq("ativo", true).in("papel", ["equipe", "admin", "diretoria"]).order("nome");
   return (data || []) as Colega[];
 }
 

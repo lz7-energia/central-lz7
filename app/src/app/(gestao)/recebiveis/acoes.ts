@@ -9,7 +9,6 @@ import { GRUPOS, type Grupo } from "@/lib/recebiveis";
 async function equipe(): Promise<Resultado | null> {
   const perfil = await perfilAtual();
   if (!perfil) return { erro: "Sessão expirada. Entre de novo." };
-  if (perfil.papel === "diretoria") return { erro: "Acesso só de leitura." };
   return null;
 }
 

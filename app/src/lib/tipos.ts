@@ -1,10 +1,11 @@
-export type TipoCampo = "texto" | "texto_longo" | "numero" | "data" | "arquivo";
+export type TipoCampo = "texto" | "texto_longo" | "numero" | "data" | "lista" | "arquivo";
 
 export type Campo = {
   chave: string;
   rotulo: string;
   tipo: TipoCampo;
   obrigatorio?: boolean;
+  opcoes?: string[]; // só no tipo "lista"
 };
 
 export type OpcoesPortal = {

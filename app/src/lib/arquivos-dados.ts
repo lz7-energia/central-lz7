@@ -13,7 +13,7 @@ export async function carregarArquivos() {
     todasAsLinhas<Documento>((de, ate) => sb.from("arq_documentos")
       .select("id, unidade_id, tipo_id, titulo, arquivo_nome, tamanho, mime, validade, aviso_dias, restrito, observacao, responsavel_id, enviado_em")
       .order("titulo").range(de, ate)),
-    sb.from("perfis").select("id, nome").in("papel", ["equipe", "admin"]).eq("ativo", true).order("nome"),
+    sb.from("perfis").select("id, nome").in("papel", ["equipe", "admin", "diretoria"]).eq("ativo", true).order("nome"),
   ]);
   return {
     empresas: (e.data ?? []) as Empresa[],

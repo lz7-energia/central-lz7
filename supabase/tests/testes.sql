@@ -135,7 +135,7 @@ do $$ begin
 end $$;
 reset role;
 
--- 7) Recebíveis: equipe anota e conclui; diretoria só lê esta parte
+-- 7) Recebíveis: equipe anota e conclui; diretoria tem acesso total desde 14/11/2026
 insert into auth.users values ('33333333-3333-3333-3333-333333333333');
 insert into public.perfis (id, nome, email, papel) values
   ('33333333-3333-3333-3333-333333333333', 'Diretor', 'diretor@lz7.com.br', 'diretoria');
@@ -152,19 +152,18 @@ do $$ begin
   if (select cobranca_situacao from public.recebiveis where flow_id = 'T3b') <> 'promessa' then raise exception 'diretoria não vê a anotação'; end if;
   if (select cliente from public.recebiveis where flow_id = 'T3b') <> 'Cliente C (Flow)' then raise exception 'cliente'; end if;
   if (select concluida_por from public.cobranca_atualizacoes order by id desc limit 1) <> 'Ana' then raise exception 'carimbo da atualização'; end if;
-  if (select count(*) from public.perfis) <> 1 then raise exception 'diretoria deveria ver só o próprio perfil'; end if;
-  if (select count(*) from public.pedidos) > 0 or (select count(*) from public.painel_faturamento) > 0 then
-    raise exception 'diretoria vê pedidos ou painel';
-  end if;
+  if (select count(*) from public.perfis) < 2 then raise exception 'diretoria deveria ver a equipe'; end if;
   begin
     insert into public.cobranca_notas (titulo_flow_id, situacao) values ('T4a', 'cobrado');
-    raise exception 'diretoria conseguiu anotar';
-  exception when insufficient_privilege then null;
+    raise exception 'ok_desfaz';
+  exception when others then
+    if sqlerrm <> 'ok_desfaz' then raise exception 'diretoria não conseguiu anotar: %', sqlerrm; end if;
   end;
   begin
     insert into public.cobranca_atualizacoes (observacao) values ('x');
-    raise exception 'diretoria conseguiu concluir';
-  exception when insufficient_privilege then null;
+    raise exception 'ok_desfaz';
+  exception when others then
+    if sqlerrm <> 'ok_desfaz' then raise exception 'diretoria não conseguiu concluir: %', sqlerrm; end if;
   end;
   raise notice 'OK recebíveis e diretoria';
 end $$;
@@ -191,10 +190,11 @@ do $$ begin
   if (select count(*) from public.cobranca_situacoes) < 10 then raise exception 'diretoria não lê situações'; end if;
   begin
     insert into public.cobranca_situacoes (id, rotulo, grupo) values ('x', 'x', 'outro');
-    raise exception 'diretoria criou situação';
-  exception when insufficient_privilege then null;
+    raise exception 'ok_desfaz';
+  exception when others then
+    if sqlerrm <> 'ok_desfaz' then raise exception 'diretoria não criou situação: %', sqlerrm; end if;
   end;
-  raise notice 'OK diretoria só lê situações';
+  raise notice 'OK diretoria edita situações';
 end $$;
 reset role;
 
@@ -225,10 +225,12 @@ do $$ begin
   if (select count(*) from public.titulo_ajustes) < 3 then raise exception 'diretoria não vê ajustes'; end if;
   begin
     update public.titulo_ajustes set excluido = false where titulo_flow_id = 'T4a';
-    if found then raise exception 'diretoria alterou ajuste'; end if;
-  exception when insufficient_privilege then null;
+    if not found then raise exception 'diretoria não alterou ajuste'; end if;
+    raise exception 'ok_desfaz';
+  exception when others then
+    if sqlerrm <> 'ok_desfaz' then raise; end if;
   end;
-  raise notice 'OK diretoria só lê ajustes';
+  raise notice 'OK diretoria edita ajustes';
 end $$;
 reset role;
 
@@ -318,7 +320,8 @@ do $$ begin
 end $$;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
 do $$ begin
-  if exists (select 1 from public.arq_documentos) or exists (select 1 from public.arq_empresas) then raise exception 'diretoria vê arquivos'; end if;
+  if not exists (select 1 from public.arq_empresas) then raise exception 'diretoria não vê arquivos'; end if;
+  if (select count(*) from public.arq_documentos) >= 4 then raise exception 'diretoria vê documento restrito'; end if;
 end $$;
 reset role;
 do $$ begin raise notice 'OK arquivos'; end $$;
@@ -334,7 +337,7 @@ do $$ begin
 end $$;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
 do $$ begin
-  if exists (select 1 from public.rh_vagas) or exists (select 1 from public.rh_candidatos) then raise exception 'diretoria vê recrutamento'; end if;
+  if not exists (select 1 from public.rh_vagas) then raise exception 'diretoria não vê recrutamento'; end if;
 end $$;
 reset role;
 do $$ begin raise notice 'OK recrutamento'; end $$;
@@ -368,7 +371,7 @@ do $$ declare d jsonb; begin
 end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria
-do $$ begin if (select count(*) from public.plat_docs) <> 0 then raise exception 'diretoria vê a folha'; end if; end $$;
+do $$ begin if (select count(*) from public.plat_docs) <> 1 then raise exception 'diretoria não vê a folha'; end if; end $$;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 do $$ begin if (select count(*) from public.plat_docs) <> 1 then raise exception 'equipe não vê a folha'; end if; end $$;
 reset role;
@@ -389,7 +392,7 @@ do $$ declare n public.fiscal_notas; begin
 end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
-do $$ begin if (select count(*) from public.fiscal_notas) <> 0 then raise exception 'diretoria vê o fiscal'; end if; end $$;
+do $$ begin if (select count(*) from public.fiscal_notas) <> 1 then raise exception 'diretoria não vê o fiscal'; end if; end $$;
 reset role;
 delete from public.fiscal_log; delete from public.fiscal_notas;
 do $$ begin raise notice 'OK fiscal'; end $$;
@@ -423,10 +426,44 @@ end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
 do $$ begin
-  if (select count(*) from public.fiscal_escritorio_notas) <> 0 then raise exception 'diretoria vê o escritório'; end if;
-  begin perform public.fiscal_marcar_credito(array[1::bigint], true); raise exception 'diretoria marcou crédito';
-  exception when insufficient_privilege then null; end;
+  if (select count(*) from public.fiscal_escritorio_notas) <> 1 then raise exception 'diretoria não vê o escritório'; end if;
 end $$;
 reset role;
 delete from public.fiscal_escritorio_notas; delete from public.fiscal_escritorio_apuracao; delete from public.fiscal_log; delete from public.fiscal_notas;
 do $$ begin raise notice 'OK fiscal crédito'; end $$;
+
+-- 18) Tipos de pedido pela equipe, link extra de acompanhamento e inativo (sem login) sem acesso
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria também pode
+insert into public.tipos_pedido (setor_id, nome, campos) values ((select id from public.setores limit 1), 'Tipo de teste', '[{"chave":"cor","rotulo":"Cor","tipo":"lista","opcoes":["Azul","Verde"],"obrigatorio":true}]');
+do $$ declare v_id bigint; v jsonb; begin
+  select id into v_id from public.tipos_pedido where nome = 'Tipo de teste';
+  if public.excluir_tipo_pedido(v_id) <> 'apagado' then raise exception 'tipo sem pedidos deveria ser apagado'; end if;
+  select id into v_id from public.pedidos limit 1;
+  if v_id is not null then
+    v := public.gerar_link_consulta(v_id);
+    if v->>'token' is null then raise exception 'link não gerado'; end if;
+    if public.excluir_tipo_pedido((select tipo_id from public.pedidos where id = v_id)) <> 'desativado' then raise exception 'tipo usado deveria só sair do portal'; end if;
+  end if;
+end $$;
+reset role;
+do $$ declare v_id bigint; v_tok text; v jsonb; begin
+  select p.id into v_id from public.pedidos p join public.pedido_links l on l.pedido_id = p.id limit 1;
+  if v_id is not null then
+    -- o link novo abre a consulta (o token em si não fica guardado; gera outro aqui como a equipe faria)
+    perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+    set local role authenticated;
+    v := public.gerar_link_consulta(v_id);
+    reset role;
+    if public.consultar_pedido(v->>'protocolo', v->>'token') is null then raise exception 'consulta pelo link novo falhou'; end if;
+    if public.consultar_pedido(v->>'protocolo', 'token-falso') is not null then raise exception 'consulta aceitou token falso'; end if;
+  end if;
+  update public.tipos_pedido set ativo = true;
+end $$;
+update public.perfis set ativo = false where id = '33333333-3333-3333-3333-333333333333';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin if public.eh_equipe() then raise exception 'perfil inativo continua com acesso'; end if; end $$;
+reset role;
+update public.perfis set ativo = true where id = '33333333-3333-3333-3333-333333333333';
+do $$ begin raise notice 'OK tipos de pedido e links'; end $$;
