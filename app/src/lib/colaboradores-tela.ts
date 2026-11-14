@@ -12,7 +12,7 @@ export const TELA = `
 
 <div id="app" hidden>
   <header class="top"><div class="wrap topin">
-    <div class="brand"><span class="mk" aria-hidden="true">LZ7</span><div><h1>LZ7 Energia</h1><small>Controle de Colaboradores · RH</small></div></div>
+    <a class="brand" href="/inicio" title="Voltar para a Central"><img class="logo-img" src="/logo-lz7-branco.png" alt="LZ7"><span class="mod">Colaboradores e folha</span></a>
     <span class="topbtn" id="perfilBtn" title="Usuário logado na Central" style="display:flex;align-items:center;gap:6px"></span>
     <a class="topbtn" href="/inicio" style="margin-left:6px;text-decoration:none">‹ Central</a>
     <nav class="tabs" role="tablist">

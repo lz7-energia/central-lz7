@@ -39,7 +39,7 @@ const sb=window.supabase.createClient(C.url,C.anon,{accessToken:async()=>C.token
 const L=document.getElementById("log"); const log=t=>{L.textContent+="\\n"+t; L.scrollTop=1e9;};
 const COLS=["colab","setores","produtos","itens","entregas","eventos","folhas","config","log"];
 document.getElementById("ir").onclick=async()=>{
-  const fj=document.getElementById("fj").files[0], fa=[...document.getElementById("fa").files];
+  const fj=document.getElementById("fj").files[0], fa=[...document.getElementById("fa").files].filter(f=>/\\.pdf$/i.test(f.name));
   if(!fj){ alert("Escolha o dados_plataforma.json."); return; }
   const b=document.getElementById("ir"); b.disabled=true; L.textContent="Lendo o arquivo…";
   try{
