@@ -33,10 +33,11 @@ export const AREAS: Area[] = [
   {
     id: "rh",
     nome: "RH",
-    descricao: "Recrutamento e seleção",
+    descricao: "Recrutamento, colaboradores e folha",
     modulos: [
       { nome: "Pedidos do RH", icone: "pedidos", descricao: "Vagas, substituições e declarações", href: "/pedidos?setor=rh" },
       { nome: "Vagas e candidatos", icone: "vagas", descricao: "Vagas abertas, currículos e funil de seleção", href: "/rh" },
+      { nome: "Colaboradores e folha", icone: "equipe", descricao: "Cadastro, estoque, eventos, folha e recibos", href: "/colaboradores" },
       { nome: "Agenda de entrevistas", icone: "agenda", descricao: "Autoagendamento entre os entrevistadores" },
       { nome: "Contratos PJ", icone: "contrato", descricao: "Contrato gerado e assinatura eletrônica" },
     ],
@@ -97,7 +98,7 @@ export function IconeArea({ id, tamanho = 28 }: { id: Area["id"]; tamanho?: numb
 
 export type IconeModuloId =
   | "quadro" | "pedidos" | "imposto" | "calendario" | "cancelada" | "boleto" | "recebiveis" | "cobranca"
-  | "caixa" | "conciliacao" | "vagas" | "agenda" | "contrato" | "documentos" | "alerta" | "mural";
+  | "caixa" | "conciliacao" | "vagas" | "equipe" | "agenda" | "contrato" | "documentos" | "alerta" | "mural";
 
 /** Ícone de cada módulo (desenho próprio, traço de 24 px). */
 export function IconeModulo({ id, tamanho = 22 }: { id: IconeModuloId; tamanho?: number }) {
@@ -114,6 +115,7 @@ export function IconeModulo({ id, tamanho = 22 }: { id: IconeModuloId; tamanho?:
     caixa: <><path d="M4 20V10M10 20V5M16 20v-7M20 20H3" /></>,
     conciliacao: <><path d="M4 8h13l-3-3M20 16H7l3 3" /></>,
     vagas: <><circle cx="10" cy="8" r="3.5" /><path d="M3.5 20c.7-3.6 3.3-6 6.5-6 1.6 0 3 .5 4.1 1.5M18 14v6M15 17h6" /></>,
+    equipe: <><circle cx="9" cy="8" r="3" /><circle cx="16.5" cy="9.5" r="2.5" /><path d="M3 19.5c.6-3.2 3-5.5 6-5.5s5.4 2.3 6 5.5M15 14.6c2.6-.3 5 1.6 5.6 4.9" /></>,
     agenda: <><rect x="3.5" y="5" width="12" height="12" rx="2" /><path d="M3.5 9h12M7 3v3M12 3v3" /><circle cx="17" cy="17" r="4" /><path d="M17 15.3V17l1.2 1" /></>,
     contrato: <><path d="M6 3h9l3 3v6M6 3v18h6" /><path d="M9 8h5M9 11.5h6" /><path d="M14.5 20.5l1-3.5 4-4a1.4 1.4 0 0 1 2 2l-4 4z" /></>,
     documentos: <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>,

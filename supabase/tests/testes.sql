@@ -354,3 +354,23 @@ do $$ begin
   if (select count(*) from public.planner_avisos where lido_em is not null) <> 1 then raise exception 'marcou aviso de outro como lido'; end if;
 end $$;
 do $$ begin raise notice 'OK avisos'; end $$;
+
+-- 15) Plataforma de colaboradores: fusão profunda (mapas mesclam, listas substituem), not-found, RLS só equipe
+insert into public.plat_docs (colecao, id, data) values ('folhas', '2026-10', '{"status":"aberta","linhas":{"a":{"pronto":false,"x":[1,2]},"b":{"pronto":false}}}');
+select public.plat_atualizar('folhas', '2026-10', '{"linhas":{"a":{"pronto":true,"x":[9]}}}');
+select public.plat_atualizar('folhas', '2026-10', '{"linhas":{"b":{"pago":true}}}');
+do $$ declare d jsonb; begin
+  select data into d from public.plat_docs where colecao = 'folhas' and id = '2026-10';
+  if d #>> '{linhas,a,pronto}' <> 'true' or d #> '{linhas,a,x}' <> '[9]'::jsonb or d #>> '{linhas,b,pago}' <> 'true'
+     or d #>> '{linhas,b,pronto}' <> 'false' or d ->> 'status' <> 'aberta' then raise exception 'fusão errada: %', d; end if;
+  begin perform public.plat_atualizar('folhas', 'nao-existe', '{}'); raise exception 'devia dar not-found';
+  exception when sqlstate 'P0002' then null; end;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria
+do $$ begin if (select count(*) from public.plat_docs) <> 0 then raise exception 'diretoria vê a folha'; end if; end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin if (select count(*) from public.plat_docs) <> 1 then raise exception 'equipe não vê a folha'; end if; end $$;
+reset role;
+delete from public.plat_docs;
+do $$ begin raise notice 'OK colaboradores'; end $$;

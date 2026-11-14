@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "12mb" },
   },
+  // A plataforma de colaboradores abre os anexos em /_blob/<assetId> (como no original).
+  async rewrites() {
+    return [{ source: "/_blob/:id", destination: "/colaboradores/anexo/:id" }];
+  },
   async headers() {
     return [
       {
