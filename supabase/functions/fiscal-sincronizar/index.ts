@@ -174,17 +174,26 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       const r = await fetch(`${RAIZ}/${caminho}`, { method: "GET", headers: { Authorization: `Bearer ${TOKEN}`, Accept: comoTexto ? "*/*" : "application/json" } });
       if (r.ok) return comoTexto ? await r.text() : await r.json();
       if (t < 3 && (r.status === 429 || r.status >= 500)) { await espera(2000 * t); continue; }
-      throw new Error(`Flow ${caminho.split("?")[0]}: HTTP ${r.status}`);
+      const corpo = (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
+      throw new Error(`Flow ${caminho.split("?")[0]}: HTTP ${r.status}${corpo ? ` (${corpo})` : ""}`);
     }
   }
-  async function paginas(caminho: string, parar?: (item: any) => boolean): Promise<any[]> {
+  // Paginação igual à tela do Flow: skip só a partir da 2ª página (a tela nunca manda skip=0).
+  // Se o Flow recusar o tamanho de página (HTTP 400), tenta de novo com páginas menores.
+  async function paginas(caminho: string, parar?: (item: any) => boolean, tamanho = 100): Promise<any[]> {
     const out: any[] = [];
+    const sep = caminho.includes("?") ? "&" : "?";
     for (let skip = 0; skip < 50000;) {
-      const sep = caminho.includes("?") ? "&" : "?";
-      const p = await flow(`${caminho}${sep}pageSize=100&skip=${skip}`);
+      let p: any;
+      try {
+        p = await flow(`${caminho}${sep}pageSize=${tamanho}${skip > 0 ? `&skip=${skip}` : ""}`);
+      } catch (e) {
+        if (tamanho > 20 && /HTTP 400/.test((e as Error).message)) { tamanho = tamanho > 50 ? 50 : 20; continue; }
+        throw e;
+      }
       const itens = p?.itens ?? [];
       out.push(...itens);
-      if (itens.length < 100 || (parar && itens.some(parar))) break;
+      if (itens.length < tamanho || (parar && itens.some(parar))) break;
       skip += itens.length;
     }
     return out;
@@ -252,7 +261,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       };
 
       // 1) Notas recebidas (produto e serviço)
-      const eventos = await paginas(`documentosEntrada/eventos/?dataEmissaoMaiorOuIgual=${DESDE}`);
+      const eventos = await paginas(`documentosEntrada/eventos/?dataEmissaoMaiorOuIgual=${DESDE}`, undefined, 50);
       for (const e of eventos) {
         const id = String(e.id);
         const cancelada = !!e.dataCancelamento || /cancel/i.test(e.situacao ?? "");
