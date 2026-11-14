@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { pessoaColab, tokenDaSessao } from "@/lib/colaboradores";
+import { paginaAviso, pessoaColab, tokenDaSessao } from "@/lib/colaboradores";
+import { perfilAtual } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
@@ -8,10 +9,14 @@ const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
  *  Os arquivos são lidos no navegador e gravados direto no banco/bucket; nada passa pelo repositório. */
 export async function GET(req: Request) {
   const p = await pessoaColab();
-  if (!p) return NextResponse.redirect(new URL("/entrar?volta=/colaboradores/importar", req.url));
+  if (!p) {
+    const quem = await perfilAtual();
+    if (!quem) return NextResponse.redirect(new URL("/entrar?volta=/colaboradores/importar", req.url));
+    return paginaAviso("Sem acesso", "A plataforma de colaboradores é só da equipe da Central e do administrador.", 403);
+  }
   if (p.papel !== "admin") return new NextResponse("Só o administrador pode importar.", { status: 403 });
   const t = await tokenDaSessao();
-  if (!t) return NextResponse.redirect(new URL("/entrar?volta=/colaboradores/importar", req.url));
+  if (!t) return paginaAviso("Sessão não encontrada", "Você está logado, mas o site não conseguiu ler a sessão para abrir a plataforma. Clique em \"Entrar de novo\" e tente outra vez.");
   const central = { url: process.env.NEXT_PUBLIC_SUPABASE_URL, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, token: t.token };
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Importar plataforma de colaboradores</title><link rel="icon" href="/icon.png">

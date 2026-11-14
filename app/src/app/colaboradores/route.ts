@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { pessoaColab, tokenDaSessao } from "@/lib/colaboradores";
+import { paginaAviso, pessoaColab, tokenDaSessao } from "@/lib/colaboradores";
+import { perfilAtual } from "@/lib/supabase/server";
 import { TELA } from "@/lib/colaboradores-tela";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,13 @@ const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
   const p = await pessoaColab();
-  if (!p) return NextResponse.redirect(new URL("/entrar?volta=/colaboradores", req.url));
+  if (!p) {
+    const quem = await perfilAtual();
+    if (!quem) return NextResponse.redirect(new URL("/entrar?volta=/colaboradores", req.url));
+    return paginaAviso("Sem acesso", "A plataforma de colaboradores é só da equipe da Central e do administrador.", 403);
+  }
   const t = await tokenDaSessao();
-  if (!t) return NextResponse.redirect(new URL("/entrar?volta=/colaboradores", req.url));
+  if (!t) return paginaAviso("Sessão não encontrada", "Você está logado, mas o site não conseguiu ler a sessão para abrir a plataforma. Clique em \"Entrar de novo\" e tente outra vez.");
   const central = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     token: t.token, tokenExp: t.exp, usuario: { id: p.id, nome: p.nome, email: p.email },
