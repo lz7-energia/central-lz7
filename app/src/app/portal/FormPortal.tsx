@@ -214,6 +214,14 @@ function CampoForm({ campo }: { campo: Campo }) {
     case "data":
       entrada = <input id={id} name={id} type="date" required={obrig} />;
       break;
+    case "lista":
+      entrada = (
+        <select id={id} name={id} required={obrig} defaultValue="">
+          <option value="" disabled={obrig}>Escolha…</option>
+          {(campo.opcoes ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      );
+      break;
     case "arquivo":
       entrada = (
         <>

@@ -5,7 +5,7 @@ import { Avatar } from "./Avatar";
 import { Nav } from "./Nav";
 
 export function Topo({ perfil }: { perfil: Perfil }) {
-  const diretoria = perfil.papel === "diretoria";
+  const diretoria = false; // diretoria tem acesso total desde 14/11/2026 (mesmo menu da equipe)
   return (
     <header className="topo">
       <div className="topo-dentro">

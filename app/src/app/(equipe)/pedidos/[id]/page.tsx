@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { supabaseUsuario } from "@/lib/supabase/server";
 import { STATUS, type Campo, type StatusPedido } from "@/lib/tipos";
 import { dataHora, valorCampo } from "@/lib/formato";
-import { FormAtendimento, FormComentario, FormResposta } from "./Formularios";
+import { CartaoConcluir, FormAtendimento, FormComentario, FormResposta } from "./Formularios";
 import { TempoReal } from "../TempoReal";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -156,6 +156,9 @@ export default async function DetalhePedido({ params }: { params: Promise<{ id: 
 
         <div>
           {p.status === "aberto" && <FormResposta id={p.id} prazo={p.prazo} />}
+          {p.solicitantes && !["recusado", "cancelado"].includes(p.status) && (
+            <CartaoConcluir id={p.id} status={p.status} protocolo={p.protocolo} nome={p.solicitantes.nome} email={p.solicitantes.email} />
+          )}
           <FormAtendimento
             id={p.id}
             status={p.status}

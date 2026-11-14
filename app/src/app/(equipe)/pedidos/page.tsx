@@ -69,10 +69,13 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
           <h1>Pedidos</h1>
           <p className="sub">Fila de pedidos abertos pelos colaboradores e pelos módulos da central.</p>
         </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <Link href="/pedidos/tipos" className="botao secundario pequeno">Tipos de pedido</Link>
         <form className="filtros" style={{ margin: 0 }} action="/pedidos">
           {filtros.setor && <input type="hidden" name="setor" value={filtros.setor} />}
           <input type="search" name="busca" placeholder="Buscar protocolo" defaultValue={busca} aria-label="Buscar protocolo" />
         </form>
+        </div>
       </div>
 
       <div className="filtros">

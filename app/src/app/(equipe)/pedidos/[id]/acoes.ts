@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 import { STATUS, STATUS_EQUIPE, type StatusPedido } from "@/lib/tipos";
-import { enviarEmail, esc } from "@/lib/email";
+import { enviarEmail, esc, urlSite } from "@/lib/email";
 
 export type Estado = { erro?: string; ok?: string; texto?: string };
 
@@ -116,4 +116,67 @@ export async function responderPedido(_: Estado, form: FormData): Promise<Estado
   revalidatePath(`/pedidos/${id}`);
   revalidatePath("/pedidos");
   return { ok: decisao === "aceitar" ? `Aceito, com previsão para ${previsao.split("-").reverse().join("/")}.` : "Pedido recusado e solicitante avisado." };
+}
+
+/** Novo link de acompanhamento (o do e-mail de confirmação continua valendo). */
+async function novoLink(id: number): Promise<string | null> {
+  const sb = await supabaseUsuario();
+  const { data, error } = await sb.rpc("gerar_link_consulta", { p_pedido_id: id });
+  if (error || !data) return null;
+  const r = data as { protocolo: string; token: string };
+  return `${urlSite()}/consulta?p=${encodeURIComponent(r.protocolo)}&t=${r.token}`;
+}
+
+async function solicitante(id: number) {
+  const sb = await supabaseUsuario();
+  const { data } = await sb.from("pedidos").select("protocolo, status, solicitantes(nome, email)").eq("id", id).single();
+  return data as unknown as { protocolo: string; status: StatusPedido; solicitantes: { nome: string; email: string | null } | null } | null;
+}
+
+export type ResultadoLink = Estado & { link?: string; email?: string | null; enviado?: boolean };
+
+/** Marca o pedido como concluído e manda o link de acompanhamento para quem pediu. */
+export async function concluirPedido(_: ResultadoLink, form: FormData): Promise<ResultadoLink> {
+  const perfil = await perfilAtual();
+  if (!perfil) return { erro: "Sessão expirada. Entre de novo." };
+  const id = Number(form.get("id"));
+  const msg = String(form.get("mensagem") || "").trim().slice(0, 2000);
+  const p = await solicitante(id);
+  if (!p) return { erro: "Pedido não encontrado." };
+  if (p.status === "aguardando_aprovacao") return { erro: "Este pedido ainda espera a aprovação do gestor." };
+  const sb = await supabaseUsuario();
+  if (p.status !== "concluido") {
+    const { error } = await sb.from("pedidos").update({ status: "concluido" }).eq("id", id);
+    if (error) return { erro: "Não foi possível concluir." };
+  }
+  if (msg) await sb.from("pedido_eventos").insert({ pedido_id: id, tipo: "comentario", texto: msg, autor: perfil.nome });
+  const link = await novoLink(id);
+  let enviado = false;
+  if (p.solicitantes?.email && link) {
+    await enviarEmail(p.solicitantes.email, `Pedido ${p.protocolo}: concluído`,
+      `<p>Olá, ${esc(p.solicitantes.nome)}.</p><p>Seu pedido <strong>${esc(p.protocolo)}</strong> foi <strong>concluído</strong> por ${esc(perfil.nome)}.</p>
+       ${msg ? `<p>${esc(msg)}</p>` : ""}<p><a href="${link}">Ver o acompanhamento do pedido</a></p>`);
+    enviado = true;
+  }
+  revalidatePath(`/pedidos/${id}`);
+  revalidatePath("/pedidos");
+  return { ok: enviado ? "Pedido concluído e link enviado por e-mail." : "Pedido concluído.", link: link ?? undefined, email: p.solicitantes?.email, enviado };
+}
+
+/** Gera o link de acompanhamento para copiar ou mandar; com enviar = true, manda por e-mail ao solicitante. */
+export async function linkAcompanhamento(id: number, enviar: boolean): Promise<ResultadoLink> {
+  const perfil = await perfilAtual();
+  if (!perfil) return { erro: "Sessão expirada. Entre de novo." };
+  const p = await solicitante(id);
+  if (!p) return { erro: "Pedido não encontrado." };
+  const link = await novoLink(id);
+  if (!link) return { erro: "Não foi possível gerar o link." };
+  if (enviar) {
+    if (!p.solicitantes?.email) return { erro: "O solicitante não tem e-mail cadastrado.", link };
+    await enviarEmail(p.solicitantes.email, `Pedido ${p.protocolo}: acompanhamento`,
+      `<p>Olá, ${esc(p.solicitantes.nome)}.</p><p>Este é o link para acompanhar o seu pedido <strong>${esc(p.protocolo)}</strong>
+       (status atual: ${esc(STATUS[p.status].rotulo)}):</p><p><a href="${link}">Ver o acompanhamento do pedido</a></p>`);
+    return { ok: `Link enviado para ${p.solicitantes.email}.`, link, email: p.solicitantes.email, enviado: true };
+  }
+  return { link, email: p.solicitantes?.email };
 }

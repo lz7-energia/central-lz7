@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 
 export type Resultado = { ok?: string; erro?: string };
-const equipe = async () => { const p = await perfilAtual(); return p && p.ativo && (p.papel === "equipe" || p.papel === "admin") ? p : null; };
+const equipe = async () => { const p = await perfilAtual(); return p && p.ativo && (p.papel === "equipe" || p.papel === "admin" || p.papel === "diretoria") ? p : null; };
 
 /** Decisão sobre nota pendente: lançar pelo modelo fixo, mover para Despesas ou aguardar o XML. Registra quem e quando. */
 export async function decidir(id: number, decisao: "modelo" | "despesas" | "aguardar"): Promise<Resultado> {

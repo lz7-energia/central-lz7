@@ -45,7 +45,7 @@ export default async function Recebiveis() {
           <strong>Nenhuma atualização concluída ainda.</strong>
         )}
       </div>
-      <Tabela titulos={titulos} historico={historico} situacoes={(sits ?? []) as Situacao[]} podeEditar={perfil?.papel !== "diretoria"} hoje={hoje} />
+      <Tabela titulos={titulos} historico={historico} situacoes={(sits ?? []) as Situacao[]} podeEditar={!!perfil} hoje={hoje} />
     </>
   );
 }

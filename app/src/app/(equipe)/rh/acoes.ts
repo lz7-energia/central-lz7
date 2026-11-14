@@ -15,7 +15,7 @@ const txt = (v: FormDataEntryValue | null, n = 300) => String(v ?? "").trim().sl
 
 async function quem() {
   const p = await perfilAtual();
-  return p && p.ativo && (p.papel === "equipe" || p.papel === "admin") ? p : null;
+  return p && p.ativo && (p.papel === "equipe" || p.papel === "admin" || p.papel === "diretoria") ? p : null;
 }
 const atualizar = (vagaId?: number | null, candId?: number | null) => {
   revalidatePath("/rh");
@@ -69,6 +69,24 @@ export async function fecharVaga(id: number, fechar: boolean): Promise<Resultado
   if (error) return { erro: "Não foi possível salvar." };
   atualizar(id);
   return { ok: fechar ? "Vaga fechada." : "Vaga reaberta." };
+}
+
+/** Exclui a vaga de vez, com os candidatos dela: tira entrevistas e bônus do planner e apaga os currículos. */
+export async function excluirVaga(id: number): Promise<Resultado> {
+  if (!(await quem())) return { erro: "Sessão expirada. Entre de novo." };
+  const sb = await supabaseUsuario();
+  const { data: cands, error: e1 } = await sb.from("rh_candidatos").select("id, curriculo_path, recrutador_id").eq("vaga_id", id);
+  if (e1) return { erro: "Não foi possível excluir a vaga." };
+  for (const c of cands ?? []) {
+    await sb.from("rh_candidatos").update({ entrevista_em: null, etapa: "reprovado", contratado_em: null }).eq("id", c.id);
+    await refletirCandidatoNoPlanner(c.id, c.recrutador_id);
+  }
+  const { error } = await sb.from("rh_vagas").delete().eq("id", id);
+  if (error) return { erro: "Não foi possível excluir a vaga." };
+  const arquivos = (cands ?? []).map((c) => c.curriculo_path).filter(Boolean) as string[];
+  if (arquivos.length) await supabaseServico().storage.from(BUCKET).remove(arquivos);
+  revalidatePath("/rh");
+  return { ok: "Vaga excluída." };
 }
 
 /* ---------- currículo e candidato repetido ---------- */

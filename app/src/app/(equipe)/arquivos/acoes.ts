@@ -13,7 +13,7 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 async function quem() {
   const p = await perfilAtual();
-  return p && p.ativo && (p.papel === "equipe" || p.papel === "admin") ? p : null;
+  return p && p.ativo && (p.papel === "equipe" || p.papel === "admin" || p.papel === "diretoria") ? p : null;
 }
 
 /** Prepara o envio: devolve um link de envio para cada arquivo (o navegador manda direto ao armazenamento). */

@@ -4,7 +4,7 @@ import { supabaseUsuario } from "@/lib/supabase/server";
 import { carregarListas } from "@/lib/rh-dados";
 import { ETAPAS, diasEntre, tituloVaga, type Candidato, type Vaga } from "@/lib/rh";
 import { hojeSP } from "@/lib/formato";
-import { BotaoFecharVaga, CartaoCandidato, NovoCandidato } from "../../Componentes";
+import { BotaoExcluirVaga, BotaoFecharVaga, CartaoCandidato, NovoCandidato } from "../../Componentes";
 
 export const dynamic = "force-dynamic";
 const br = (d: string | null) => (d ? d.slice(0, 10).split("-").reverse().join("/") : "—");
@@ -47,6 +47,7 @@ export default async function PaginaVaga({ params }: { params: Promise<{ id: str
         <div className="acoes">
           <Link href={`/rh/vagas/${vaga.id}/editar`} className="botao secundario pequeno">Editar vaga</Link>
           <BotaoFecharVaga id={vaga.id} fechada={!!vaga.fechada_em} />
+          <BotaoExcluirVaga id={vaga.id} candidatos={candidatos.length} />
         </div>
       </div>
       {vaga.descricao && <p className="pequeno" style={{ whiteSpace: "pre-wrap" }}>{vaga.descricao}</p>}

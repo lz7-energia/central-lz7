@@ -5,7 +5,7 @@ import { perfilAtual } from "@/lib/supabase/server";
 /** Quem está usando o planner (equipe ou admin, ativo). Diretoria não tem planner. */
 export async function pessoa() {
   const p = await perfilAtual();
-  if (!p || !p.ativo || (p.papel !== "equipe" && p.papel !== "admin")) return null;
+  if (!p || !p.ativo || !["equipe", "admin", "diretoria"].includes(p.papel)) return null;
   return p;
 }
 export const naoAutorizado = () => NextResponse.json({ erro: "Faça login de novo." }, { status: 401 });

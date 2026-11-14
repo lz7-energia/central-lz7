@@ -29,10 +29,10 @@ A empresa não tem equipe de TI: o Claude constrói e mantém este sistema. O do
 |---|---|---|
 | Equipe da central (4 pessoas) | Sim (e-mail Titan) | Tudo, exceto pastas sensíveis |
 | Administrador | Sim | Tudo, inclusive pastas sensíveis e permissões |
-| Diretoria | Sim | Só os Recebíveis, só leitura (perfil `diretoria`) |
+| Diretoria | Sim | Tudo, como a equipe (acesso total desde 14/11/2026; perfil `diretoria`) |
 | Colaboradores (40–50) | **Não** | Só o formulário do portal e a consulta do próprio pedido por protocolo |
 
-Regras de acesso aplicadas no banco (Row Level Security), não só na interface.
+Regras de acesso aplicadas no banco (Row Level Security), não só na interface. `eh_equipe()` = qualquer perfil ativo (equipe, admin, diretoria).
 
 ## API do Flow (mapeada pela própria API em 10/11/2026)
 
@@ -82,6 +82,10 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   (vai por e-mail e aparece na consulta do solicitante). Ação `responderPedido`.
 - Aprovação do gestor por link no e-mail: **desligada em todos os tipos** (decisão de 10/11/2026; aprovações são raras e combinadas direto com os gestores). O recurso existe e pode ser religado por tipo (`tipos_pedido.exige_aprovacao`).
 - Proteção do formulário aberto: limite de envios e verificação anti-robô.
+- **Tipos de pedido** (`/pedidos/tipos`): a equipe cria, edita e exclui tipos e as perguntas de cada um (texto curto/longo, valor, data,
+  lista de opções, anexo). Chave da pergunta antiga é mantida. Excluir (`excluir_tipo_pedido`): sem pedidos apaga; com pedidos só sai do portal ("Voltar ao portal").
+- **Concluir e link de acompanhamento** (página do pedido): "Marcar como feito e pronto" conclui e manda e-mail com link ao solicitante;
+  "Gerar link" cria um link extra (`pedido_links`, `gerar_link_consulta`) para copiar/WhatsApp/e-mail. O link do e-mail de confirmação continua valendo.
 
 ### Recebíveis e inadimplência (Financeiro)
 
@@ -92,7 +96,7 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Aba "A vencer": sem colunas de cobrança; filtros de período (hoje, semana até domingo, mês, ano, tudo) com o total previsto;
   gráfico "Previsão de recebimentos" pelo vencimento (por dia, mês ou ano; clique filtra) e totais dos próximos 7/30/90 dias.
 - A equipe anota em cada título vencido: situação da cobrança, previsão de pagamento e motivo (na tabela: previsão logo abaixo do atraso; motivo em coluna larga, até 3 linhas, clique ou mouse para ler inteiro). "Concluir atualização" registra
-  quem/quando e o retrato dos números; a diretoria vê a data da última atualização concluída.
+  quem/quando e o retrato dos números; todos veem quem/quando editou cada título e a data da última atualização concluída.
 - Ajustes manuais por título, só na central (`titulo_ajustes`; o Flow não é alterado e a sincronização não apaga):
   **baixa manual** (data, valor, observação → vai para Recebidos), **excluir** (aba Excluídos, com restaurar) e **nome para exibir**.
 - Aba Recebidos com **todo o histórico** do Flow (o número na aba é o total; abre em "Este ano") e períodos hoje / semana (seg–dom) / mês / ano / tudo / escolher datas (de–até); gráfico "Recebimentos"
@@ -105,7 +109,7 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Recriado do `planner-index.html` (especificação de 11/11/2026, no projeto ADM). Página própria, fora do layout React:
   `app/src/app/planner/route.ts` (casca HTML) + `app/public/planner-app/planner.css|planner.js` (CSS e JS do original).
   Telas, textos, cores, temas e regras de datas idênticos ao original; só troca `claude.use` pelas rotas `/planner/api/*`.
-- Um planner por pessoa da equipe (diretoria não tem). Tabelas `planner_tasks`, `planner_events`, `planner_settings`,
+- Um planner por pessoa (equipe, admin e diretoria). Tabelas `planner_tasks`, `planner_events`, `planner_settings`,
   `planner_sync_state` (jsonb com os mesmos campos do original); anexos no bucket privado `planner-anexos` (pasta = id da pessoa).
 - Regras de datas existem em dois lugares: `public/planner-app/planner.js` (tela) e `lib/planner/regras.ts` (servidor). Mudou uma, mude a outra.
 - ClickUp pela API REST, só no servidor (`lib/planner/sync.ts`, `CLICKUP_API_TOKEN`, time `CLICKUP_TEAM_ID`=90171579328):
@@ -180,7 +184,7 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   contratação e bônus já pago; `historico = true` não cria tarefa no planner. Vaga antiga: campo "Fechada em".
 - Nomes padronizados ("MARIA DA SILVA" → "Maria da Silva"): `padronizarNome` (`lib/rh.ts`) = `rh_nome_padrao()` no banco.
 - Nome do arquivo do currículo sem acento (o armazenamento do Supabase recusa).
-- Só a equipe (RLS `eh_equipe()`); diretoria não vê. Banco de talentos: fora por enquanto.
+- RLS `eh_equipe()`. Vaga pode ser fechada ou **excluída** (`excluirVaga`: apaga candidatos, currículos e as tarefas do planner). Banco de talentos: fora por enquanto.
 
 ## Colaboradores e folha (RH, `/colaboradores`)
 
@@ -195,7 +199,7 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   substituem; não perde marcação simultânea), tempo real do Supabase (`plat_docs` na publicação `supabase_realtime`),
   token da sessão do site (`/colaboradores/api/token`; a página não renova a sessão sozinha).
 - Anexos no bucket privado `colab-anexos`, nome = assetId; `/_blob/<id>` → `/colaboradores/anexo/[id]` (confere equipe e entrega o arquivo).
-- Acesso: equipe e admin (RLS `eh_equipe()`); diretoria não vê. Importação única em `/colaboradores/importar` (só admin):
+- Acesso: equipe, admin e diretoria (RLS `eh_equipe()`). Importação única em `/colaboradores/importar` (só admin):
   `dados_plataforma.json` + PDFs; os dados pessoais nunca vão para o repositório.
 - Teste de aceite (14/11/2026): planilha, rateios e recibos de outubro idênticos ao original (célula a célula e texto do PDF);
   leitura de recibo idêntica; 40 marcações simultâneas sem perda.

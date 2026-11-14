@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Candidato, Canal, Etapa, Mensagem, Motivo, Pergunta, Vaga } from "@/lib/rh";
 import { EM_ABERTO, ETAPAS, linkWhatsapp, preencherMensagem } from "@/lib/rh";
 import {
-  apagarCandidato, criarCandidato, fecharVaga, lerCurriculo, marcarBonusPago, marcarEntrevista, moverCandidato,
+  apagarCandidato, criarCandidato, excluirVaga, fecharVaga, lerCurriculo, marcarBonusPago, marcarEntrevista, moverCandidato,
   prepararCurriculo, procurarRepetidos, salvarCandidato, salvarItem, salvarVaga, type Repetido, type Resultado,
 } from "./acoes";
 
@@ -80,6 +80,24 @@ export function BotaoFecharVaga({ id, fechada }: { id: number; fechada: boolean 
             onClick={() => iniciar(async () => { await fecharVaga(id, !fechada); router.refresh(); })}>
       {fechada ? "Reabrir vaga" : "Vaga fechada"}
     </button>
+  );
+}
+
+export function BotaoExcluirVaga({ id, candidatos }: { id: number; candidatos: number }) {
+  const router = useRouter();
+  const [pend, iniciar] = useTransition();
+  const [erro, setErro] = useState("");
+  const aviso = candidatos
+    ? `Excluir esta vaga de vez? Os ${candidatos} candidato(s) dela, os currículos e as tarefas de entrevista e bônus no planner também serão apagados. Não dá para desfazer.`
+    : "Excluir esta vaga de vez? Não dá para desfazer.";
+  return (
+    <>
+      <button type="button" className="botao perigo pequeno" disabled={pend}
+              onClick={() => { if (!window.confirm(aviso)) return; iniciar(async () => { const r = await excluirVaga(id); if (r.erro) setErro(r.erro); else router.push("/rh"); }); }}>
+        {pend ? "Excluindo…" : "Excluir vaga"}
+      </button>
+      {erro && <span className="pequeno" style={{ color: "var(--perigo)" }}>{erro}</span>}
+    </>
   );
 }
 
