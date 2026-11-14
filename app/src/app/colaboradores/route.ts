@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // A plataforma de colaboradores é uma página própria (HTML + CSS + JS do original), fora do layout da Central,
 // para manter telas, cálculos e recibos idênticos. O adaptador /colab-app/central.js liga ao Supabase.
-const VERSAO = "1";
+const VERSAO = "2";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     token: t.token, tokenExp: t.exp, usuario: { id: p.id, nome: p.nome, email: p.email },
   };
   const html = `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -32,8 +32,9 @@ export async function GET(req: Request) {
 <link rel="icon" href="/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/colab-app/plataforma.css?v=${VERSAO}">
+<link rel="stylesheet" href="/colab-app/central-tema.css?v=${VERSAO}">
 <style>[hidden]{display:none!important}</style>
 </head>
 <body>

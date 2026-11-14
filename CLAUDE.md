@@ -164,7 +164,7 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - **Regras de cálculo e layout dos recibos não mudam.** `public/colab-app/plataforma.js` é o script original; as únicas trocas
   (marcadas "Central:") são senha própria → login do site, perfil → usuário logado, CDN → `public/colab-app/vendor`
   (copiado do npm por `scripts/copiar-vendor.mjs` no prebuild/predev; xlsx 0.18.5, jspdf 2.5.1, jspdf-autotable 3.8.2,
-  pdfjs-dist 3.11.174, pdf-lib 1.17.1, versões fixas). Tela em `lib/colaboradores-tela.ts`, CSS em `plataforma.css`.
+  pdfjs-dist 3.11.174, pdf-lib 1.17.1, versões fixas). Tela em `lib/colaboradores-tela.ts`, CSS em `plataforma.css` (original) + `central-tema.css` (cores, fonte, cabeçalho e respiro da Central; carregado depois).
 - `public/colab-app/central.js` fornece `window.claude.use("db"|"assets"|"downloads"|"user")` com a mesma interface:
   tabela `plat_docs (colecao, id, data jsonb)`, `update` = `plat_atualizar` (fusão profunda no banco: mapas mesclam, listas
   substituem; não perde marcação simultânea), tempo real do Supabase (`plat_docs` na publicação `supabase_realtime`),

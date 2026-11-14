@@ -1,0 +1,82 @@
+/* Central LZ7 — tema da plataforma de colaboradores.
+ * Carregado DEPOIS de plataforma.css (que fica igual ao original): só cores, fonte, cabeçalho e respiro,
+ * para a plataforma parecer parte da Central. Não muda nada de cálculo nem os recibos em PDF. */
+:root{
+  --bg:#f3f6f4; --surface:#fff; --surface2:#f6f9f7; --ink:#1c2421; --muted:#5c6762; --line:#dfe5e2;
+  --accent:#124735; --accent-ink:#fff; --accent-soft:#e4efe9; --brand:#124735; --brand-ink:#fff; --brand-sub:rgba(255,255,255,.78);
+  --ok:#1e7a55; --ok-bg:#e1f2e9; --bad:#b42318; --bad-bg:#fdecea; --warn:#b54708; --warn-bg:#fdf1e3;
+  --f-display:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --r:10px; --sombra:0 1px 2px rgba(16,24,20,.06),0 1px 3px rgba(16,24,20,.08);
+}
+html,body{margin:0}
+body{font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+
+/* cabeçalho no padrão da Central: logo, nome do módulo, usuário e volta */
+.top{border-bottom:1px solid #0b2f23}
+.topin{padding-block:0;gap:0 16px}
+.brand{padding:0;min-height:58px;text-decoration:none;color:#fff;gap:12px}
+.brand .logo-img{height:30px;width:auto;display:block}
+.brand .mod{font-weight:600;font-size:1.02rem;padding-left:12px;border-left:1px solid rgba(255,255,255,.3);opacity:.95}
+.topbtn{margin-bottom:0;border-radius:999px;padding:5px 12px;font-size:.9rem}
+#perfilBtn{border-color:transparent;cursor:default}
+#perfilBtn:hover{background:transparent}
+.tabs{gap:4px;padding-top:2px}
+.tab{padding:10px 16px 11px;font-size:.95rem;color:rgba(255,255,255,.75);border-radius:10px 10px 0 0}
+.tab:hover{color:#fff;background:rgba(255,255,255,.08)}
+.tab[aria-selected="true"]{background:var(--bg);color:var(--accent)}
+main{padding-block:28px 64px;gap:20px}
+
+/* botões, campos e etiquetas com mais respiro */
+.btn{border-radius:8px;padding:9px 16px;font-weight:600;transition:border-color .15s,background .15s}
+.btn.sm{padding:6px 12px;font-size:13.5px}
+.btn.pri:hover{filter:none;background:#0b2f23;border-color:#0b2f23}
+input,select,textarea{border-radius:8px;padding:10px 12px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+label.f{gap:6px}
+label.f>span{font-size:13px;letter-spacing:0}
+.grid{gap:16px}
+fieldset{border-radius:var(--r);padding:16px 18px 18px;background:var(--surface);box-shadow:var(--sombra)}
+legend{font-size:15px;padding:0 8px}
+.pill{padding:3px 10px;font-size:12.5px}
+.note{font-size:13.5px}
+
+/* resumo e listas */
+.kpis{gap:10px}
+.kpi{padding:9px 18px;box-shadow:var(--sombra)}
+.kpi b{font-size:20px}
+.kpi span{font-size:13.5px}
+.toolbar{gap:10px}
+.list,.tw{box-shadow:var(--sombra)}
+.lhead,.row{padding:13px 18px;gap:16px}
+.lhead{font-size:11.5px}
+.sect{padding:12px 18px;font-size:14px}
+th,td{padding:12px 14px}
+th{font-size:11.5px}
+#v-folha table th,#v-folha table td{padding:10px 8px}
+#v-folha table td b,#v-folha table td strong{white-space:nowrap}
+#v-folha table td{font-size:14px}
+.box{padding:16px 18px;border-radius:var(--r)}
+.h3{font-size:16px}
+.cards{gap:16px}
+.card{padding:18px 20px;box-shadow:var(--sombra);gap:10px}
+.av{width:30px;height:30px;font-size:12px}
+.hero>div{padding:16px 18px}
+
+/* etapas da folha */
+.steps{gap:10px}
+.steps li{padding:14px 16px;border-radius:10px;gap:10px}
+.steps li b{font-size:14px}
+.steps li small{font-size:12.5px}
+.steps .sn{width:24px;height:24px}
+.mchip{padding:9px 14px;border-radius:10px}
+.mchip b{font-size:13.5px}
+
+/* janelas */
+.modal{border-radius:14px;max-width:720px}
+.modal.wide{max-width:1120px}
+.mh{padding:18px 24px}
+.mb{padding:22px 24px;gap:18px}
+.mf{padding:16px 24px}
+dl.kv{gap:16px 22px}
