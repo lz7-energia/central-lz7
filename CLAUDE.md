@@ -157,6 +157,24 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Nome do arquivo do currículo sem acento (o armazenamento do Supabase recusa).
 - Só a equipe (RLS `eh_equipe()`); diretoria não vê. Banco de talentos: fora por enquanto.
 
+## Colaboradores e folha (RH, `/colaboradores`)
+
+- Plataforma "Controle de Colaboradores" migrada do artifact do Claude em 14/11/2026 (cadastro, setores, estoque, eventos,
+  folha com cooperativa/comissões/diaristas/proporcionais, recibos em PDF, planilha do Flow, rateios, leitura de recibo de comissão, histórico).
+- **Regras de cálculo e layout dos recibos não mudam.** `public/colab-app/plataforma.js` é o script original; as únicas trocas
+  (marcadas "Central:") são senha própria → login do site, perfil → usuário logado, CDN → `public/colab-app/vendor`
+  (copiado do npm por `scripts/copiar-vendor.mjs` no prebuild/predev; xlsx 0.18.5, jspdf 2.5.1, jspdf-autotable 3.8.2,
+  pdfjs-dist 3.11.174, pdf-lib 1.17.1, versões fixas). Tela em `lib/colaboradores-tela.ts`, CSS em `plataforma.css`.
+- `public/colab-app/central.js` fornece `window.claude.use("db"|"assets"|"downloads"|"user")` com a mesma interface:
+  tabela `plat_docs (colecao, id, data jsonb)`, `update` = `plat_atualizar` (fusão profunda no banco: mapas mesclam, listas
+  substituem; não perde marcação simultânea), tempo real do Supabase (`plat_docs` na publicação `supabase_realtime`),
+  token da sessão do site (`/colaboradores/api/token`; a página não renova a sessão sozinha).
+- Anexos no bucket privado `colab-anexos`, nome = assetId; `/_blob/<id>` → `/colaboradores/anexo/[id]` (confere equipe e entrega o arquivo).
+- Acesso: equipe e admin (RLS `eh_equipe()`); diretoria não vê. Importação única em `/colaboradores/importar` (só admin):
+  `dados_plataforma.json` + PDFs; os dados pessoais nunca vão para o repositório.
+- Teste de aceite (14/11/2026): planilha, rateios e recibos de outubro idênticos ao original (célula a célula e texto do PDF);
+  leitura de recibo idêntica; 40 marcações simultâneas sem perda.
+
 ## Visual e perfil
 
 - Cor da marca `#124735` (verde do logo); logo branco em `app/public/logo-lz7-branco.png`, ícone do site em `app/src/app/icon.png`.

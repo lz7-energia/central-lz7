@@ -6,17 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node scripts/copiar-vendor.mjs",
+    "predev": "node scripts/copiar-vendor.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2",
     "next": "^16.4.6",
     "nodemailer": "^10.5.0",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "3.11.174",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
-    "unpdf": "^2.1.0"
+    "unpdf": "^2.1.0",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
