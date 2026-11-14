@@ -239,7 +239,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       // O Supabase devolve no máximo 1000 linhas por consulta: lê em páginas.
       const atuais: any[] = [];
       for (let de = 0; ; de += 1000) {
-        const { data, error } = await sb.from("fiscal_notas").select("id, origem, flow_id, status, decisao, numero, categoria, emitente_cnpj, credito, credito_origem, credito_em").order("id").range(de, de + 999);
+        const { data, error } = await sb.from("fiscal_notas").select("id, origem, flow_id, status, decisao, numero, categoria, emitente_cnpj, dest_nome, credito, credito_origem, credito_em").order("id").range(de, de + 999);
         if (error) throw new Error(`ler notas: ${error.message}`);
         atuais.push(...(data ?? []));
         if ((data ?? []).length < 1000) break;
@@ -343,9 +343,26 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       // 2) Notas de produto emitidas pela LZ7
       const docs = (await paginas("v1/documentosSaida/?sortField=numeroNota&sortType=desc&carregarValorTotalNota=true&carregarCfops=true", (d) => (d.dataEmissao ?? "9") < DESDE))
         .filter((d) => (d.dataEmissao ?? "") >= DESDE && !d.homologacao);
+      // Só vale nota AUTORIZADA na Sefaz. O Flow guarda também documentos "FINALIZADO" (nunca transmitidos) com o mesmo
+      // número de uma nota autorizada; eles não são nota fiscal e saem da central (visto na tela do Flow em 14/11/2026).
+      const situacao = (d: any) => String(d.situacaoDocumento ?? d.situacao ?? "");
+      // Lista explícita (não "tudo que não diz autorizado"), para nunca tirar nota boa se o Flow escrever a situação de outro jeito.
+      const naoAutorizados = docs.filter((d) => !d.dataCancelamento && /finaliz|digita|rejeit|deneg|validad|pendente|erro/i.test(situacao(d))).map((d) => String(d.id));
+      resumo.situacoesSaida = Object.fromEntries([...new Set(docs.map(situacao))].map((x) => [x || "(vazio)", docs.filter((d) => situacao(d) === x).length]));
+      if (naoAutorizados.length) {
+        const sair = atuais.filter((n: any) => n.origem === "saida_produto" && naoAutorizados.includes(String(n.flow_id)));
+        if (sair.length) {
+          await sb.from("fiscal_notas").delete().eq("origem", "saida_produto").in("flow_id", sair.map((n: any) => n.flow_id));
+          for (const n of sair) { porChave.delete(`saida_produto|${n.flow_id}`); atuais.splice(atuais.indexOf(n), 1); }
+          await log(null, null, `${sair.length} documento(s) de saída não autorizados na Sefaz (situação "finalizado") retirados da apuração: NF ${sair.map((n: any) => n.numero).join(", ")}`);
+          resumo.naoAutorizadosRetirados = sair.length;
+        }
+      }
+      const nomeDest = (x: any) => x?.cliente?.nomeRazaoSocial ?? x?.destinatarioRemetente?.nomeRazaoSocial ?? x?.nomeDestinatarioRemetente ?? x?.nomeCliente ?? null;
       const camposDetalhe = new Set<string>();
       for (const d of docs) {
         const id = String(d.id);
+        if (naoAutorizados.includes(id)) continue;
         if (d.dataCancelamento) { await cancelar("saida_produto", id, d.dataCancelamento, d.motivoCancelamento ?? d.justificativaCancelamento ?? null); continue; }
         const ant: any = porChave.get(`saida_produto|${id}`);
         let det: any = null;
@@ -354,7 +371,11 @@ if (typeof (globalThis as any).Deno !== "undefined") {
           downloads++;
           det = await flow(`v1/documentosSaida/${id}`).catch(() => null);
           Object.keys(det ?? {}).forEach((k) => camposDetalhe.add(k));
-        } else continue; // já classificada: não muda (cancelamento é tratado acima)
+        } else { // já classificada: não muda a classificação; só completa o destinatário se faltava
+          const nome = nomeDest(d);
+          if (nome && !ant.dest_nome) { await sb.from("fiscal_notas").update({ dest_nome: nome }).eq("id", ant.id); ant.dest_nome = nome; }
+          continue;
+        }
         const v = det ?? d;
         const cfops = unicos([...(Array.isArray(d.cfops) ? d.cfops : String(d.cfops ?? "").split(/[,;\s]+/)), ...(Array.isArray(v.itens) ? v.itens.map((i: any) => String(i.cfop ?? "")) : [])].map(String));
         const valor = num(v.valorTotalNotaFiscal ?? d.valorTotalNotaFiscal);
@@ -364,7 +385,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
           chave: d.chaveDanfe ?? null, numero: String(d.numeroNota ?? ""), tipo_doc: "nfe", direcao: /entrada/i.test(d.entradaSaida ?? "") ? "entrada" : "saida",
           data_emissao: (d.dataEmissao ?? "").slice(0, 10) || null, competencia: competencia(d.dataEmissao),
           emitente_cnpj: "41466492000192", emitente_nome: "LZ7 ENERGIA LTDA",
-          dest_cnpj: soDigitos(v.cliente?.cnpjCpf ?? v.destinatarioRemetente?.cnpjCpf ?? null), dest_nome: v.cliente?.nomeRazaoSocial ?? v.destinatarioRemetente?.nomeRazaoSocial ?? null,
+          dest_cnpj: soDigitos(v.cliente?.cnpjCpf ?? v.destinatarioRemetente?.cnpjCpf ?? null), dest_nome: nomeDest(v) ?? nomeDest(d),
           cfops, valor_produtos: num(v.valorTotalProdutos), valor_total: valor,
           pis_xml: pisInf, cofins_xml: cofinsInf, icms_xml: icmsInf, ipi_xml: ipiInf, xml_completo: !!det,
           extras: { entradaSaida: d.entradaSaida, situacaoDocumento: d.situacaoDocumento, serie: d.serieNota },

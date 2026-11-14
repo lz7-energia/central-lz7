@@ -30,7 +30,7 @@ export async function sincronizarAgora(): Promise<Resultado & { resumo?: Record<
     if (r.status === 429) return { ok: "Já há uma sincronização rodando. Aguarde um pouco." };
     if (!r.ok) return { erro: `A sincronização falhou${j.erro ? `: ${j.erro}` : ""}.` };
     const falta = Number(j.pendentesDeDownload) || 0;
-    return { ok: `Sincronizado: ${j.recebidas ?? 0} recebidas, ${j.saidaProdutos ?? 0} de produto e ${j.saidaServicos ?? 0} de serviço emitidas.${falta ? ` Faltam ${falta} XMLs: clique de novo.` : ""}`, resumo: j };
+    return { ok: `Sincronizado: ${j.recebidas ?? 0} recebidas, ${j.saidaProdutos ?? 0} de produto e ${j.saidaServicos ?? 0} de serviço emitidas.${j.naoAutorizadosRetirados ? ` ${j.naoAutorizadosRetirados} documento(s) não autorizados na Sefaz saíram da apuração.` : ""}${j.situacoesSaida ? ` Situações no Flow: ${Object.entries(j.situacoesSaida).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${falta ? ` Faltam ${falta} XMLs: clique de novo.` : ""}`, resumo: j };
   } catch {
     return { erro: "Não consegui falar com a sincronização. Tente de novo em instantes." };
   }
