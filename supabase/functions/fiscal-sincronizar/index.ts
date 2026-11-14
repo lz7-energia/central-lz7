@@ -39,7 +39,7 @@ export type Lido = {
   numero: string | null; emissao: string | null;
   emitCnpj: string | null; emitNome: string | null; destCnpj: string | null; destNome: string | null;
   cfops: string[]; csts: string[]; ncms: string[]; descricao: string | null;
-  vProd: number | null; vServ: number | null; vNF: number | null; base: number | null;
+  vProd: number | null; vServ: number | null; vNF: number | null; base: number | null; baseItens: number | null;
   vPIS: number | null; vCOFINS: number | null; vICMS: number | null; vIPI: number | null; vISS: number | null;
   tpEmis: string | null; refNFe: string | null;
 };
@@ -47,7 +47,7 @@ export type Lido = {
 export function lerXml(original: string): Lido {
   const xml = semNs(original || "");
   const vazio: Lido = { tipo: "desconhecido", numero: null, emissao: null, emitCnpj: null, emitNome: null, destCnpj: null, destNome: null,
-    cfops: [], csts: [], ncms: [], descricao: null, vProd: null, vServ: null, vNF: null, base: null,
+    cfops: [], csts: [], ncms: [], descricao: null, vProd: null, vServ: null, vNF: null, base: null, baseItens: null,
     vPIS: null, vCOFINS: null, vICMS: null, vIPI: null, vISS: null, tpEmis: null, refNFe: null };
   if (/<resNFe[\s>]/.test(xml) && !/<infNFe[\s>]/.test(xml)) {
     return { ...vazio, tipo: "resumo", emitCnpj: tag(xml, "CNPJ"), emitNome: tag(xml, "xNome"), emissao: tag(xml, "dhEmi"), vNF: num(tag(xml, "vNF")) };
@@ -56,13 +56,15 @@ export function lerXml(original: string): Lido {
     const emit = bloco(xml, "emit") ?? "", dest = bloco(xml, "dest") ?? "", ide = bloco(xml, "ide") ?? "";
     const tot = bloco(xml, "ICMSTot") ?? "";
     const dets = [...xml.matchAll(/<det\s[^>]*>([\s\S]*?)<\/det>/g)].map((m) => m[1]);
+    // Base do crédito como o escritório calcula: soma dos itens (valor do produto − desconto), sem frete/IPI/ST.
+    const baseItens = dets.length ? r2(dets.reduce((s, d) => s + (num(tag(bloco(d, "prod") ?? d, "vProd")) ?? 0) - (num(tag(bloco(d, "prod") ?? d, "vDesc")) ?? 0), 0)) : null;
     const csts = unicos(dets.flatMap((d) => [...tags(bloco(d, "PIS") ?? "", "CST"), ...tags(bloco(d, "ICMS") ?? "", "CST"), ...tags(bloco(d, "ICMS") ?? "", "CSOSN")]));
     return {
       ...vazio, tipo: "nfe", numero: tag(ide, "nNF"), emissao: tag(ide, "dhEmi") ?? tag(ide, "dEmi"),
       emitCnpj: tag(emit, "CNPJ") ?? tag(emit, "CPF"), emitNome: tag(emit, "xNome"), destCnpj: tag(dest, "CNPJ") ?? tag(dest, "CPF"), destNome: tag(dest, "xNome"),
       cfops: unicos(dets.map((d) => tag(d, "CFOP") ?? "")), csts, ncms: unicos(dets.map((d) => tag(d, "NCM") ?? "")),
       descricao: unicos(dets.map((d) => tag(d, "xProd") ?? "")).slice(0, 6).join(" · ") || null,
-      vProd: num(tag(tot, "vProd")), vNF: num(tag(tot, "vNF")), base: num(tag(tot, "vBC")),
+      vProd: num(tag(tot, "vProd")), vNF: num(tag(tot, "vNF")), base: num(tag(tot, "vBC")), baseItens,
       vPIS: num(tag(tot, "vPIS")), vCOFINS: num(tag(tot, "vCOFINS")), vICMS: num(tag(tot, "vICMS")), vIPI: num(tag(tot, "vIPI")),
       tpEmis: tag(ide, "tpEmis"), refNFe: tag(ide, "refNFe"),
     };
@@ -83,9 +85,12 @@ export function lerXml(original: string): Lido {
   return vazio;
 }
 
-/* ---------- classificação (regras da planilha) ---------- */
+/* ---------- classificação (regras da planilha + crédito como o escritório) ---------- */
 // CFOP do FORNECEDOR na nota recebida (5xxx/6xxx = saída dele = compra nossa).
-const VENDA = new Set(["5102", "6102", "5405", "6405"]);
+// Compra de mercadoria (revenda/industrialização, inclusive com ST): o escritório toma crédito (CST 50).
+const COMPRA = new Set(["5101", "6101", "5102", "6102", "5401", "6401", "5402", "6402", "5403", "6403", "6404", "5405", "6405"]);
+// Combustível, venda a consumidor final / não contribuinte, cupom: o escritório lança como uso e consumo, sem crédito (CST 70).
+const SEM_CREDITO = new Set(["5929", "6929", "5656", "6656", "5667", "6667", "5103", "6103", "5104", "6104", "5106", "6106", "5108", "6108", "5933", "6933"]);
 // CFOP da LZ7 nas notas emitidas.
 const SAIDA_PRODUTOS = new Set(["5102", "6102", "5405", "6405", "5949", "6949"]);
 const ENTRADA_PRODUTOS_PROPRIA = new Set(["1102", "2102", "1124", "2124"]);
@@ -101,6 +106,7 @@ const ehAtipico = (c: string) => ATIPICO.has(c);
 export type Classificada = {
   categoria: string | null; status: "ok" | "divergente" | "pendente"; motivo: string | null;
   base: number | null; pis: number | null; cofins: number | null; icms: number | null; ipi: number | null; iss: number | null;
+  credito?: boolean | null; creditoOrigem?: "regra" | "historico" | null; baseCredito?: number | null;
 };
 const modeloProdutos = (valor: number | null, icms: number | null, ipi: number | null): Classificada => ({
   categoria: null, status: "ok", motivo: null, base: valor,
@@ -118,18 +124,38 @@ function divergencia(c: Classificada, pisInf: number | null, cofinsInf: number |
   return c;
 }
 
-/** Nota recebida de produto (NF-e do fornecedor). */
-export function classificarRecebidaProduto(x: Lido, completa: boolean): Classificada {
+/** Entrada de produto com a decisão de crédito: toma = base dos itens × 1,65% / 7,60%; não toma = 0. */
+export function comCredito(base: number | null, credito: boolean | null, icms: number | null, ipi: number | null): Pick<Classificada, "pis" | "cofins" | "icms" | "ipi"> {
+  return {
+    pis: credito ? (base === null ? null : r2(base * ALIQ.produtos.pis)) : 0,
+    cofins: credito ? (base === null ? null : r2(base * ALIQ.produtos.cofins)) : 0,
+    icms: icms ?? 0, ipi: ipi ?? 0,
+  };
+}
+
+/**
+ * Nota recebida de produto (NF-e do fornecedor). Vai para Entrada de Produtos com a sugestão de crédito:
+ *   1) o que a equipe ou o escritório decidiu para o mesmo fornecedor (historico);
+ *   2) senão, pelo CFOP do fornecedor: compra de mercadoria → toma; combustível/consumo → não toma;
+ *   3) CFOP fora dessas listas → pendente, para alguém marcar "toma" ou "não toma".
+ * O PIS/COFINS destacado pelo fornecedor não decide o crédito (o escritório credita compra de Simples, por exemplo).
+ */
+export function classificarRecebidaProduto(x: Lido, completa: boolean, historico: boolean | null = null): Classificada {
   const valor = x.vNF;
   if (x.tipo === "resumo" || !completa || x.tipo !== "nfe")
-    return pendente("Só chegou resumo/DANFE, sem o XML completo — confirmar se lança em Entrada de Produtos pelo modelo fixo ou se espera o XML.", valor);
-  if (x.vPIS === 0 && x.vCOFINS === 0) return despesas(valor, "XML completo com PIS e COFINS zerados (isenção, Simples etc.).");
+    return pendente("Só chegou resumo/DANFE, sem o XML completo — confirmar se lança em Entrada de Produtos pelo modelo fixo (toma crédito pelo valor total) ou se espera o XML.", valor);
   const atipicos = x.cfops.filter(ehAtipico);
-  if (atipicos.length) return despesas(valor, `CFOP atípico sem tabela própria (${atipicos.join(", ")}).`);
-  const fora = x.cfops.filter((c) => !VENDA.has(c));
-  if (!x.cfops.length || fora.length)
-    return pendente(`CFOP ${fora.join(", ") || "não informado"} não está entre os mapeados para compra (5102/6102/5405/6405) — confirmar a classificação.`, valor);
-  return divergencia({ ...modeloProdutos(valor, x.vICMS, x.vIPI), categoria: "entrada_produtos" }, x.vPIS, x.vCOFINS);
+  if (atipicos.length) return { ...despesas(valor, `CFOP atípico sem tabela própria (${atipicos.join(", ")}).`), credito: false, creditoOrigem: "regra", baseCredito: x.baseItens };
+  const base = x.baseItens ?? valor;
+  const montar = (credito: boolean, origem: "regra" | "historico", motivo: string): Classificada =>
+    ({ categoria: "entrada_produtos", status: "ok", motivo, base, ...comCredito(base, credito, x.vICMS, x.vIPI), iss: null, credito, creditoOrigem: origem, baseCredito: base });
+  if (historico !== null)
+    return montar(historico, "historico", historico ? "Toma crédito: mesma decisão já registrada para este fornecedor." : "Não toma crédito: mesma decisão já registrada para este fornecedor.");
+  if (x.cfops.length && x.cfops.every((c) => COMPRA.has(c))) return montar(true, "regra", `Toma crédito: compra de mercadoria (CFOP ${x.cfops.join(", ")}).`);
+  if (x.cfops.length && x.cfops.every((c) => COMPRA.has(c) || SEM_CREDITO.has(c)))
+    return montar(false, "regra", `Não toma crédito: CFOP de combustível, consumo ou consumidor final (${x.cfops.filter((c) => SEM_CREDITO.has(c)).join(", ")}).`);
+  const fora = x.cfops.filter((c) => !COMPRA.has(c) && !SEM_CREDITO.has(c));
+  return { ...pendente(`CFOP ${fora.join(", ") || "não informado"} fora das listas de crédito — marcar se toma crédito ou não.`, valor), baseCredito: base };
 }
 
 /** Nota de serviço recebida (NFS-e do prestador): sem modelo fixo; PIS/COFINS só se informados. */
@@ -174,17 +200,26 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       const r = await fetch(`${RAIZ}/${caminho}`, { method: "GET", headers: { Authorization: `Bearer ${TOKEN}`, Accept: comoTexto ? "*/*" : "application/json" } });
       if (r.ok) return comoTexto ? await r.text() : await r.json();
       if (t < 3 && (r.status === 429 || r.status >= 500)) { await espera(2000 * t); continue; }
-      throw new Error(`Flow ${caminho.split("?")[0]}: HTTP ${r.status}`);
+      const corpo = (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
+      throw new Error(`Flow ${caminho.split("?")[0]}: HTTP ${r.status}${corpo ? ` (${corpo})` : ""}`);
     }
   }
-  async function paginas(caminho: string, parar?: (item: any) => boolean): Promise<any[]> {
+  // Paginação igual à tela do Flow: skip só a partir da 2ª página (a tela nunca manda skip=0).
+  // Se o Flow recusar o tamanho de página (HTTP 400), tenta de novo com páginas menores.
+  async function paginas(caminho: string, parar?: (item: any) => boolean, tamanho = 100): Promise<any[]> {
     const out: any[] = [];
+    const sep = caminho.includes("?") ? "&" : "?";
     for (let skip = 0; skip < 50000;) {
-      const sep = caminho.includes("?") ? "&" : "?";
-      const p = await flow(`${caminho}${sep}pageSize=100&skip=${skip}`);
+      let p: any;
+      try {
+        p = await flow(`${caminho}${sep}pageSize=${tamanho}${skip > 0 ? `&skip=${skip}` : ""}`);
+      } catch (e) {
+        if (tamanho > 20 && /HTTP 400/.test((e as Error).message)) { tamanho = tamanho > 50 ? 50 : 20; continue; }
+        throw e;
+      }
       const itens = p?.itens ?? [];
       out.push(...itens);
-      if (itens.length < 100 || (parar && itens.some(parar))) break;
+      if (itens.length < tamanho || (parar && itens.some(parar))) break;
       skip += itens.length;
     }
     return out;
@@ -201,7 +236,21 @@ if (typeof (globalThis as any).Deno !== "undefined") {
     const resumo: any = { recebidas: 0, saidaProdutos: 0, saidaServicos: 0, xmlBaixados: 0, pendentesDeDownload: 0, canceladas: 0, duplicadas: 0, avisos: [] as string[] };
     let downloads = 0;
     try {
-      const { data: atuais } = await sb.from("fiscal_notas").select("id, origem, flow_id, status, decisao, numero, categoria, emitente_cnpj");
+      // O Supabase devolve no máximo 1000 linhas por consulta: lê em páginas.
+      const atuais: any[] = [];
+      for (let de = 0; ; de += 1000) {
+        const { data, error } = await sb.from("fiscal_notas").select("id, origem, flow_id, status, decisao, numero, categoria, emitente_cnpj, credito, credito_origem, credito_em").order("id").range(de, de + 999);
+        if (error) throw new Error(`ler notas: ${error.message}`);
+        atuais.push(...(data ?? []));
+        if ((data ?? []).length < 1000) break;
+      }
+      // Última decisão de crédito da equipe ou do escritório por fornecedor: vira a sugestão para as próximas notas dele.
+      const historicoCredito = new Map<string, { credito: boolean; em: string }>();
+      for (const n of atuais) {
+        if (!n.emitente_cnpj || n.credito === null || !["manual", "escritorio"].includes(n.credito_origem)) continue;
+        const h = historicoCredito.get(n.emitente_cnpj);
+        if (!h || (n.credito_em ?? "") > h.em) historicoCredito.set(n.emitente_cnpj, { credito: n.credito, em: n.credito_em ?? "" });
+      }
       const porChave = new Map((atuais ?? []).map((n: any) => [`${n.origem}|${n.flow_id}`, n]));
       const { data: xmls } = await sb.from("fiscal_xml").select("origem, flow_id");
       const temXml = new Set((xmls ?? []).map((x: any) => `${x.origem}|${x.flow_id}`));
@@ -219,7 +268,18 @@ if (typeof (globalThis as any).Deno !== "undefined") {
           if (dup) { resumo.duplicadas++; return; }
         }
         const dados: any = { origem, flow_id: flowId, ...linha, sincronizado_em: new Date().toISOString() };
-        if (c) Object.assign(dados, { categoria: c.categoria, status: c.status, motivo: c.motivo, base_calculo: c.base, pis: c.pis, cofins: c.cofins, icms: c.icms, ipi: c.ipi, iss: c.iss });
+        if (c) {
+          // Crédito marcado na tela (equipe ou "seguir o escritório") nunca é sobrescrito pela regra.
+          const manual = ant && ["manual", "escritorio"].includes(ant.credito_origem) && ant.credito !== null;
+          if (manual && (c.categoria === "entrada_produtos" || c.status === "pendente") && c.baseCredito !== undefined) {
+            const b = c.baseCredito ?? c.base;
+            c = { ...c, categoria: "entrada_produtos", status: "ok", motivo: ant.credito ? "Toma crédito (marcado na tela)." : "Não toma crédito (marcado na tela).",
+              ...comCredito(b, ant.credito, c.icms, c.ipi), credito: ant.credito, creditoOrigem: null };
+          }
+          Object.assign(dados, { categoria: c.categoria, status: c.status, motivo: c.motivo, base_calculo: c.base, pis: c.pis, cofins: c.cofins, icms: c.icms, ipi: c.ipi, iss: c.iss });
+          if (c.baseCredito !== undefined) dados.base_credito = c.baseCredito;
+          if (c.credito !== undefined && c.creditoOrigem) Object.assign(dados, { credito: c.credito, credito_origem: c.creditoOrigem });
+        }
         if (cls.status !== "pendente" && ant?.decisao) Object.assign(dados, { decisao: null }); // XML completo chegou: vale a regra
         const { data: s, error } = await sb.from("fiscal_notas").upsert(dados, { onConflict: "origem,flow_id" }).select("id").single();
         if (error) throw new Error(`gravar nota ${linha.numero}: ${error.message}`);
@@ -252,7 +312,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
       };
 
       // 1) Notas recebidas (produto e serviço)
-      const eventos = await paginas(`documentosEntrada/eventos/?dataEmissaoMaiorOuIgual=${DESDE}`);
+      const eventos = await paginas(`documentosEntrada/eventos/?dataEmissaoMaiorOuIgual=${DESDE}`, undefined, 50);
       for (const e of eventos) {
         const id = String(e.id);
         const cancelada = !!e.dataCancelamento || /cancel/i.test(e.situacao ?? "");
@@ -276,7 +336,7 @@ if (typeof (globalThis as any).Deno !== "undefined") {
           xml_completo: x.tipo === "nfe" || x.tipo === "nfse", correcoes,
           extras: { situacao: e.situacao, manifestacao: e.manifestacaoDestinatarioStatus, tpEmis: x.tpEmis, refNFe: x.refNFe, nfeCompleta: e.nfeCompleta },
         };
-        const cls = servico ? classificarRecebidaServico(valor, base.pis_xml, base.cofins_xml, base.iss_xml) : classificarRecebidaProduto(x, e.nfeCompleta !== false);
+        const cls = servico ? classificarRecebidaServico(valor, base.pis_xml, base.cofins_xml, base.iss_xml) : classificarRecebidaProduto(x, e.nfeCompleta !== false, historicoCredito.get(soDigitos(x.emitCnpj ?? e.documentoEmitente) ?? "")?.credito ?? null);
         await salvar("recebida", id, base, cls); resumo.recebidas++;
       }
 
