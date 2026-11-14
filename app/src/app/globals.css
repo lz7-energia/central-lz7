@@ -497,3 +497,50 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .modo-cand button.ativo { background: var(--marca); border-color: var(--marca); color: #fff; font-weight: 600; }
 .cand-hist { font-size: 0.74rem; color: #6b5a00; background: #fbf3d0; border-radius: 6px; padding: 1px 6px; align-self: flex-start; }
 .linha-datas { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0 8px; }
+
+/* ---------- Fiscal: PIS e COFINS ---------- */
+.fis-aviso { background: #fff8e6; border: 1px solid #f1d58f; color: #6b4a00; border-radius: var(--raio); padding: 10px 14px; margin: 14px 0; font-size: .92rem; }
+.fis-meses { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.fis-meses a, .fis-filtro a { text-decoration: none; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto-2); border-radius: 999px; padding: 5px 14px; font-size: .9rem; text-transform: capitalize; }
+.fis-meses a.ativo, .fis-filtro a.ativo { background: var(--marca); border-color: var(--marca); color: #fff; font-weight: 600; }
+.fis-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.fis-card { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px; box-shadow: var(--sombra); display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: var(--texto); }
+.fis-card span { font-size: .85rem; color: var(--texto-2); font-weight: 600; }
+.fis-card strong { font-size: 1.4rem; letter-spacing: -.01em; }
+.fis-card small { color: var(--texto-2); font-size: .78rem; }
+.fis-card.destaque { border-color: var(--marca); background: var(--marca-clara); }
+.fis-card.destaque strong { color: var(--marca-escura); font-size: 1.6rem; }
+.fis-card.sim { border-style: dashed; }
+.fis-card.sim strong { font-size: 1.05rem; }
+.fis-card.contador.alerta strong { color: var(--aviso); }
+.fis-card.contador.aviso strong { color: var(--perigo); }
+.fis-card.contador.sel { outline: 2px solid var(--marca); }
+.fis-filtro { display: flex; gap: 6px; align-items: center; margin: 4px 0 14px; flex-wrap: wrap; }
+.fis-tabela { margin-bottom: 16px; }
+.fis-tabela h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.fis-tabela td.num, .fis-tabela th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fis-linha { cursor: pointer; }
+.fis-linha:hover td { background: #f7faf8; }
+.fis-linha.st-divergente td { background: #fff5f4; }
+.fis-total td { font-weight: 700; border-top: 2px solid var(--borda); }
+.fis-inf { font-size: .75rem; color: var(--perigo); }
+.fis-tag { display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 6px; }
+.fis-tag.div { background: #fdecea; color: var(--perigo); }
+.fis-seta { color: var(--texto-2); }
+.fis-aberta td { background: #fafcfb; }
+.fis-detalhe dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 18px; margin: 6px 0; }
+.fis-detalhe dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-2); font-weight: 600; }
+.fis-detalhe dd { margin: 2px 0 0; font-size: .9rem; overflow-wrap: anywhere; }
+.fis-chave { font-family: ui-monospace, monospace; font-size: .78rem !important; }
+.fis-motivo { margin: 4px 0; font-size: .86rem; padding: 6px 10px; border-radius: 8px; background: #f3f6f4; }
+.fis-motivo.pendente { background: #fff8e6; color: #6b4a00; }
+.fis-motivo.divergente { background: #fdecea; color: var(--perigo); }
+.fis-cce { background: #eef4ff; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: .88rem; }
+.fis-cce p { margin: 4px 0 0; }
+.fis-pendentes { border-color: #f1d58f; }
+.fis-pend { border-top: 1px solid var(--borda); padding: 12px 0; }
+.fis-pend:first-of-type { border-top: 0; }
+.fis-pend-topo { display: flex; justify-content: space-between; gap: 10px; cursor: pointer; }
+.fis-pend-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.fis-lista { margin: 0; padding-left: 18px; font-size: .9rem; }
+.fis-lista li { margin: 3px 0; }

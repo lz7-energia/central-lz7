@@ -12,7 +12,7 @@ export const AREAS: Area[] = [
     modulos: [
       { nome: "Painel de faturamento", icone: "quadro", descricao: "Da obra concluída ao recebimento", href: "/painel" },
       { nome: "Pedidos do Fiscal", icone: "pedidos", descricao: "Solicitações abertas pelos colaboradores", href: "/pedidos?setor=fiscal" },
-      { nome: "PIS/COFINS → CBS", icone: "imposto", descricao: "Parcial semanal e conferência da guia" },
+      { nome: "PIS e COFINS", icone: "imposto", descricao: "Notas do Flow classificadas, saldo do mês e conferência", href: "/fiscal" },
       { nome: "Calendário de obrigações", icone: "calendario", descricao: "Guias, vencimentos e comprovantes" },
       { nome: "Canceladas e cartas de correção", icone: "cancelada", descricao: "Histórico e motivos recorrentes" },
     ],

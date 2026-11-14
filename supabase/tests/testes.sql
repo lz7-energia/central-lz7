@@ -374,3 +374,22 @@ do $$ begin if (select count(*) from public.plat_docs) <> 1 then raise exception
 reset role;
 delete from public.plat_docs;
 do $$ begin raise notice 'OK colaboradores'; end $$;
+
+-- 16) Fiscal: decisão na pendência e leitura só para a equipe
+insert into public.fiscal_notas (origem, flow_id, numero, tipo_doc, direcao, status, competencia, valor_total, icms_xml)
+values ('recebida', 't1', '93753', 'resumo', 'entrada', 'pendente', '2026-10', 5000, 120);
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+select public.fiscal_decidir((select id from public.fiscal_notas where flow_id = 't1'), 'modelo');
+reset role;
+do $$ declare n public.fiscal_notas; begin
+  select * into n from public.fiscal_notas where flow_id = 't1';
+  if n.categoria <> 'entrada_produtos' or n.pis <> 82.50 or n.cofins <> 380.00 or n.icms <> 120 or n.status <> 'ok' or n.decidido_por is null
+    then raise exception 'decisão errada: % % % %', n.categoria, n.pis, n.cofins, n.status; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin if (select count(*) from public.fiscal_notas) <> 0 then raise exception 'diretoria vê o fiscal'; end if; end $$;
+reset role;
+delete from public.fiscal_log; delete from public.fiscal_notas;
+do $$ begin raise notice 'OK fiscal'; end $$;
