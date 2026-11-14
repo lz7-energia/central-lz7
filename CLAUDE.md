@@ -134,6 +134,23 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Validade com aviso (dias antes): selo vencido/vencendo, lista "Vencendo ou vencidos" e **tarefa "Renovar: …" no planner do
   responsável** (`lib/arquivos-planner.ts`, id `doc-<id>`), que a sincronização do planner leva ao ClickUp.
 
+## Fiscal: PIS e COFINS (`/fiscal`)
+
+- Notas do Flow a partir de 10/2026, sincronizadas pela Edge Function `fiscal-sincronizar` (só GET; `supabase/agendar-fiscal.sql`):
+  recebidas = `documentosEntrada/eventos/` (sem `/v1`; `dataEmissaoMaiorOuIgual`) + XML por `documentosEntrada/eventos/obterArquivosNotasRecebidas`
+  (ou `…Nfse`) `?chavesNotas=<chave>&enviaXml=true&enviaPdf=false` (devolve o XML puro, apesar do content-type zip);
+  produto emitidas = `v1/documentosSaida/` + detalhe `v1/documentosSaida/{id}` (valorTotalPis/Cofins); serviço emitidas =
+  `v1/notasFiscaisServico/` + `linkDownloadXml`. Endereços confirmados em 14/11/2026 (tela do Flow + explorador v7).
+- Regras (planilha "PIS E COFINS - Outubro.xlsx"), no `index.ts` da função (testáveis com tsx): Tabela 1 saída produtos e 3 entrada
+  produtos = valor total × 1,65% / 7,60%; 2 saída serviços = × 0,65% / 3,00% sempre; 4 entrada serviços = só o informado;
+  6 despesas = XML completo com PIS e COFINS zerados ou CFOP atípico (remessa/retorno conserto, à ordem, devolução); 5 saldo = (1+2) − 3.
+  CFOP do fornecedor mapeado para compra: 5102/6102/5405/6405; fora disso, uso/consumo ou só resumo/DANFE → **pendente** (fora dos totais).
+  Divergente = calculado × informado > R$ 0,01 (só sinaliza). CC-e anexada à nota (texto vem na lista); cancelada sai dos totais com log.
+  Deduplicação: mesmo número + mesmo emitente na mesma categoria. Campo ausente = null ("Não informado").
+- Decisão na pendência (`fiscal_decidir`): lançar pelo modelo fixo / aguardar XML / mover para Despesas, com quem e quando; XML completo
+  que chega depois volta a valer a regra. Tabelas `fiscal_notas`, `fiscal_xml` (XML original), `fiscal_log`; só leitura para a equipe.
+- Cards de simulação (não cumulativo × cumulativo) são só comparação; o oficial é o saldo da Tabela 5.
+
 ## Recrutamento e seleção (RH, `/rh`)
 
 - Vagas em cards ("3 vagas Vendedor · Comercial WB"): aberta em / dias aberta, previsão (vermelho se passou), gestor, contrato,
