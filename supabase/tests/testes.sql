@@ -467,3 +467,32 @@ do $$ begin if public.eh_equipe() then raise exception 'perfil inativo continua 
 reset role;
 update public.perfis set ativo = true where id = '33333333-3333-3333-3333-333333333333';
 do $$ begin raise notice 'OK tipos de pedido e links'; end $$;
+
+-- 19) Financiamento e confirmação: todos veem; equipe/admin gravam; diretoria só vê
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false); -- equipe
+insert into public.fin_docs (colecao, id, data) values ('pendentes', 'base', '{"fin":[{"t":"WB260028SGL - MAURI (5 KWp)","v":12760.15}],"conf":[],"removidos":[]}');
+insert into public.fin_docs (colecao, id, data) values ('situacoes', 'WB260028SGL', '{"sit":"travado","rota":true}');
+update public.fin_docs set data = '{"sit":"andamento"}' where colecao = 'situacoes' and id = 'WB260028SGL';
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria
+do $$ begin
+  if (select count(*) from public.fin_docs) <> 2 then raise exception 'diretoria não vê o financiamento'; end if;
+  if public.fin_pode_editar() then raise exception 'diretoria poderia editar o financiamento'; end if;
+  begin
+    insert into public.fin_docs (colecao, id, data) values ('status', 'financiamento', '{"por":"Victor"}');
+    raise exception 'diretoria gravou no financiamento';
+  exception when insufficient_privilege then null;
+  end;
+  update public.fin_docs set data = '{}' where colecao = 'situacoes';
+  if found then raise exception 'diretoria alterou situação'; end if;
+  delete from public.fin_docs where colecao = 'situacoes';
+  if found then raise exception 'diretoria apagou situação'; end if;
+end $$;
+reset role;
+do $$ begin
+  if (select data->>'sit' from public.fin_docs where colecao = 'situacoes') <> 'andamento' then raise exception 'situação mudou'; end if;
+  if (select atualizado_por from public.fin_docs where colecao = 'situacoes') <> '11111111-1111-1111-1111-111111111111' then raise exception 'carimbo'; end if;
+  begin insert into public.fin_docs (colecao, id) values ('outra', 'x'); raise exception 'aceitou coleção desconhecida'; exception when check_violation then null; end;
+end $$;
+delete from public.fin_docs;
+do $$ begin raise notice 'OK financiamento'; end $$;

@@ -104,6 +104,20 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - O Supabase devolve no máximo 1000 linhas por consulta: telas usam `lib/paginar.ts` (`todasAsLinhas`) e a sincronização `lerTudo`.
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
 
+### Financiamento e confirmação de pagamento (Financeiro, `/financiamento`)
+
+- Migrado da aba "Financiamento e confirmação" da plataforma Contas a Receber LZ7 em 17/11/2026 (pacote `central-lz7-financiamento`:
+  ESPECIFICACAO.md, referência HTML, dados-atuais.json, PENDENTES_modelo.xlsx). **Regras, cálculos, filtros, cores e textos não mudam.**
+- Página própria (`app/financiamento/route.ts` + `lib/financiamento-tela.ts`): `public/fin-app/financiamento.css|js` são o CSS/JS da
+  referência; únicas trocas marcadas "Central:" (permissão do login e `S.db`). `public/fin-app/central-fin.js` = adaptador estilo
+  Firestore sobre a tabela `fin_docs (colecao, id, data jsonb)` com os mesmos documentos do original: `pendentes/base`,
+  `situacoes/<chave>`, `config/motivosFunil`, `status/financiamento`; tempo real. XLSX do `colab-app/vendor`.
+- Importação aditiva, card que passa de Financiamento para Confirmação, removidos que não voltam, observação editada que vale sempre,
+  "Concluir atualização" sempre como **Victor**: tudo no JS original.
+- Acesso: todos os perfis ativos veem; **só equipe e admin editam; diretoria só vê** (decisão de 17/11/2026), no banco (`fin_pode_editar`, RLS).
+- Migração única: `/financiamento/importar` (só admin) lê o `dados-atuais.json` no navegador; nomes de clientes nunca vão ao repositório.
+- Teste (17/11/2026): 47 cards / R$ 1.663.842,30 e 6 / R$ 280.544,94; planilha modelo = 0 cards novos; diretoria sem botões e o banco recusa gravação.
+
 ## Planner Eisenhower (`/planner`)
 
 - Recriado do `planner-index.html` (especificação de 11/11/2026, no projeto ADM). Página própria, fora do layout React:
