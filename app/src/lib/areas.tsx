@@ -25,6 +25,7 @@ export const AREAS: Area[] = [
       { nome: "Pedidos do Financeiro", icone: "pedidos", descricao: "Pagamentos, reembolsos e cadastros", href: "/pedidos?setor=financeiro" },
       { nome: "Central de boletos", icone: "boleto", descricao: "DDA × nota × boleto lançado" },
       { nome: "Recebíveis e inadimplência", icone: "recebiveis", descricao: "Vencidos, previsões e motivos, do Flow", href: "/recebiveis" },
+      { nome: "Financiamento e confirmação", icone: "financiamento", descricao: "Cards parados em Financiamento e Confirmação de pagamento", href: "/financiamento" },
       { nome: "Régua de cobrança", icone: "cobranca", descricao: "Mensagens de cobrança por WhatsApp e e-mail" },
       { nome: "Fluxo de caixa projetado", icone: "caixa", descricao: "A pagar, a receber e previsto × realizado" },
       { nome: "Conciliação bancária", icone: "conciliacao", descricao: "Extrato × movimento do Flow" },
@@ -97,7 +98,7 @@ export function IconeArea({ id, tamanho = 28 }: { id: Area["id"]; tamanho?: numb
 }
 
 export type IconeModuloId =
-  | "quadro" | "pedidos" | "imposto" | "calendario" | "cancelada" | "boleto" | "recebiveis" | "cobranca"
+  | "quadro" | "pedidos" | "imposto" | "calendario" | "cancelada" | "boleto" | "recebiveis" | "cobranca" | "financiamento"
   | "caixa" | "conciliacao" | "vagas" | "equipe" | "agenda" | "contrato" | "documentos" | "alerta" | "mural";
 
 /** Ícone de cada módulo (desenho próprio, traço de 24 px). */
@@ -111,6 +112,7 @@ export function IconeModulo({ id, tamanho = 22 }: { id: IconeModuloId; tamanho?:
     cancelada: <><path d="M6 3h9l3 3v15H6z" /><path d="M9.5 11.5l5 5M14.5 11.5l-5 5" /></>,
     boleto: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 9v6M10 9v6M12.5 9v6M15 9v6M17 9v6" /></>,
     recebiveis: <><path d="M3 17l5-5 4 3 8-8" /><path d="M15 7h5v5" /></>,
+    financiamento: <><path d="M3 10l9-6 9 6" /><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8" /><path d="M3 20h18" /></>,
     cobranca: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9.5h8M8 12.5h5" /></>,
     caixa: <><path d="M4 20V10M10 20V5M16 20v-7M20 20H3" /></>,
     conciliacao: <><path d="M4 8h13l-3-3M20 16H7l3 3" /></>,
