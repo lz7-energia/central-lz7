@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Página própria com o CSS e o JS da plataforma Comissões LZ7 (sem mudar regras, cálculos nem recibos), fora do layout
 // da Central. As bibliotecas vêm de /colab-app/vendor (mesmas versões do CDN original) e o adaptador
 // /com-app/central-com.js liga ao Supabase (tabela com_docs).
-const VERSAO = "1";
+const VERSAO = "2";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -35,7 +35,8 @@ export async function GET(req: Request) {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/com-app/comissoes.css?v=${VERSAO}">
 <style>.voltar-central{display:block;margin:10px 14px 0;padding:6px 10px;border:1px solid var(--linha);border-radius:8px;color:var(--tinta-2);text-decoration:none;font-weight:600;font-size:12.5px;text-align:center}
-.voltar-central:hover{color:var(--acento);border-color:var(--acento)}</style>
+.voltar-central:hover{color:var(--acento);border-color:var(--acento)}
+.conferir-folha{margin-top:6px;font-weight:500}</style>
 </head>
 <body>
 <div id="app"></div>

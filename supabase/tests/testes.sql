@@ -528,3 +528,74 @@ do $$ begin
 end $$;
 delete from public.com_docs;
 do $$ begin raise notice 'OK comissoes'; end $$;
+
+-- 21) Comissões × folha: cadastro único dos vendedores do Comercial
+insert into public.com_docs (colecao, id, data) values
+  ('pessoas', 'p1', '{"nome":"Fulana de Tal","cpf":"52998224725","data_inicio":"2022-02-02","ativo":true,"nomes_flow":["Fulana"],"vinculos":[{"id":"v1","unidade_id":"u3","cargo_id":"c6","inicio":"2000-01-01","desligamento":false}]}'),
+  ('pessoas', 'p2', '{"nome":"Representante Externo","ativo":true,"nomes_flow":["Rep"],"vinculos":[{"id":"v2","unidade_id":"u4","cargo_id":"c5","inicio":"2000-01-01","desligamento":false}]}'),
+  ('unidades', 'u3', '{"nome":"Wenceslau Braz","responsaveis":[{"id":"r3","pessoa_id":"p1","inicio":"2026-10-14","fim":null}]}');
+insert into public.plat_docs (colecao, id, data) values
+  ('colab', 'c1', '{"nome":"FULANA DE TAL SOUZA","cpf":"529.982.247-25","setor":"Comercial","unidade":"Wenceslau Braz","admissao":"2022-03-01","pixTipo":"Telefone","pixChave":"(43) 99999-0000","desligamento":""}'),
+  ('colab', 'c2', '{"nome":"Novo Vendedor","cpf":"11144477735","setor":"COMERCIAL","unidade":"Londrina","admissao":"2026-11-03","pixTipo":"E-mail","pixChave":"novo@x.com","desligamento":""}'),
+  ('colab', 'c3', '{"nome":"Pessoa do Financeiro","cpf":"39053344705","setor":"Financeiro","admissao":"2025-01-01","desligamento":""}');
+do $$ declare p jsonb; n jsonb; begin
+  select data into p from public.com_docs where colecao = 'pessoas' and id = 'p1';
+  if p->>'colab_id' <> 'c1' or p->>'nome' <> 'FULANA DE TAL SOUZA' then raise exception 'não casou pelo CPF: %', p; end if;
+  if p->>'pix_tipo' <> 'telefone' or p->>'pix_chave' <> '43999990000' then raise exception 'pix: %', p; end if;
+  if p->>'data_inicio' <> '2022-02-02' then raise exception 'trocou a data de início sozinha'; end if;
+  if p->'nomes_flow' <> '["Fulana"]'::jsonb or p->'vinculos'->0->>'cargo_id' <> 'c6' then raise exception 'mexeu no que é das Comissões'; end if;
+  select data into n from public.com_docs where colecao = 'pessoas' and id = 'p-folha-c2';
+  if n is null or n->'vinculos' <> '[]'::jsonb or n->'nomes_flow' <> '[]'::jsonb or n->>'data_inicio' <> '2026-11-03' or n->>'pix_tipo' <> 'email' then raise exception 'novo pendente: %', n; end if;
+  if exists (select 1 from public.com_docs where colecao = 'pessoas' and data->>'colab_id' = 'c3') then raise exception 'trouxe gente fora do Comercial'; end if;
+  if (select count(*) from public.com_docs where colecao = 'auditoria' and data->>'autor' = 'Folha (sincronização)') <> 2 then raise exception 'auditoria da sincronização'; end if;
+end $$;
+-- desligado na folha → desligado nas Comissões, com a regra do botão Desligar
+update public.plat_docs set data = data || '{"desligamento":"2026-11-10","motivoDesligamento":"Pedido de demissão"}' where colecao = 'colab' and id = 'c1';
+do $$ declare p jsonb; u jsonb; begin
+  select data into p from public.com_docs where colecao = 'pessoas' and id = 'p1';
+  if (p->>'ativo')::boolean or p->>'desligado_em' <> '2026-11-10' then raise exception 'não desligou: %', p; end if;
+  if p->'vinculos'->1->>'inicio' <> '2026-11-11' or not (p->'vinculos'->1->>'desligamento')::boolean then raise exception 'vínculo de desligamento: %', p->'vinculos'; end if;
+  select data into u from public.com_docs where colecao = 'unidades' and id = 'u3';
+  if u->'responsaveis'->0->>'fim' <> '2026-11-10' then raise exception 'responsável da unidade não encerrou: %', u; end if;
+end $$;
+-- gravar de novo a folha não duplica nem desliga duas vezes
+update public.plat_docs set data = data || '{"obs":"x"}' where colecao = 'colab' and id = 'c1';
+do $$ begin
+  if jsonb_array_length((select data->'vinculos' from public.com_docs where colecao = 'pessoas' and id = 'p1')) <> 2 then raise exception 'desligou duas vezes'; end if;
+end $$;
+-- erro na sincronização nunca impede a gravação da folha
+update public.plat_docs set data = data || '{"admissao":"data-ruim"}' where colecao = 'colab' and id = 'c2';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false); -- equipe
+do $$ declare r jsonb; c jsonb; begin
+  r := public.com_sincronizar_folha();
+  if (r->>'fora')::int <> 1 or (r->>'criado') is not null then raise exception 'sincronizar tudo: %', r; end if;
+  c := public.com_conferencia_folha();
+  if jsonb_array_length(c->'pendentes') <> 1 or c->'pendentes'->0->>'nome' <> 'Novo Vendedor' then raise exception 'pendentes: %', c; end if;
+  if jsonb_array_length(c->'sem_folha') <> 1 or c->'sem_folha'->0->>'nome' <> 'Representante Externo' then raise exception 'sem folha: %', c; end if;
+  if c::text ~ '52998224725|11144477735' then raise exception 'conferência expôs CPF'; end if;
+end $$;
+reset role;
+update public.com_docs set data = data || '{"data_inicio":"2026-11-01"}' where colecao = 'pessoas' and id = 'p-folha-c2';
+update public.plat_docs set data = data || '{"admissao":"2026-11-03"}' where colecao = 'colab' and id = 'c2';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ declare c jsonb; begin
+  c := public.com_conferencia_folha();
+  if jsonb_array_length(c->'admissao') <> 1 then raise exception 'diferença de admissão: %', c; end if;
+  perform public.com_usar_admissao_folha('p-folha-c2');
+  if (select data->>'data_inicio' from public.com_docs where colecao = 'pessoas' and id = 'p-folha-c2') <> '2026-11-03' then raise exception 'usar admissão'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria
+do $$ begin
+  begin perform public.com_conferencia_folha(); raise exception 'diretoria abriu a conferência'; exception when insufficient_privilege then null; end;
+  begin perform public.com_sincronizar_folha(); raise exception 'diretoria sincronizou'; exception when insufficient_privilege then null; end;
+end $$;
+-- diretoria grava na folha (tem acesso a ela) e a sincronização roda mesmo assim
+update public.plat_docs set data = data || '{"nome":"Novo Vendedor Silva"}' where colecao = 'colab' and id = 'c2';
+reset role;
+do $$ begin
+  if (select data->>'nome' from public.com_docs where colecao = 'pessoas' and id = 'p-folha-c2') <> 'Novo Vendedor Silva' then raise exception 'folha gravada pela diretoria não sincronizou'; end if;
+end $$;
+delete from public.com_docs; delete from public.plat_docs where colecao = 'colab' and id in ('c1', 'c2', 'c3');
+do $$ begin raise notice 'OK comissoes x folha'; end $$;

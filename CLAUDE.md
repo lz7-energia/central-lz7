@@ -237,6 +237,17 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Teste (17/11/2026, dados reais): outubro/2026 a pagar R$ 25.578,68; Pamela R$ 1.577,57; Thiago R$ 693,90; Ademir R$ 561,40;
   Beatriz R$ 8.715,84; recibo em PDF ok; auditoria com o nome de quem fez; diretoria recebe 403 e o banco não devolve nada.
   Ações antigas da auditoria aparecem como "usuário" (eram de outra conta).
+- **Cadastro único com a folha** (decisão de 17/11/2026; `20261117000022_comissoes_folha.sql`): colaborador da folha (`plat_docs` colab)
+  com setor que contém "Comercial" é ligado à pessoa das Comissões (`pessoas.colab_id`; casa por colab_id, depois CPF, depois nome).
+  Da folha vêm sozinhos: nome, CPF, Pix e desligamento (mesma regra do "Desligar": vínculo de desligamento no dia seguinte e
+  responsável de unidade encerrado). Data de início só se estiver vazia (define o 1º/2º/3º mês da meta; diferença vai para a conferência,
+  botão "Usar a da folha" = `com_usar_admissao_folha`). Novo no Comercial = pessoa `p-folha-<id>` **pendente de cargo**: sem vínculo e
+  sem "Nomes no Flow" (pedidos dele seguem "vendedor não cadastrado" até escolherem unidade e cargo). Cargo, unidade, regra, salário base,
+  Nomes no Flow e isenção da cooperativa continuam só nas Comissões. A regra de desligar existe em dois lugares (`com_sync_colab` no banco
+  e `desligarPessoa` no `comissoes.js`): mudou uma, mude a outra.
+- Roda pelo gatilho `com_folha` (cada gravação de colaborador na folha; erro nunca impede a folha), ao abrir `/comissoes` e no fim da
+  importação (`com_sincronizar_folha`). Auditoria com autor "Folha (sincronização)". Conferência em `/comissoes/folha`
+  (`com_conferencia_folha`, sem CPF/Pix): pendentes de cargo, admissão diferente, ligados fora do Comercial, sem par na folha.
 
 ## Visual e perfil
 
