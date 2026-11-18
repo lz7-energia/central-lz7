@@ -221,6 +221,23 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Teste de aceite (14/11/2026): planilha, rateios e recibos de outubro idênticos ao original (célula a célula e texto do PDF);
   leitura de recibo idêntica; 40 marcações simultâneas sem perda.
 
+## Comissões LZ7 (RH, `/comissoes`)
+
+- Plataforma "Comissões LZ7" (apuração mensal, pedidos, lançamentos, bandeiras, vendedores, unidades, cargos e faixas, recibos)
+  migrada do artifact do Claude em 17/11/2026 (pacote `comissoes-lz7-central17`). **Regras de cálculo e recibos não mudam**;
+  regras completas no doc `claude/comissoes-lz7-regras.md` do projeto ADM. Mudança de cálculo só com pedido e confirmação do usuário (e atualizar o doc).
+- Página própria (`app/comissoes/route.ts`): `public/com-app/comissoes.css|js` são o CSS e o script originais, separados do HTML sem
+  alteração; única troca marcada "Central:" é o texto do painel Acesso. Bibliotecas do `colab-app/vendor` (mesmas versões do CDN).
+  `public/com-app/central-com.js` fornece `window.claude.use("db"|"user"|"downloads")`: tabela `com_docs (colecao, id, data jsonb)`
+  com as mesmas coleções do original (cfg, unidades, cargos, pessoas, pedidos/<mês>, ajustes, apuracoes, lancamentos, fechamentos,
+  recibos, pagamentos, auditoria), tempo real; usuário = `u_<id do perfil>` (nomes pela tabela `perfis`); também põe o link "‹ Central" no menu.
+- Acesso: **só equipe e admin** veem e editam; diretoria não vê (decisão de 17/11/2026: salários, CPF, Pix), no banco (`com_pode`, RLS).
+- Migração única: `/comissoes/importar` (só admin) lê o `backup-completo-*.json` no navegador e confere as contagens. Os dados nunca vão ao repositório.
+  Importar antes de alguém abrir a plataforma (com banco vazio ela cria cadastros padrão; a importação apaga antes por padrão).
+- Teste (17/11/2026, dados reais): outubro/2026 a pagar R$ 25.578,68; Pamela R$ 1.577,57; Thiago R$ 693,90; Ademir R$ 561,40;
+  Beatriz R$ 8.715,84; recibo em PDF ok; auditoria com o nome de quem fez; diretoria recebe 403 e o banco não devolve nada.
+  Ações antigas da auditoria aparecem como "usuário" (eram de outra conta).
+
 ## Visual e perfil
 
 - Cor da marca `#124735` (verde do logo); logo branco em `app/public/logo-lz7-branco.png`, ícone do site em `app/src/app/icon.png`.
