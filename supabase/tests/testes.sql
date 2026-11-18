@@ -496,3 +496,35 @@ do $$ begin
 end $$;
 delete from public.fin_docs;
 do $$ begin raise notice 'OK financiamento'; end $$;
+
+-- 20) Comissões LZ7: só equipe e admin veem e gravam; diretoria não vê nada
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false); -- equipe
+insert into public.com_docs (colecao, id, data) values ('pessoas', 'p1', '{"nome":"Fulana","cpf":"00000000000","salario_base":7000}');
+insert into public.com_docs (colecao, id, data) values ('cfg', 'geral', '{"inicio_apuracao":"2026-10"}');
+update public.com_docs set data = '{"inicio_apuracao":"2026-10","semeado":true}' where colecao = 'cfg' and id = 'geral';
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria
+do $$ begin
+  if (select count(*) from public.com_docs) <> 0 then raise exception 'diretoria vê as comissões'; end if;
+  if public.com_pode() then raise exception 'diretoria teria acesso às comissões'; end if;
+  begin
+    insert into public.com_docs (colecao, id, data) values ('lancamentos', 'x', '{}');
+    raise exception 'diretoria gravou nas comissões';
+  exception when insufficient_privilege then null;
+  end;
+  update public.com_docs set data = '{}' where colecao = 'pessoas';
+  if found then raise exception 'diretoria alterou colaborador'; end if;
+  delete from public.com_docs where colecao = 'pessoas';
+  if found then raise exception 'diretoria apagou colaborador'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false); -- equipe
+delete from public.com_docs where colecao = 'pessoas' and id = 'p1';
+reset role;
+do $$ begin
+  if (select count(*) from public.com_docs) <> 1 then raise exception 'equipe não apagou'; end if;
+  if (select data->>'semeado' from public.com_docs where colecao = 'cfg') <> 'true' then raise exception 'cfg não atualizou'; end if;
+  if (select atualizado_por from public.com_docs where colecao = 'cfg') <> '11111111-1111-1111-1111-111111111111' then raise exception 'carimbo'; end if;
+  begin insert into public.com_docs (colecao, id) values ('outra', 'x'); raise exception 'aceitou coleção desconhecida'; exception when check_violation then null; end;
+end $$;
+delete from public.com_docs;
+do $$ begin raise notice 'OK comissoes'; end $$;

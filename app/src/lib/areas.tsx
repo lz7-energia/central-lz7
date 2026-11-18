@@ -39,6 +39,7 @@ export const AREAS: Area[] = [
       { nome: "Pedidos do RH", icone: "pedidos", descricao: "Vagas, substituições e declarações", href: "/pedidos?setor=rh" },
       { nome: "Vagas e candidatos", icone: "vagas", descricao: "Vagas abertas, currículos e funil de seleção", href: "/rh" },
       { nome: "Colaboradores e folha", icone: "equipe", descricao: "Cadastro, estoque, eventos, folha e recibos", href: "/colaboradores" },
+      { nome: "Comissões", icone: "comissoes", descricao: "Apuração mensal, bandeiras, lançamentos e recibos de comissão", href: "/comissoes" },
       { nome: "Agenda de entrevistas", icone: "agenda", descricao: "Autoagendamento entre os entrevistadores" },
       { nome: "Contratos PJ", icone: "contrato", descricao: "Contrato gerado e assinatura eletrônica" },
     ],
@@ -98,7 +99,7 @@ export function IconeArea({ id, tamanho = 28 }: { id: Area["id"]; tamanho?: numb
 }
 
 export type IconeModuloId =
-  | "quadro" | "pedidos" | "imposto" | "calendario" | "cancelada" | "boleto" | "recebiveis" | "cobranca" | "financiamento"
+  | "quadro" | "pedidos" | "imposto" | "calendario" | "cancelada" | "boleto" | "recebiveis" | "cobranca" | "financiamento" | "comissoes"
   | "caixa" | "conciliacao" | "vagas" | "equipe" | "agenda" | "contrato" | "documentos" | "alerta" | "mural";
 
 /** Ícone de cada módulo (desenho próprio, traço de 24 px). */
@@ -113,6 +114,7 @@ export function IconeModulo({ id, tamanho = 22 }: { id: IconeModuloId; tamanho?:
     boleto: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 9v6M10 9v6M12.5 9v6M15 9v6M17 9v6" /></>,
     recebiveis: <><path d="M3 17l5-5 4 3 8-8" /><path d="M15 7h5v5" /></>,
     financiamento: <><path d="M3 10l9-6 9 6" /><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8" /><path d="M3 20h18" /></>,
+    comissoes: <><circle cx="12" cy="12" r="8.5" /><path d="M14.8 9.2c-.5-.9-1.5-1.4-2.8-1.4-1.6 0-2.7.8-2.7 2 0 2.8 5.6 1.4 5.6 4.3 0 1.2-1.2 2.1-2.9 2.1-1.4 0-2.5-.6-3-1.6M12 6.3v1.5M12 16.3v1.4" /></>,
     cobranca: <><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9.5h8M8 12.5h5" /></>,
     caixa: <><path d="M4 20V10M10 20V5M16 20v-7M20 20H3" /></>,
     conciliacao: <><path d="M4 8h13l-3-3M20 16H7l3 3" /></>,
