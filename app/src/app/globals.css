@@ -588,3 +588,7 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
   .abas { overflow-x: auto; max-width: 100%; }
   .abas a { white-space: nowrap; }
 }
+
+/* Tabela longa (Recebíveis): rola dentro da caixa, com a barra lateral sempre à vista no pé da tela e o cabeçalho fixo. */
+.tabela-rolagem { max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); overflow: auto; }
+.tabela-rolagem thead th { position: sticky; top: 0; z-index: 1; box-shadow: inset 0 -1px 0 var(--borda); }

@@ -237,7 +237,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
         </div>
       )}
 
-      <div className="tabela-caixa" style={pendente ? { opacity: 0.6 } : undefined}>
+      <div className="tabela-caixa tabela-rolagem" style={pendente ? { opacity: 0.6 } : undefined}>
         <table>
           <thead>
             <tr>
