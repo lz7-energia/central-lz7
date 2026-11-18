@@ -47,6 +47,8 @@ export type Recebivel = {
   nome_exibicao: string | null;
   ajuste_por: string | null;
   ajuste_em: string | null;
+  id_cliente: string | null;
+  financiamento: boolean;
 };
 
 export type Atualizacao = {

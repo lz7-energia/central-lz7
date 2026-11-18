@@ -102,7 +102,23 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Aba Recebidos com **todo o histórico** do Flow (o número na aba é o total; abre em "Este ano") e períodos hoje / semana (seg–dom) / mês / ano / tudo / escolher datas (de–até); gráfico "Recebimentos"
   por dia, mês ou ano (clique filtra). Todas as colunas principais ordenáveis (clique no título; sem data vai para o fim).
 - O Supabase devolve no máximo 1000 linhas por consulta: telas usam `lib/paginar.ts` (`todasAsLinhas`) e a sincronização `lerTudo`.
+- **Pago por financiamento** (`titulo_ajustes.financiamento`): marcado no título (vencidos/a vencer); fica fora da régua de cobrança.
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
+
+### Régua de cobrança (Financeiro, `/cobranca`)
+
+- Decisões de 17/11/2026: etapas no dia do vencimento e depois 3, 7, 15 e 30 dias (`cobranca_regua_etapas`, dias/nome/texto/ativa,
+  editáveis na aba "Etapas e textos"); só WhatsApp semiautomático por enquanto (e-mail automático entra quando o Titan estiver
+  configurado; canal `email` já previsto); textos escritos pelo Claude, a equipe ajusta. Variáveis: `{nome} {lista} {total} {dias} {vencimento}`.
+- Regras em `lib/regua.ts` (funções puras): entra o título em aberto que vence hoje ou já venceu; etapa devida = a ativa de maior
+  "dias" já alcançada (quem chega atrasado recebe só a etapa atual); uma mensagem por cliente com todos os títulos devendo etapa
+  (vale a mais avançada; cada título registra a própria etapa). `{nome}` = primeiro nome (pessoa) ou razão social (empresa).
+- Para sozinha: recebido (Flow ou baixa manual), excluído, **pago por financiamento** (marcado nos Recebíveis) ou situação de cobrança
+  com `pausa_regua` (de fábrica: negociação, aguardando terceiro e jurídico; configurável).
+- "Abrir WhatsApp e registrar" abre `wa.me/55…?text=` e grava `cobranca_envios` (lote = uma mensagem; quem, quando, telefone, texto);
+  "Pular esta etapa" exige motivo. Título "Sem contato" vira "Cobrado". Desfazer: só a própria pessoa, no mesmo dia (RLS).
+- Telefone/e-mail: `clientes_flow` (sincronização guarda o cadastro `/clientes/` inteiro em `bruto` e extrai o contato por
+  `contatoDoCliente`, preferindo celular/WhatsApp); a equipe pode informar outro (`cliente_contatos`, vale no lugar do Flow).
 
 ### Financiamento e confirmação de pagamento (Financeiro, `/financiamento`)
 

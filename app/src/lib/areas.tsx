@@ -26,7 +26,7 @@ export const AREAS: Area[] = [
       { nome: "Central de boletos", icone: "boleto", descricao: "DDA × nota × boleto lançado" },
       { nome: "Recebíveis e inadimplência", icone: "recebiveis", descricao: "Vencidos, previsões e motivos, do Flow", href: "/recebiveis" },
       { nome: "Financiamento e confirmação", icone: "financiamento", descricao: "Cards parados em Financiamento e Confirmação de pagamento", href: "/financiamento" },
-      { nome: "Régua de cobrança", icone: "cobranca", descricao: "Mensagens de cobrança por WhatsApp e e-mail" },
+      { nome: "Régua de cobrança", icone: "cobranca", descricao: "Mensagens de cobrança por WhatsApp, etapa a etapa", href: "/cobranca" },
       { nome: "Fluxo de caixa projetado", icone: "caixa", descricao: "A pagar, a receber e previsto × realizado" },
       { nome: "Conciliação bancária", icone: "conciliacao", descricao: "Extrato × movimento do Flow" },
     ],
