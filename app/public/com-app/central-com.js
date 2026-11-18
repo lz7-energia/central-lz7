@@ -162,7 +162,14 @@
     },
   };
 
-  window.claude = { use: async (nome) => ({ db, user, downloads })[nome] || null };
+  // Cadastro único com a folha: antes de a plataforma ler o banco, traz nome, CPF, Pix, admissão e desligamento
+  // dos colaboradores do setor Comercial (com_sincronizar_folha). Se falhar, a plataforma abre do mesmo jeito.
+  const sincronizado = Promise.race([
+    sb.rpc("com_sincronizar_folha").then(({ error }) => { if (error) console.warn("Comissões: sincronização com a folha falhou", error.message); }),
+    new Promise((r) => setTimeout(r, 8000)),
+  ]).catch(() => {});
+
+  window.claude = { use: async (nome) => { if (nome === "db") await sincronizado; return ({ db, user, downloads })[nome] || null; } };
 
   /* ---------- link de volta para a Central, no menu lateral (fora do script da plataforma) ---------- */
   const poe = () => {
@@ -170,7 +177,11 @@
     if (!marca || document.querySelector(".voltar-central")) return !!marca;
     const a = document.createElement("a");
     a.href = "/inicio"; a.className = "voltar-central"; a.textContent = "‹ Central"; a.title = "Voltar para a Central";
+    const f = document.createElement("a");
+    f.href = "/comissoes/folha"; f.className = "voltar-central conferir-folha"; f.textContent = "Conferir com a folha";
+    f.title = "Vendedores do Comercial na folha × cadastro das Comissões";
     marca.insertAdjacentElement("afterend", a);
+    a.insertAdjacentElement("afterend", f);
     return true;
   };
   const obs = new MutationObserver(() => { if (poe()) obs.disconnect(); });

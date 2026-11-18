@@ -60,6 +60,9 @@ document.getElementById("ir").onclick=async()=>{
       const esp=ESPERADO[col]??0; if(r.count!==esp) ok=false;
       log("  "+col+": "+r.count+(r.count===esp?"":" (o pacote de 17/11 tinha "+esp+")"));
     }
+    const sf=await sb.rpc("com_sincronizar_folha");
+    if(sf.error) log("\\nSincronização com a folha: erro ("+sf.error.message+")");
+    else { const n=k=>sf.data[k]||0; log("\\nFolha (setor Comercial): "+n("atualizado")+" cadastro(s) atualizado(s), "+n("criado")+" novo(s) pendente(s) de cargo, "+n("desligado")+" desligado(s). Detalhes em /comissoes/folha"); }
     log(ok?"\\nTudo confere com o pacote. Abra a plataforma: /comissoes → Apuração → outubro/2026 (total R$ 25.578,68).":"\\nAs contagens diferem do pacote de 17/11 — confira se é o arquivo certo.");
   }catch(e){ log("\\nERRO: "+(e.message||e)); }
   b.disabled=false;
