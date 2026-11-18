@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 import type { Atualizacao, Recebivel, Situacao } from "@/lib/recebiveis";
 import { dataHora, hojeSP } from "@/lib/formato";
@@ -30,9 +31,12 @@ export default async function Recebiveis() {
           <h1>Recebíveis e inadimplência</h1>
           <p className="sub">Títulos do Contas a Receber do Flow, com as anotações de cobrança da equipe.</p>
         </div>
-        <p className="pequeno mudo" style={{ margin: 0 }}>
-          {sinc?.[0] ? `Dados do Flow de ${dataHora(sinc[0].sincronizado_em)}` : "Sem dados do Flow ainda"}
-        </p>
+        <div style={{ textAlign: "right" }}>
+          <Link className="botao secundario pequeno" href="/cobranca">Régua de cobrança</Link>
+          <p className="pequeno mudo" style={{ margin: "6px 0 0" }}>
+            {sinc?.[0] ? `Dados do Flow de ${dataHora(sinc[0].sincronizado_em)}` : "Sem dados do Flow ainda"}
+          </p>
+        </div>
       </div>
       {error && <div className="erro">Não foi possível carregar os títulos.</div>}
       <div className={`faixa-atualizacao${ultima ? "" : " pendente"}`}>

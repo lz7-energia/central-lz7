@@ -107,6 +107,12 @@ export async function excluirTitulo(flowId: string, motivo: string): Promise<Res
 export async function restaurarTitulo(flowId: string): Promise<Resultado> {
   return ajustar(flowId, { excluido: false, excluido_motivo: null });
 }
+/** Parcela paga por financiamento: fica fora da régua de cobrança (só na central). */
+export async function marcarFinanciamento(flowId: string, sim: boolean): Promise<Resultado> {
+  const r = await ajustar(flowId, { financiamento: sim });
+  revalidatePath("/cobranca");
+  return r;
+}
 export async function editarNome(flowId: string, nome: string): Promise<Resultado> {
   return ajustar(flowId, { nome_exibicao: nome.trim().slice(0, 120) || null });
 }

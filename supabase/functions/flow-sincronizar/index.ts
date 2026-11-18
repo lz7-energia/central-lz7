@@ -40,6 +40,41 @@ async function flow(caminho: string): Promise<any> {
 }
 
 /** Lê todas as páginas de um recurso (paginação por deslocamento: pageSize + skip). */
+/** Contato do cadastro de clientes do Flow, onde quer que venha (campos soltos ou listas de contatos/telefones).
+ *  Preferência: celular/WhatsApp > telefone. Os nomes dos campos variam, então procura pelo nome da chave. */
+export function contatoDoCliente(c: any): { telefone: string | null; email: string | null } {
+  const tels: { v: string; peso: number }[] = []; const emails: string[] = [];
+  const ehFone = (k: string) => /(cel|fone|phone|whats|tel)/.test(k) && !/(tipo|ddd$|ramal|id$|(^|\.)id)/.test(k);
+  const ehMovel = (k: string) => /(cel|whats|movel|móvel)/.test(k);
+  const somar = (txt: string, movel: boolean) => {
+    const d = txt.replace(/\D/g, "");
+    if (d.length >= 10 && d.length <= 13) tels.push({ v: d, peso: movel || (d.length >= 11 && d.slice(-9, -8) === "9") ? 2 : 1 });
+  };
+  const visitar = (o: any, caminho: string, prof: number) => {
+    if (o == null || prof > 4) return;
+    if (Array.isArray(o)) { o.forEach((x, i) => visitar(x, caminho, prof + 1)); return; }
+    if (typeof o === "object") {
+      // Objeto de contato: { tipo: "Celular", ddd: "43", numero: "99999..." } e variações.
+      const tipo = String(o.tipo ?? o.tipoContato ?? o.descricao ?? "").toLowerCase();
+      const num = o.numero ?? o.telefone ?? o.celular ?? o.fone ?? o.valor;
+      if (num != null && typeof num !== "object" && (ehFone(caminho.toLowerCase()) || /(cel|fone|whats|tel)/.test(tipo))) {
+        const ddd = String(o.ddd ?? "").replace(/\D/g, "");
+        const d = String(num).replace(/\D/g, "");
+        somar(ddd && d.length <= 9 ? ddd + d : d, ehMovel(tipo) || ehMovel(caminho.toLowerCase()));
+      }
+      for (const [k, v] of Object.entries(o)) visitar(v, caminho ? caminho + "." + k : k, prof + 1);
+      return;
+    }
+    const txt = String(o).trim(); if (!txt) return;
+    const chave = caminho.toLowerCase();
+    if (/mail/.test(chave) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(txt)) { emails.push(txt.toLowerCase()); return; }
+    if (ehFone(chave)) somar(txt, ehMovel(chave));
+  };
+  visitar(c, "", 0);
+  tels.sort((a, b) => b.peso - a.peso);
+  return { telefone: tels[0]?.v ?? null, email: emails[0] ?? null };
+}
+
 async function todos(recurso: string): Promise<any[]> {
   const itens: any[] = [];
   for (let skip = 0; ; ) {
@@ -291,7 +326,16 @@ Deno.serve(async () => {
     const titulosRemover = titulosAntigos.map((t: any) => t.flow_id).filter((id: string) => !idsTitulos.has(id));
     await emLotes(titulosRemover, (l) => sb.from("titulos_receber").delete().in("flow_id", l));
 
+    // 6) Cadastro de clientes com contato (régua de cobrança). O bruto fica guardado para conferir os campos.
+    const linhasClientes = clientes.map((c) => {
+      const k = contatoDoCliente(c);
+      return { flow_id: String(c.id), nome: c.nomeRazaoSocial ?? null, apelido: c.apelido ?? null, cnpj_cpf: c.cnpjCpf ?? null,
+               telefone: k.telefone, email: k.email, bruto: c, sincronizado_em: agora };
+    });
+    await emLotes(linhasClientes, (l) => sb.from("clientes_flow").upsert(l, { onConflict: "flow_id" }));
+
     const resumo = {
+      clientesComTelefone: linhasClientes.filter((c) => c.telefone).length,
       pedidos: linhasPedidos.length, itens: itens.length, ordens: linhasOS.length,
       notas: notas.size, notasProduto: documentos.length, clientes: clientes.length, notasSemCerteza: ambiguas, titulos: linhasTitulos.length,
     };

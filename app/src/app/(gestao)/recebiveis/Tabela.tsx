@@ -7,7 +7,7 @@ import {
 } from "@/lib/recebiveis";
 import { data as fmtData, dataHora, moeda } from "@/lib/formato";
 import {
-  alterarSituacao, concluirAtualizacao, criarSituacao, darBaixa, desfazerBaixa, editarNome, excluirTitulo, restaurarTitulo, salvarCobranca,
+  alterarSituacao, concluirAtualizacao, criarSituacao, darBaixa, desfazerBaixa, editarNome, excluirTitulo, marcarFinanciamento, restaurarTitulo, salvarCobranca,
 } from "./acoes";
 
 type Aba = "vencidos" | "a_vencer" | "recebidos" | "excluidos";
@@ -266,7 +266,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
             {lista.map((t) => (
               <Fragment key={t.flow_id}>
                 <tr>
-                  <td><NomeCliente t={t} /></td>
+                  <td><NomeCliente t={t} />{t.financiamento && (aba === "vencidos" || aba === "a_vencer") && <div><span className="etiqueta cinza" title="Fora da régua de cobrança">Pago por financiamento</span></div>}</td>
                   <td>{fmtData(t.vencimento)}</td>
                   {aba === "vencidos" && (
                     <td style={{ whiteSpace: "nowrap" }}>
@@ -315,6 +315,10 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                         <>
                           <button className="link-acao" onClick={() => abrir(t.flow_id, "baixa")}>Dar baixa</button>
                           <button className="link-acao" onClick={() => abrir(t.flow_id, "excluir")}>Excluir</button>
+                          <button className="link-acao" title="Parcela paga por financiamento: fica fora da régua de cobrança"
+                            onClick={() => rapido(() => marcarFinanciamento(t.flow_id, !t.financiamento))}>
+                            {t.financiamento ? "Tirar do financiamento" : "Pago por financiamento"}
+                          </button>
                         </>
                       )}
                       {aba === "recebidos" && t.baixa_manual && (
