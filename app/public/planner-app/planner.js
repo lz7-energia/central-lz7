@@ -249,6 +249,7 @@ function card(o,opt={}){
   if(o.subTotal)meta.push('☑ '+o.subDone+'/'+o.subTotal);
   if(t.files&&t.files.length)meta.push('📎 '+t.files.length);
   if(t.desc&&t.desc.trim())meta.push('📝');
+  if(t.link&&t.link.href)meta.push('🔗');/* Central: veio de outra tela */
   if(t.comments&&t.comments.length)meta.push('💬 '+t.comments.length);
   if(t.rec&&t.rec.type!=='none'&&t.rec.type!=='daily')meta.push('↻');
   if(t.para&&t.para.length)meta.push((t.tipo==='call'?'📞 com ':'→ ')+t.para.map(id=>primeiro(nomeDe(id))).join(', '));
@@ -556,6 +557,7 @@ ${subs.map(s=>`<label><input type="checkbox" data-action="toggle-sub" data-sid="
 <div class="subrow" style="margin-top:6px"><input type="text" id="v-newsub" placeholder="Adicionar subtarefa"><button data-action="add-sub-v">Adicionar</button></div>
 <div style="margin-top:10px"><button class="${o.done?'':'primary'}" data-action="toggle-done" data-key="${esc(o.key)}">${o.done?'Reabrir':'✓ Concluir'}${t.rec&&t.rec.type!=='none'?' esta ocorrência':''}</button></div></div>
 ${eqView(t)}
+${linkCentral(t)/* Central: link de volta para a tela onde a tarefa foi criada */}
 ${t.desc&&t.desc.trim()?`<div class="sec">Descrição</div><div class="vdesc">${esc(t.desc)}</div>`:''}
 ${files.length?`<div class="sec">Anexos</div><div class="files">${files.map(f=>`<div class="filerow"><a href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name)}</a><span class="hint">${fmtSize(f.size)}</span></div>`).join('')}</div>`:''}
 <div class="sec">Comentários${cm.length?' ('+cm.length+')':''}</div>
@@ -567,6 +569,8 @@ ${t.clickupUrl?`<p class="hint"><a href="${esc(t.clickupUrl)}" target="_blank" r
   const ns=$('#v-newsub');ns.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addSubView();}});
   const ov=document.querySelector('.overlay');if(ov)ov.scrollTop=sc||0;
 }
+// Central: tarefa criada de outra tela da Central ("Criar tarefa") leva de volta para lá.
+function linkCentral(t){const l=t.link;if(!l||typeof l.href!=='string'||l.href[0]!=='/'||l.href[1]==='/')return'';return`<p class="vlink"><a href="${esc(l.href)}">↗ Abrir na Central: ${esc(l.rotulo||'tela de origem')}</a></p>`;}
 function eqView(t){
   if(t.origem){const E=S.edit;return`<div class="eq-box"><div>${t.tipo==='call'?'📞 <b>'+esc(t.de&&t.de.nome)+'</b> convidou você para esta call.':'<b>'+esc(t.de&&t.de.nome)+'</b> te passou esta tarefa.'}</div>${E.recusando?`<textarea id="v-motivo" rows="2" placeholder="Motivo (vai para ${esc(primeiro(t.de&&t.de.nome))})"></textarea><div class="eq-acoes"><button class="danger" data-action="eq-recusar-ok">Confirmar recusa</button><button class="ghost" data-action="eq-recusar-nao">Voltar</button></div>${E.erroRecusa?`<p class="err">${esc(E.erroRecusa)}</p>`:''}`:`<div class="eq-acoes"><button class="ghost" data-action="eq-recusar">Recusar…</button></div>`}</div>`;}
   if(!t.para||!t.para.length)return'';

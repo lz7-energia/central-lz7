@@ -170,6 +170,12 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   concluir avisa quem mandou; editar a original atualiza as cópias; excluir a original some das outras pessoas.
   Opção **"Para os 4 principais da equipe"** (20/11/2026): passa a tarefa de uma vez para todos os perfis `equipe` ativos (menos quem cria);
   a lista vem marcada e pode ser ajustada (`principal` na equipe de `/planner/api/estado`, `eqPrinc` só na tela).
+- **Criar tarefa de qualquer tela** (20/11/2026): `public/tarefa-app/tarefa.js` (`window.centralTarefa.abrir({titulo, obs, link})`,
+  um só formulário para todo o site) → `POST /api/tarefa` → `lib/tarefa-ligada.ts` (`criarTarefaLigada`: tarefa `lig-<id>` no planner de
+  quem cria, campo `link {href, rotulo}` só com caminho interno; "Passar para…" usa o mesmo `distribuir` do "Para quem").
+  Botão "+ Tarefa" no topo (link = tela atual), botão flutuante nas páginas próprias (colaboradores, comissões, financiamento, conciliação;
+  `data-flutuante`) e botões com título pronto: título dos Recebíveis (link `/recebiveis?aba=&busca=`, abre filtrado), pedido, candidato,
+  documento (`components/BotaoTarefa.tsx`). O planner mostra "↗ Abrir na Central" (`linkCentral`, marcado "Central:") e o link vai na descrição para o ClickUp.
 - Importar: Configurações → Dados → Importar tarefas (JSON: lista de tasks ou `{tasks, events, settings, sync}`); importar antes de ligar o ClickUp.
 
 ## Central de arquivos (ADM, `/arquivos`)

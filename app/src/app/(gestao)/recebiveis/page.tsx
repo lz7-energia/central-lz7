@@ -8,7 +8,11 @@ import { todasAsLinhas } from "@/lib/paginar";
 export const metadata: Metadata = { title: "Recebíveis" };
 export const dynamic = "force-dynamic";
 
-export default async function Recebiveis() {
+const ABAS = ["vencidos", "a_vencer", "recebidos", "excluidos"] as const;
+
+export default async function Recebiveis({ searchParams }: { searchParams: Promise<{ aba?: string; busca?: string }> }) {
+  const q = await searchParams;
+  const abaInicial = ABAS.find((a) => a === q.aba);
   const perfil = await perfilAtual();
   const sb = await supabaseUsuario();
   const hoje = hojeSP();
@@ -47,7 +51,8 @@ export default async function Recebiveis() {
           <strong>Nenhuma atualização concluída ainda.</strong>
         )}
       </div>
-      <Tabela titulos={titulos} historico={historico} situacoes={(sits ?? []) as Situacao[]} podeEditar={!!perfil} hoje={hoje} />
+      <Tabela key={`${abaInicial}|${q.busca ?? ""}`} titulos={titulos} historico={historico} situacoes={(sits ?? []) as Situacao[]} podeEditar={!!perfil} hoje={hoje}
+        abaInicial={abaInicial} buscaInicial={q.busca?.slice(0, 100)} />
     </>
   );
 }

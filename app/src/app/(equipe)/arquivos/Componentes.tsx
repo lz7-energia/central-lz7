@@ -1,5 +1,6 @@
 "use client";
 
+import { BotaoTarefa } from "@/components/BotaoTarefa";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Documento, Empresa, Tipo, Unidade } from "@/lib/arquivos";
@@ -153,6 +154,7 @@ export function DocLinha({ doc, tipos, empresas, unidades, pessoas, hoje, admin,
           <a className="link-acao" href={`/arquivos-abrir/${doc.id}`} target="_blank" rel="noopener">Abrir</a>
           <a className="link-acao" href={`/arquivos-abrir/${doc.id}?baixar=1`}>Baixar</a>
           <button type="button" className="link-acao" onClick={() => setAberto(!aberto)}>{aberto ? "Fechar" : "Editar"}</button>
+          <BotaoTarefa titulo={doc.titulo} link={{ href: `/arquivos-abrir/${doc.id}`, rotulo: `Documento ${doc.titulo}`.slice(0, 140) }}>Tarefa</BotaoTarefa>
         </div>
       </div>
       {aberto && (

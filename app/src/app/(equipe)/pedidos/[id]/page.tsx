@@ -6,6 +6,7 @@ import { STATUS, type Campo, type StatusPedido } from "@/lib/tipos";
 import { dataHora, valorCampo } from "@/lib/formato";
 import { CartaoConcluir, FormAtendimento, FormComentario, FormResposta } from "./Formularios";
 import { TempoReal } from "../TempoReal";
+import { BotaoTarefa } from "@/components/BotaoTarefa";
 
 export const metadata: Metadata = { title: "Pedido" };
 
@@ -98,9 +99,13 @@ export default async function DetalhePedido({ params }: { params: Promise<{ id: 
             {dataHora(p.criado_em)}
           </p>
         </div>
-        <span className={`etiqueta ${STATUS[p.status].cor}`} style={{ fontSize: "0.9rem", padding: "4px 12px" }}>
-          {STATUS[p.status].rotulo}
-        </span>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <BotaoTarefa className="botao secundario pequeno" titulo={`${p.tipos_pedido.nome} · ${p.protocolo}`}
+            link={{ href: `/pedidos/${p.id}`, rotulo: `Pedido ${p.protocolo}` }} />
+          <span className={`etiqueta ${STATUS[p.status].cor}`} style={{ fontSize: "0.9rem", padding: "4px 12px" }}>
+            {STATUS[p.status].rotulo}
+          </span>
+        </div>
       </div>
 
       <div className="duas-colunas">
