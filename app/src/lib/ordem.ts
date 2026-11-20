@@ -1,6 +1,6 @@
 // Ordem dos cards de cada pessoa (tabela tela_ordem). Funções puras.
 
-export type OrdemTela = { areas?: string[]; modulos?: Record<string, string[]> };
+export type OrdemTela = { areas?: string[]; obras?: string[]; modulos?: Record<string, string[]> };
 
 /** Chave estável de um módulo: o endereço, ou o nome se ainda não tem página. */
 export const chaveModulo = (m: { nome: string; href?: string }) => m.href ?? m.nome;

@@ -30,9 +30,11 @@ A empresa não tem equipe de TI: o Claude constrói e mantém este sistema. O do
 | Equipe da central (4 pessoas) | Sim (e-mail Titan) | Tudo, exceto pastas sensíveis |
 | Administrador | Sim | Tudo, inclusive pastas sensíveis e permissões |
 | Diretoria | Sim | Tudo, como a equipe (acesso total desde 14/11/2026; perfil `diretoria`) |
+| Obras (Letícia e equipe de obras/logística) | Sim | **Só a Central de Obras** (perfil `obras`, desde 20/11/2026) |
 | Colaboradores (40–50) | **Não** | Só o formulário do portal e a consulta do próprio pedido por protocolo |
 
-Regras de acesso aplicadas no banco (Row Level Security), não só na interface. `eh_equipe()` = qualquer perfil ativo (equipe, admin, diretoria).
+Regras de acesso aplicadas no banco (Row Level Security), não só na interface. `eh_equipe()` = Central Administrativa = perfil ativo que
+não é `obras` (equipe, admin, diretoria); `eh_obras()` = qualquer perfil ativo (Central de Obras e planner).
 
 ## API do Flow (mapeada pela própria API em 10/11/2026)
 
@@ -156,6 +158,19 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Acesso: todos os perfis ativos veem; **só equipe e admin editam; diretoria só vê** (decisão de 17/11/2026), no banco (`fin_pode_editar`, RLS).
 - Migração única: `/financiamento/importar` (só admin) lê o `dados-atuais.json` no navegador; nomes de clientes nunca vão ao repositório.
 - Teste (17/11/2026): 47 cards / R$ 1.663.842,30 e 6 / R$ 280.544,94; planilha modelo = 0 cards novos; diretoria sem botões e o banco recusa gravação.
+
+## Central de Obras (`/obras`)
+
+- Pedido dos diretores (20/11/2026): **mesmo sistema, mesmo banco e mesmo login**, com duas centrais. Migração `20261120000027_central_obras.sql`
+  (perfil `obras` no enum `papel`; `eh_equipe`/`ve_recebiveis` excluem `obras`; `eh_obras()`; planner e `tela_ordem` liberados a todo perfil ativo).
+- Login → `/escolher` (Administrativa ou Obras) para quem vê as duas; perfil `obras` vai direto para `/obras` e qualquer página da
+  Administrativa o manda de volta (layouts `(equipe)`/`(gestao)` com `veAdm`; páginas próprias com checagem de papel). `lib/centrais.ts`.
+- Topo com `central="obras"` (menu Início, Compras, Logística, Obras, Planner; botão ↔ para trocar de central). `/perfil` em `(conta)`, vale para as duas.
+- Início de Obras: atalho do planner, Meu dia (só planner: `meuDia(id, { soPlanner: true })`, componentes em `components/MeuDia.tsx`) e cards
+  das áreas `lib/areas-obras.tsx` (Compras, Logística, Obras), reorganizáveis (`tela_ordem.ordem.obras`, módulos em `modulos["obras-<área>"]`).
+- Esqueleto: módulos ainda "em breve". Ideias aprovadas e prioridades no doc `claude/central-lz7-ideias.md` do projeto ADM
+  (o mais importante: Cronograma de instalação; integração: pagamento na entrega/instalação → planner do Financeiro).
+- Cadastrar alguém só de Obras: criar o usuário no Supabase (Authentication) e pôr `papel = 'obras'` no perfil.
 
 ## Planner Eisenhower (`/planner`)
 

@@ -25,7 +25,7 @@ export async function supabaseUsuario() {
 }
 
 export type Perfil = {
-  id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria"; ativo: boolean;
+  id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria" | "obras"; ativo: boolean;
   cargo: string | null; telefone: string | null; foto_caminho: string | null;
 };
 

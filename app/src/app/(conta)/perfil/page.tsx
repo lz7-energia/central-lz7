@@ -7,7 +7,7 @@ import { FormDados, FormFoto, FormSenha } from "./Formularios";
 export const metadata: Metadata = { title: "Meu perfil" };
 export const dynamic = "force-dynamic";
 
-const PAPEIS = { admin: "Administrador", equipe: "Equipe da central", diretoria: "Diretoria" };
+const PAPEIS = { admin: "Administrador", equipe: "Equipe da central", diretoria: "Diretoria", obras: "Central de Obras" };
 
 export default async function Perfil() {
   const perfil = await perfilAtual();

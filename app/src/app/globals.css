@@ -633,3 +633,22 @@ a.link-cliente:hover strong { text-decoration: underline; color: var(--marca); }
 .md-det { color: var(--texto-2); font-size: 0.85rem; }
 .md-lista li.atrasado .md-det { color: var(--perigo); font-weight: 600; }
 .md-origem { font-size: 0.85rem; white-space: nowrap; }
+
+/* Central de Obras (cores próprias) e escolha de central */
+.area-o-compras { --cor-area: #b54708; --fundo-area: #fef0c7; }
+.area-o-logistica { --cor-area: #1849a9; --fundo-area: #e0ecff; }
+.area-o-obras { --cor-area: #a15c07; --fundo-area: #fef7c3; }
+.grade-obras { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.topo-trocar { white-space: nowrap; }
+.escolher { min-height: 100vh; background: var(--marca); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; color: #fff; }
+.esc-topo { text-align: center; margin-bottom: 28px; }
+.esc-topo .logo-img { height: 46px; width: auto; }
+.esc-topo h1 { font-size: 1.5rem; margin: 18px 0 0; color: #fff; }
+.esc-opcoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 300px)); gap: 18px; justify-content: center; width: 100%; }
+.esc-card { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; background: #fff; color: var(--texto); border-radius: 14px; padding: 24px; text-decoration: none; box-shadow: 0 10px 30px rgba(0,0,0,.18); transition: transform .12s ease; }
+.esc-card:hover { transform: translateY(-3px); }
+.esc-card strong { font-size: 1.15rem; }
+.esc-card span:last-child { color: var(--texto-2); }
+.esc-ic { width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center; background: #e4efe9; color: var(--marca); }
+.esc-card.obras .esc-ic { background: #fef7c3; color: #a15c07; }
+.esc-rodape { margin-top: 22px; opacity: .8; font-size: .9rem; }

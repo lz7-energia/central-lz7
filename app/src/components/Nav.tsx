@@ -2,30 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Central } from "@/lib/centrais";
 
-const EQUIPE = [
+const ADM = [
   { href: "/inicio", rotulo: "Início" },
   { href: "/pedidos", rotulo: "Pedidos" },
   { href: "/painel", rotulo: "Faturamento" },
   { href: "/recebiveis", rotulo: "Recebíveis" },
   { href: "/clientes", rotulo: "Clientes" },
 ];
-const DIRETORIA = [{ href: "/recebiveis", rotulo: "Recebíveis" }];
+const OBRAS = [
+  { href: "/obras", rotulo: "Início", exato: true },
+  { href: "/obras/compras", rotulo: "Compras" },
+  { href: "/obras/logistica", rotulo: "Logística" },
+  { href: "/obras/obras", rotulo: "Obras" },
+];
 
-export function Nav({ diretoria = false }: { diretoria?: boolean }) {
+export function Nav({ central = "adm" }: { central?: Central }) {
   const caminho = usePathname();
+  const itens: { href: string; rotulo: string; exato?: boolean }[] = central === "obras" ? OBRAS : ADM;
   return (
     <nav className="nav">
-      {(diretoria ? DIRETORIA : EQUIPE).map((i) => (
-        <Link key={i.href} href={i.href} className={caminho.startsWith(i.href) ? "ativo" : ""}>
+      {itens.map((i) => (
+        <Link key={i.href} href={i.href} className={(i.exato ? caminho === i.href : caminho.startsWith(i.href)) ? "ativo" : ""}>
           {i.rotulo}
         </Link>
       ))}
-      {!diretoria && (
-        // Página própria (fora do app React): link comum.
-        <a href="/planner">Planner</a>
-      )}
-      {!diretoria && (
+      {/* Página própria (fora do app React): link comum. */}
+      <a href="/planner">Planner</a>
+      {central === "adm" && (
         <Link href="/portal" target="_blank">
           Portal ↗
         </Link>

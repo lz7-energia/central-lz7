@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Entrar" };
 
 export default async function Entrar({ searchParams }: { searchParams: Promise<{ volta?: string }> }) {
   const { volta } = await searchParams;
-  if (await perfilAtual()) redirect(volta || "/inicio");
+  if (await perfilAtual()) redirect(volta || "/escolher");
 
   return (
     <main className="inicio">
@@ -19,7 +19,7 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
         </Link>
         <h1>Entrar</h1>
         <p className="sub">Acesso da equipe da central.</p>
-        <FormLogin volta={volta || "/inicio"} />
+        <FormLogin volta={volta || "/escolher"} />
         <p className="rodape-portal">
           Quer abrir um pedido? <Link href="/portal">Use o portal</Link>, não precisa de login.
         </p>

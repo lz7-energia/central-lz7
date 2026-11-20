@@ -15,14 +15,15 @@ export type ItemDia = {
 
 const br = (d: string) => d.split("-").reverse().join("/");
 
-export async function meuDia(pessoaId: string): Promise<ItemDia[]> {
+/** soPlanner: na Central de Obras só entram as tarefas do planner (pedidos e recebíveis são da Administrativa). */
+export async function meuDia(pessoaId: string, { soPlanner = false } = {}): Promise<ItemDia[]> {
   const sb = await supabaseUsuario();
   const hoje = todayS();
   const [estado, { data: pedidos }, { data: novos }, { data: previsoes }] = await Promise.all([
     new DadosPlanner(pessoaId).estado().catch(() => null),
-    sb.from("pedidos").select("id, protocolo, prazo, status, tipos_pedido(nome)").eq("responsavel_id", pessoaId).in("status", STATUS_ABERTOS).lte("prazo", hoje).order("prazo"),
-    sb.from("pedidos").select("id", { count: "exact", head: false }).eq("status", "aberto").limit(50),
-    sb.from("recebiveis").select("flow_id, cliente, cliente_apelido, nome_exibicao, id_cliente, valor_aberto").eq("estado", "vencido").eq("previsao", hoje).limit(30),
+    soPlanner ? { data: [] } : sb.from("pedidos").select("id, protocolo, prazo, status, tipos_pedido(nome)").eq("responsavel_id", pessoaId).in("status", STATUS_ABERTOS).lte("prazo", hoje).order("prazo"),
+    soPlanner ? { data: [] } : sb.from("pedidos").select("id", { count: "exact", head: false }).eq("status", "aberto").limit(50),
+    soPlanner ? { data: [] } : sb.from("recebiveis").select("flow_id, cliente, cliente_apelido, nome_exibicao, id_cliente, valor_aberto").eq("estado", "vencido").eq("previsao", hoje).limit(30),
   ]);
   const itens: ItemDia[] = [];
 
