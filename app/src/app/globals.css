@@ -565,25 +565,6 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .linha-campos { display: flex; gap: 12px; flex-wrap: wrap; }
 .linha-campos .campo { flex: 1; min-width: 160px; }
 
-/* Régua de cobrança */
-.regua-faixa { display: flex; gap: 12px; align-items: center; }
-.regua-lista { display: grid; gap: 14px; }
-.regua-cartao + .regua-cartao { margin-top: 0; }
-.regua-cab { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
-.regua-cab > div:first-child { flex: 1; min-width: 200px; }
-.regua-nome { font-size: 1.02rem; }
-.regua-total { font-size: 1.05rem; white-space: nowrap; }
-.regua-titulos { margin: 8px 0 10px; padding-left: 18px; font-size: 0.88rem; }
-.regua-titulos li { margin: 2px 0; }
-.regua-tel { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.regua-texto { width: 100%; font: inherit; font-size: 0.92rem; line-height: 1.45; resize: vertical; }
-.regua-acoes { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
-.regua-pre { white-space: pre-wrap; font: inherit; font-size: 0.84rem; background: #f6f8f7; border: 1px solid var(--borda); border-radius: 6px; padding: 8px; max-width: 420px; }
-.regua-etapa { border-top: 1px solid var(--borda); padding: 14px 0; }
-.regua-etapa.inativa { opacity: 0.6; }
-.regua-pausas { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 16px; margin-bottom: 8px; }
-.regua-pausa { display: inline-flex; gap: 8px; align-items: center; font-size: 0.9rem; font-weight: 400; cursor: pointer; }
-.regua-pausa input { width: auto; }
 @media (max-width: 640px) {
   .abas { overflow-x: auto; max-width: 100%; }
   .abas a { white-space: nowrap; }
@@ -597,3 +578,17 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 .linha-edicao > td > * { position: sticky; left: 14px; width: min(980px, calc(100vw - 96px)); max-width: 100%; }
 .linha-edicao textarea { width: 100%; font: inherit; line-height: 1.45; resize: vertical; min-height: 64px; }
 .linha-edicao:hover { background: transparent; }
+
+/* Reorganizar cards (cada pessoa, tabela tela_ordem) */
+.reordenar-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px; }
+.reordenar-barra:has(> button:only-child), .reordenar-barra:has(> .reordenar-acoes:only-child) { justify-content: flex-end; margin-top: 8px; }
+.reordenar-acoes { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.reordenar-item { display: grid; position: relative; min-width: 0; }
+.reordenar-item > :first-child { height: 100%; }
+.reordenar-item.editando { cursor: grab; border-radius: var(--raio); outline: 2px dashed var(--borda); outline-offset: 3px; }
+.reordenar-item.editando > :first-child { pointer-events: none; user-select: none; }
+.reordenar-item.arrastando { opacity: 0.45; }
+.reordenar-setas { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+.reordenar-setas button { width: 30px; height: 30px; padding: 0; border-radius: 6px; border: 1px solid var(--borda); background: var(--superficie); color: var(--marca); font-size: 1rem; cursor: pointer; }
+.reordenar-setas button:disabled { opacity: 0.35; cursor: default; }
+.reordenar-item.editando .ca-ir, .reordenar-item.editando a.modulo strong::after { visibility: hidden; }

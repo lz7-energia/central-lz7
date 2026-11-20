@@ -23,10 +23,8 @@ export const AREAS: Area[] = [
     descricao: "Boletos, recebimentos e caixa",
     modulos: [
       { nome: "Pedidos do Financeiro", icone: "pedidos", descricao: "Pagamentos, reembolsos e cadastros", href: "/pedidos?setor=financeiro" },
-      { nome: "Central de boletos", icone: "boleto", descricao: "DDA × nota × boleto lançado" },
       { nome: "Recebíveis e inadimplência", icone: "recebiveis", descricao: "Vencidos, previsões e motivos, do Flow", href: "/recebiveis" },
       { nome: "Financiamento e confirmação", icone: "financiamento", descricao: "Cards parados em Financiamento e Confirmação de pagamento", href: "/financiamento" },
-      { nome: "Régua de cobrança", icone: "cobranca", descricao: "Mensagens de cobrança por WhatsApp, etapa a etapa", href: "/cobranca" },
       { nome: "Fluxo de caixa projetado", icone: "caixa", descricao: "A pagar, a receber e previsto × realizado" },
       { nome: "Conciliação bancária", icone: "conciliacao", descricao: "Extrato × movimento do Flow, mês a mês", href: "/conciliacao" },
     ],
@@ -40,7 +38,6 @@ export const AREAS: Area[] = [
       { nome: "Vagas e candidatos", icone: "vagas", descricao: "Vagas abertas, currículos e funil de seleção", href: "/rh" },
       { nome: "Colaboradores e folha", icone: "equipe", descricao: "Cadastro, estoque, eventos, folha e recibos", href: "/colaboradores" },
       { nome: "Comissões", icone: "comissoes", descricao: "Apuração mensal, bandeiras, lançamentos e recibos de comissão", href: "/comissoes" },
-      { nome: "Agenda de entrevistas", icone: "agenda", descricao: "Autoagendamento entre os entrevistadores" },
       { nome: "Contratos PJ", icone: "contrato", descricao: "Contrato gerado e assinatura eletrônica" },
     ],
   },

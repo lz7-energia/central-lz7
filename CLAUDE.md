@@ -104,23 +104,13 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - O Supabase devolve no máximo 1000 linhas por consulta: telas usam `lib/paginar.ts` (`todasAsLinhas`) e a sincronização `lerTudo`.
 - Caixa de edição na tabela (Atualizar, Dar baixa, Excluir, Editar nome) fica na largura visível e parada ao rolar para o lado;
   motivo em campo de várias linhas, cursor já no motivo, Ctrl+Enter salva.
-- **Pago por financiamento** (`titulo_ajustes.financiamento`): marcado no título (vencidos/a vencer); fica fora da régua de cobrança.
+- **Pago por financiamento** (`titulo_ajustes.financiamento`): marcado no título (vencidos/a vencer).
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
 
-### Régua de cobrança (Financeiro, `/cobranca`)
+### Régua de cobrança: apagada
 
-- Decisões de 17/11/2026: etapas no dia do vencimento e depois 3, 7, 15 e 30 dias (`cobranca_regua_etapas`, dias/nome/texto/ativa,
-  editáveis na aba "Etapas e textos"); só WhatsApp semiautomático por enquanto (e-mail automático entra quando o Titan estiver
-  configurado; canal `email` já previsto); textos escritos pelo Claude, a equipe ajusta. Variáveis: `{nome} {lista} {total} {dias} {vencimento}`.
-- Regras em `lib/regua.ts` (funções puras): entra o título em aberto que vence hoje ou já venceu; etapa devida = a ativa de maior
-  "dias" já alcançada (quem chega atrasado recebe só a etapa atual); uma mensagem por cliente com todos os títulos devendo etapa
-  (vale a mais avançada; cada título registra a própria etapa). `{nome}` = primeiro nome (pessoa) ou razão social (empresa).
-- Para sozinha: recebido (Flow ou baixa manual), excluído, **pago por financiamento** (marcado nos Recebíveis) ou situação de cobrança
-  com `pausa_regua` (de fábrica: negociação, aguardando terceiro e jurídico; configurável).
-- "Abrir WhatsApp e registrar" abre `wa.me/55…?text=` e grava `cobranca_envios` (lote = uma mensagem; quem, quando, telefone, texto);
-  "Pular esta etapa" exige motivo. Título "Sem contato" vira "Cobrado". Desfazer: só a própria pessoa, no mesmo dia (RLS).
-- Telefone/e-mail: `clientes_flow` (sincronização guarda o cadastro `/clientes/` inteiro em `bruto` e extrai o contato por
-  `contatoDoCliente`, preferindo celular/WhatsApp); a equipe pode informar outro (`cliente_contatos`, vale no lugar do Flow).
+- Apagada de vez em 20/11/2026 (decisão do usuário), junto com os cards "Central de boletos" (DDA) e "Agenda de entrevistas".
+  Ficaram `clientes_flow` (cadastro do Flow com contato, usado pela sincronização) e o "Pago por financiamento" dos Recebíveis.
 
 ### Conciliação bancária (Financeiro, `/conciliacao`)
 
@@ -295,6 +285,8 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 
 - Cor da marca `#124735` (verde do logo); logo branco em `app/public/logo-lz7-branco.png`, ícone do site em `app/src/app/icon.png`.
 - Cada área e cada módulo tem ícone próprio (`lib/areas.tsx`: `IconeArea`, `IconeModulo`).
+- **Cada pessoa arruma os próprios cards** (áreas na Início, módulos em cada área): botão "Reorganizar" (arrastar ou setas),
+  "Voltar ao padrão". Tabela `tela_ordem` (uma linha por pessoa, RLS só a própria), `lib/ordem.ts` (`aplicarOrdem`; módulo novo vai para o fim).
 - Página `/perfil` (equipe e diretoria): foto (bucket público `fotos-perfil`, pasta = id da pessoa, reduzida no navegador),
   nome, cargo, telefone e troca de senha. Papel e e-mail só o administrador muda (`atualizar_meu_perfil`, `trocar_minha_foto`).
 
