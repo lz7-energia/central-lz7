@@ -315,6 +315,9 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Cada área e cada módulo tem ícone próprio (`lib/areas.tsx`: `IconeArea`, `IconeModulo`).
 - **Cada pessoa arruma os próprios cards** (áreas na Início, módulos em cada área): botão "Reorganizar" (arrastar ou setas),
   "Voltar ao padrão". Tabela `tela_ordem` (uma linha por pessoa, RLS só a própria), `lib/ordem.ts` (`aplicarOrdem`; módulo novo vai para o fim).
+- **Meu dia** na Início (`lib/meu-dia.ts`): tarefas do planner atrasadas e de hoje (pelas mesmas regras `Regras.curOcc`; sem os
+  acompanhamentos `soCentral`; com "↗ abrir" quando a tarefa tem `link`), pedidos sob minha responsabilidade com previsão hoje ou vencida,
+  pedidos novos esperando aceite e previsões de pagamento combinadas para hoje (Recebíveis, abre a ficha do cliente).
 - Página `/perfil` (equipe e diretoria): foto (bucket público `fotos-perfil`, pasta = id da pessoa, reduzida no navegador),
   nome, cargo, telefone e troca de senha. Papel e e-mail só o administrador muda (`atualizar_meu_perfil`, `trocar_minha_foto`).
 
