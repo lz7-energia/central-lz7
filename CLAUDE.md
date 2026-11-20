@@ -193,7 +193,13 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Tópicos: fixos (`obra_topicos`, valores em `obra_obras.topicos`) e só da obra (`topicos_extra`); importantes aparecem em destaque.
 - `fora_indicadores` (PE-54-2024, licitação) fica no cronograma e sai dos indicadores. As 189 obras da planilha entram por um SQL à parte
   (não vai ao repositório); WB260267SGL teve a entrada ajustada para 29/06 (material chegou antes da entrada).
-- Ainda não: aviso do "pagamento na entrega/instalação" no planner do Financeiro; integração com o Flow.
+- **Pagamento condicionado** (20/11/2026, migração `20261120000029_obras_pagamentos.sql`): `obra_obras.pagamentos` = lista
+  `[{id, etapa: entrega|instalacao|conclusao, valor, obs, avisar, recebido_em}]` (`pagamento_na` ficou só como registro antigo).
+  Marcam: perfil obras, equipe e admin (`obra_pode_pagamento`, `obra_salvar_pagamentos`, rota `/obras/api/pagamento`); diretoria só vê.
+  "Avisar" = pessoa da Central Administrativa: tarefa "Receber: <obra>" no planner dela (`lib/obras-planner.ts`, ids `obra-<código>-<id>`,
+  categoria CR) na data da etapa (realizada, senão prevista); a tela chama `refletir` quando a obra muda de data ou é excluída e o
+  agendador do planner (15 min) acerta tudo; "Recebido em" tira a tarefa. Link `/obras/cronograma#obra=<código>` abre a obra.
+- Ainda não: integração com o Flow.
 
 ## Planner Eisenhower (`/planner`)
 

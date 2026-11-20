@@ -29,7 +29,7 @@ const num=(n,d=0)=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:d,
 // Central: dados no Supabase (tabelas obra_*), quem edita = perfil "obras" (o banco confere de novo).
 const C=window.__CENTRAL;
 const CFG0={metaDias:30,limiteDias:45,folgaDias:1,equipes:[],estruturas:[],motivos:['Chuva','Material atrasou','Cliente pediu','Equipe indisponível','Obra anterior atrasou','Outro'],topicos:[]};
-const S={obras:new Map(),cfg:CFG0,pode:!!C.podeEditar,ok:false,view:'calendario',
+const S={obras:new Map(),cfg:CFG0,pode:!!C.podeEditar,podePag:!!C.podePagamento,ok:false,view:'calendario',
   modo:'mes',ref:HOJE.slice(0,7)+'-01',mi:true,me:true,q:'',fil:'',eq:'',sel:null,
   rep:{mes:'',min:1,so:false},reprog:{},nomes:{},hist:{}};
 const FIL={WB:'Wenceslau Braz',LD:'Londrina',PG:'Ponta Grossa'};
@@ -252,7 +252,8 @@ function linhasRel(){const{sel,atr}=dadosRel();return(S.rep.so?atr:sel).map(({o,
 const matPill=o=>o.matReal?`<span class="pill ok">Material entregue ${br(o.matReal)}</span>`:o.matPrev?`<span class="pill ${o.matPrev<HOJE?'crit':''}">Material previsto ${br(o.matPrev)}</span>`:'<span class="pill warn">Material sem previsão</span>';
 /* ---------- navegação e casca ---------- */
 const TIT={calendario:'Cronograma de instalação',fila:'Fila de agendamento',alertas:'Alertas',entregas:'Agenda de entregas',relatorios:'Indicadores de obras',equipes:'Equipes de instalação',config:'Configurações do cronograma'};
-function rota(){const h=location.hash.slice(1);S.view=TIT[h]?h:'calendario';render()}
+function rota(){const h=location.hash.slice(1);if(h.startsWith('obra=')){S.abrirDepois=decodeURIComponent(h.slice(5));S.view='calendario';render();abrirPendente();return}S.view=TIT[h]?h:'calendario';render()}
+function abrirPendente(){const c=S.abrirDepois;if(c&&S.ok&&S.obras.has(c)){S.abrirDepois=null;abrir(c)}}
 addEventListener('hashchange',rota);
 function casca(){
   document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===S.view));
@@ -279,7 +280,7 @@ function vEntregas(){
   const prox=ab.filter(o=>!o.matReal&&o.matPrev&&o.matPrev>=HOJE&&o.matPrev<=fim).sort((a,b)=>a.matPrev<b.matPrev?-1:1);
   const sem=ab.filter(o=>!o.matReal&&!o.matPrev).sort((a,b)=>(a.entrada||'')<(b.entrada||'')?-1:1);
   const chegou=ab.filter(o=>o.matReal&&o.matReal>=add(HOJE,-7)).sort((a,b)=>a.matReal<b.matReal?1:-1);
-  const lin=o=>`<div class="row"><button class="g" data-obra="${esc(o.cod)}" style="border:0;background:none;text-align:left;padding:0"><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)} · ${esc(o.cidade||'')} · ${o.mod??'?'} módulos${o.envio?' · '+esc(o.envio):''}${o.kit?' · kit comprado':''}</span></button>${matPill(o)}${o.pagNa==='entrega'?'<span class="pill imp">Pagamento na entrega</span>':''}${o.iniPrev?`<span class="pill">Instalação ${br(o.iniPrev)}</span>`:''}${S.pode&&!o.matReal?`<button class="btn s" data-act="chegou" data-cod="${esc(o.cod)}">Chegou hoje</button>`:''}</div>`;
+  const lin=o=>`<div class="row"><button class="g" data-obra="${esc(o.cod)}" style="border:0;background:none;text-align:left;padding:0"><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)} · ${esc(o.cidade||'')} · ${o.mod??'?'} módulos${o.envio?' · '+esc(o.envio):''}${o.kit?' · kit comprado':''}</span></button>${matPill(o)}${pagPend(o).some(p=>p.etapa==='entrega')?'<span class="pill imp">Pagamento na entrega</span>':''}${o.iniPrev?`<span class="pill">Instalação ${br(o.iniPrev)}</span>`:''}${S.pode&&!o.matReal?`<button class="btn s" data-act="chegou" data-cod="${esc(o.cod)}">Chegou hoje</button>`:''}</div>`;
   const bloco=(t,l,cls)=>l.length?`<h3 class="sec">${t} <span class="pill ${cls||''}">${l.length}</span></h3><div class="list">${l.map(lin).join('')}</div>`:'';
   return `<div class="tiles"><div class="tile ${atras.length?'crit':'ok'}"><b>${atras.length}</b><span>entregas atrasadas</span></div><div class="tile"><b>${prox.length}</b><span>previstas nas próximas 2 semanas</span></div><div class="tile warn"><b>${sem.length}</b><span>sem previsão de entrega</span></div><div class="tile ok"><b>${chegou.length}</b><span>chegaram nos últimos 7 dias</span></div></div>`
     +bloco('Atrasadas',atras,'crit')+bloco('Próximas 2 semanas',prox)+bloco('Sem previsão',sem,'warn')+bloco('Chegaram nos últimos 7 dias',chegou,'ok')
@@ -310,14 +311,15 @@ function gaveta(){
   const cid=[...new Set([...S.obras.values()].map(x=>x.cidade).filter(Boolean))].sort();
   const imp=[...S.cfg.topicos.filter(t=>t.ativo&&t.importante&&(o.top||{})[t.id]==='sim').map(t=>t.nome),...(o.topx||[]).filter(t=>t.importante).map(t=>t.nome)];
   d.innerHTML=`<div class="dh"><div style="flex:1"><h2>${esc(tit(o))}</h2><span class="muted">${esc(o.cod)}${o.nomeContrato?' · Contrato '+esc(o.nomeContrato):''}${o.pedido?' · Pedido '+esc(o.pedido):''} · ${esc(FIL[filial(o)]||filial(o))}</span></div><button class="x" data-act="fecharG" aria-label="Fechar">×</button></div>
-  <div class="ln" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px"><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${k.aberto!=null?`<span class="pill ${k.cls}">${dias(k.aberto)} ${o.fimReal?'da entrada ao fim':'em aberto'}</span>`:''}${o.equipe?eqChip(o.equipe):''}${imp.map(n=>`<span class="pill imp">★ ${esc(n)}</span>`).join('')}${o.fora?'<span class="pill">fora dos indicadores</span>':''}</div>
+  <div class="ln" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px"><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${k.aberto!=null?`<span class="pill ${k.cls}">${dias(k.aberto)} ${o.fimReal?'da entrada ao fim':'em aberto'}</span>`:''}${o.equipe?eqChip(o.equipe):''}${imp.map(n=>`<span class="pill imp">★ ${esc(n)}</span>`).join('')}${pagPend(o).map(p=>`<span class="pill imp">$ ${esc(ETAPA[p.etapa])}</span>`).join('')}${o.fora?'<span class="pill">fora dos indicadores</span>':''}</div>
   <div class="step done"><h3>Venda e contrato</h3><div class="fg">${inp('card','Nome do card',o.card,'text','','w')}${inp('cliente','Cliente',o.cliente,'text','','w')}${inp('nomeContrato','Nome do contrato',o.nomeContrato)}${inp('entrada','Data de entrada',o.entrada,'date')}
    ${inp('cidade','Cidade',o.cidade,'text','list="dlc"')}${sel('zona','Zona',o.zona,['Urbano','Rural'])}${inp('kwp','Potência (kWp)',o.kwp,'number','step="0.01" min="0"')}${inp('mod','Módulos',o.mod,'number','step="1" min="0"')}
    ${sel('estrut','Estrutura',o.estrut,S.cfg.estruturas)}${sel('envio','Envio do material',o.envio,['Estoque','Distribuidora'])}${inp('valor','Valor do contrato (R$)',o.valor,'number','step="0.01" min="0"')}${inp('assinado','Assinado em',o.assinado,'date')}
-   ${inp('formaPag','Forma de pagamento',o.formaPag,'text','','w')}${sel('pagNa','Pagamento vinculado',o.pagNa,[['entrega','Na entrega do material'],['instalacao','Na instalação']])}${inp('pedido','Nº do pedido no Flow',o.pedido)}
+   ${inp('formaPag','Forma de pagamento',o.formaPag,'text','','w')}${inp('pedido','Nº do pedido no Flow',o.pedido)}
    ${inp('end','Endereço',o.end,'text','','w')}${inp('cpf','CPF/CNPJ',o.cpf)}${inp('email','E-mail do cliente',o.email,'email')}</div><datalist id="dlc">${cid.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
    ${(o.equip||[]).length?`<ul class="equip">${o.equip.map(e=>`<li>${esc(e.quantidade)}× ${esc(e.produto)}</li>`).join('')}</ul>`:''}
    ${o.assinado?`<div class="note">Pelo contrato, a instalação é agendada em até 90 dias após o pagamento${o.financ?' (financiamento: depende da liberação)':''}.</div>`:''}</div>
+  <div class="step"><h3>Pagamento condicionado</h3>${pagHtml(o)}</div>
   <div class="step"><h3>Tópicos</h3>${topicosHtml(o)}</div>
   <div class="step ${o.matReal?'done':'now'}"><h3>Material</h3><div class="fg">${inp('matPrev','Previsão de entrega',o.matPrev,'date')}${inp('matReal','Entregue em',o.matReal,'date')}</div>
    <div class="acts"><label class="ck f"><input type="checkbox" id="o_kit" data-f="kit" ${o.kit?'checked':''} ${S.pode?'':'disabled'}> Kit de estrutura comprado</label>${!o.matReal&&S.pode?'<button class="btn s" data-act="rapido" data-f="matReal">Chegou hoje</button>':''}</div></div>
@@ -336,10 +338,49 @@ function gaveta(){
   <div class="step"><h3>Histórico</h3><ul class="hist" id="hist">${histHtml(o)}</ul>
    ${S.pode?`<div class="acts"><button class="btn s d" data-act="excluir">Excluir obra</button></div>`:''}</div>`;
 }
-const ROT={entrada:'Data de entrada',material_previsto:'Previsão de entrega',material_entregue:'Entrega do material',inicio_previsto:'Início previsto',fim_previsto:'Fim previsto',inicio_real:'Início realizado',fim_real:'Finalização',equipe_id:'Equipe',criada:'Obra criada',contrato_nome:'Contrato',nome_card:'Nome do card',pagamento_na:'Pagamento vinculado'};
+const ROT={entrada:'Data de entrada',material_previsto:'Previsão de entrega',material_entregue:'Entrega do material',inicio_previsto:'Início previsto',fim_previsto:'Fim previsto',inicio_real:'Início realizado',fim_real:'Finalização',equipe_id:'Equipe',criada:'Obra criada',contrato_nome:'Contrato',nome_card:'Nome do card',pagamento_na:'Pagamento vinculado',pagamentos:'Pagamento condicionado'};
 const fv=(c,v)=>v==null||v===''?'vazio':c==='equipe_id'?eqNome(v):c==='criada'?({manual:'manual',contrato:'pelo contrato',planilha:'da planilha',flow:'do Flow'}[v]||v):/^\d{4}-\d\d-\d\d$/.test(v)?brA(v):v;
 function histHtml(o){const h=S.hist[o.cod];if(!h)return'<li class="muted">Carregando…</li>';if(!h.length)return'<li class="muted">Sem alterações registradas.</li>';
   return h.map(x=>`<li><b>${esc(ROT[x.campo]||x.campo)}</b>${x.campo==='criada'?' '+esc(fv('criada',x.para)):`: ${x.de!=null?esc(fv(x.campo,x.de))+' → ':''}${esc(fv(x.campo,x.para))}`}${x.motivo?` · motivo: ${esc(x.motivo)}`:''}<br><span class="muted small">${new Date(x.em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${x.usuario?' · '+esc(S.nomes[x.usuario]||'alguém'):''}</span></li>`).join('')}
+/* ---------- pagamento condicionado (Financeiro) ---------- */
+// Cada condição: parte da obra (entrega/instalação/conclusão), valor, quem da Central Administrativa é avisado (tarefa no planner
+// na data da etapa, que acompanha a reprogramação) e quando foi recebido. Edita: obras, equipe e admin (o banco confere).
+const ETAPA={entrega:'na entrega do material',instalacao:'no início da instalação',conclusao:'na conclusão da obra'};
+const DATAS_PAG=['matPrev','matReal','iniPrev','fimPrev','iniReal','fimReal'];
+const ADM=(C.perfis||[]).filter(p=>p.ativo&&p.papel!=='obras').sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+const pagPend=o=>(o.pag||[]).filter(p=>!p.recebido_em);
+const dataEtapa=(o,e)=>e==='entrega'?[o.matReal,o.matPrev]:e==='instalacao'?[o.iniReal,o.iniPrev]:e==='conclusao'?[o.fimReal,o.fimPrev]:[null,null];
+function avisarPadrao(){if(C.usuario&&ADM.some(p=>p.id===C.usuario.id))return C.usuario.id;try{const v=localStorage.getItem('obraAvisar');if(ADM.some(p=>p.id===v))return v}catch(_){}return''}
+function linhaPag(o,p,ed){
+  const d=ed?'':'disabled',[real,prev]=dataEtapa(o,p.etapa);
+  const quando=!p.etapa?'':real?`Etapa feita em ${br(real)}`:prev?`Prevista para ${br(prev)}`:'Etapa ainda sem data';
+  return`<div class="pagrow" data-pid="${esc(p.id)}"><div class="fg">
+   <label>Pagamento condicionado<select data-p="etapa" ${d}><option value="">—</option>${Object.entries(ETAPA).map(([k,v])=>`<option value="${k}"${p.etapa===k?' selected':''}>${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join('')}</select></label>
+   <label>Valor (R$, opcional)<input type="number" step="0.01" min="0" data-p="valor" value="${esc(p.valor??'')}" ${d}></label>
+   <label>Avisar no planner de<select data-p="avisar" ${d}><option value="">Ninguém</option>${ADM.map(x=>`<option value="${esc(x.id)}"${p.avisar===x.id?' selected':''}>${esc(x.nome||'Sem nome')}</option>`).join('')}</select></label>
+   <label>Recebido em<input type="date" data-p="recebido_em" value="${esc(p.recebido_em||'')}" ${d}></label>
+   <label class="w">Observação<input type="text" maxlength="300" data-p="obs" value="${esc(p.obs||'')}" placeholder="ex.: 30% do contrato, cliente paga via Pix" ${d}></label></div>
+   <div class="acts" style="margin-top:4px"><span class="muted small" style="flex:1">${quando}${p.recebido_em?' · recebido':''}</span>${ed?'<button class="btn s d" data-act="tiraPag">Tirar</button>':''}</div></div>`;
+}
+function pagHtml(o){
+  const ed=S.podePag,l=o.pag||[];
+  return`<div id="pags" class="pags">${l.map(p=>linhaPag(o,p,ed)).join('')}</div>${!l.length&&!ed?'<span class="muted">Sem pagamento condicionado.</span>':''}
+   ${ed?`<div class="note" style="margin-top:6px">Quem for avisado recebe a tarefa "Receber" no planner na data da etapa; se a obra for reprogramada, a tarefa muda junto. Marcou "Recebido em", a tarefa sai.</div>
+   <div class="err" id="e_pag"></div><div class="acts"><button class="btn s" data-act="maisPag">+ Condição de pagamento</button><button class="btn p" data-act="salvarPag">Salvar pagamento</button></div>`:''}`;
+}
+async function salvarPag(){
+  const o=S.obras.get(S.sel),E=$('#e_pag');E.textContent='';
+  const lista=[...document.querySelectorAll('#pags .pagrow')].map(r=>{const v=k=>r.querySelector(`[data-p="${k}"]`).value.trim();
+    return{id:r.dataset.pid,etapa:v('etapa'),valor:v('valor')||null,avisar:v('avisar')||null,recebido_em:v('recebido_em')||null,obs:v('obs')||null}});
+  if(lista.some(p=>!p.etapa)){E.textContent='Escolha a parte da obra em cada condição.';return}
+  if(lista.some(p=>p.recebido_em&&!dataOk(p.recebido_em))){E.textContent='Data de recebimento inválida.';return}
+  try{const r=await fetch('/obras/api/pagamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'salvar',codigo:o.cod,lista})});
+    const j=await r.json().catch(()=>({}));if(!r.ok){E.textContent=j.erro||'Não foi possível salvar.';return}
+    const av=lista.find(p=>p.avisar)?.avisar;if(av)try{localStorage.setItem('obraAvisar',av)}catch(_){}
+    o.pag=lista;toast(j.aviso||'Pagamento salvo');recarregar();carregarHist(o.cod);
+  }catch(e){E.textContent='Sem conexão. Tente de novo.'}
+}
+function refletir(cod){fetch('/obras/api/pagamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'refletir',codigo:cod})}).catch(()=>{})}
 async function carregarHist(cod){
   const {data}=await sb.from('obra_historico').select('campo,de,para,motivo,usuario,em').eq('obra',cod).order('em',{ascending:false}).limit(200);
   S.hist[cod]=data||[];if(S.sel===cod){const el=$('#hist');if(el)el.innerHTML=histHtml(S.obras.get(cod))}
@@ -351,8 +392,8 @@ const COL={card:'nome_card',nomeContrato:'nome_contrato',cliente:'cliente',filia
   cpf:'cpf_cnpj',end:'endereco',cep:'cep',email:'email_cliente',ger:'geracao_kwh',equip:'equipamentos',valor:'valor',formaPag:'forma_pagamento',financ:'financiamento',assinado:'assinado_em',
   pagNa:'pagamento_na',pedido:'pedido_flow',entrada:'entrada',matPrev:'material_previsto',matReal:'material_entregue',kit:'kit_comprado',equipe:'equipe_id',iniPrev:'inicio_previsto',
   fimPrev:'fim_previsto',bIni:'baseline_inicio',bFim:'baseline_fim',iniReal:'inicio_real',fimReal:'fim_real',obs:'observacoes',top:'topicos',topx:'topicos_extra',fora:'fora_indicadores',
-  ctPath:'contrato_path',ctNome:'contrato_nome',origem:'origem'};
-const daLinha=r=>{const o={cod:r.codigo};for(const[k,c]of Object.entries(COL))o[k]=r[c]??null;o.kwp=o.kwp==null?null:Number(o.kwp);o.valor=o.valor==null?null:Number(o.valor);o.top=r.topicos||{};o.topx=r.topicos_extra||[];o.equip=r.equipamentos||[];return o};
+  ctPath:'contrato_path',ctNome:'contrato_nome',origem:'origem',pag:'pagamentos'};
+const daLinha=r=>{const o={cod:r.codigo};for(const[k,c]of Object.entries(COL))o[k]=r[c]??null;o.kwp=o.kwp==null?null:Number(o.kwp);o.valor=o.valor==null?null:Number(o.valor);o.top=r.topicos||{};o.topx=r.topicos_extra||[];o.equip=r.equipamentos||[];o.pag=r.pagamentos||[];return o};
 const paraBanco=patch=>{const p={};for(const[k,v]of Object.entries(patch))if(COL[k])p[COL[k]]=v;return p};
 function msgErro(e){const m=String(e&&e.message||'');
   if(/motivo/i.test(m))return'Informe o motivo da reprogramação.';
@@ -364,7 +405,9 @@ async function salvar(cod,patch,motivo){
   if(!S.pode){toast('Seu perfil só pode consultar o cronograma.');return false}
   const {error}=await sb.rpc('obra_salvar',{p_codigo:cod,p_patch:paraBanco(patch),p_motivo:motivo||null});
   if(error){toast(msgErro(error));return false}
-  const o=S.obras.get(cod);if(o)Object.assign(o,patch);toast('Salvo');recarregar();return true;
+  const o=S.obras.get(cod);if(o)Object.assign(o,patch);toast('Salvo');
+  if(o&&(o.pag||[]).some(p=>p.avisar)&&Object.keys(patch).some(k=>DATAS_PAG.includes(k)))refletir(cod);
+  recarregar();return true;
 }
 const dataOk=v=>!v||(/^\d{4}-\d\d-\d\d$/.test(v)&&v>='2024-01-01'&&v<='2030-12-31');
 function validar(o,f,v){
@@ -412,7 +455,7 @@ async function rapido(f,cod){const o=S.obras.get(cod||S.sel);const e=validar(o,f
   await salvar(o.cod,{[f]:HOJE})}
 let confEx=0;
 async function excluir(b){if(Date.now()-confEx>4000){confEx=Date.now();b.textContent='Clique de novo para confirmar a exclusão';return}
-  const c=S.sel,{error}=await sb.from('obra_obras').delete().eq('codigo',c);if(error){toast(msgErro(error));return}fechar();toast('Obra excluída');recarregar()}
+  const c=S.sel,tinhaPag=(S.obras.get(c)?.pag||[]).some(p=>p.avisar),{error}=await sb.from('obra_obras').delete().eq('codigo',c);if(error){toast(msgErro(error));return}if(tinhaPag)refletir(c);fechar();toast('Obra excluída');recarregar()}
 
 /* ---------- nova obra (pelo contrato) ---------- */
 let NOVO=null; // {path, nome} do contrato enviado
@@ -426,7 +469,7 @@ function mNova(){
    ${inp('n_cliente','Cliente *','','text','','w')}${inp('n_entrada','Data de entrada *',HOJE,'date')}${inp('n_cidade','Cidade','')}${sel('n_zona','Zona','',['Urbano','Rural'])}
    ${inp('n_kwp','Potência (kWp)','','number','step="0.01" min="0"')}${inp('n_mod','Módulos','','number','step="1" min="0"')}${sel('n_estrut','Estrutura','',S.cfg.estruturas)}${sel('n_envio','Envio do material','Estoque',['Estoque','Distribuidora'])}
    ${inp('n_valor','Valor do contrato (R$)','','number','step="0.01" min="0"')}${inp('n_assinado','Assinado em','','date')}${inp('n_formaPag','Forma de pagamento','','text','','w')}
-   ${sel('n_pagNa','Pagamento vinculado','',[['entrega','Na entrega do material'],['instalacao','Na instalação']])}${inp('n_matPrev','Previsão de entrega do material','','date')}
+   ${sel('n_pagNa','Pagamento condicionado','',Object.entries(ETAPA).map(([k,v])=>[k,v.charAt(0).toUpperCase()+v.slice(1)]))}${inp('n_matPrev','Previsão de entrega do material','','date')}
    ${inp('n_iniPrev','Previsão de instalação (início)','','date')}${inp('n_fimPrev','Previsão de instalação (fim)','','date')}${sel('n_equipe','Equipe (pode definir depois)','',eqs)}</div>
    <div class="err" id="e_n"></div><div class="acts"><button class="btn p" data-act="criar">Cadastrar obra</button><button class="btn" data-act="fechar">Cancelar</button></div>`);
 }
@@ -468,11 +511,12 @@ async function criar(){
   const n=x=>x===''?null:Number(x),d=NOVO&&NOVO.dados||{};
   const linha={codigo:cod,nome_card:g('card'),nome_contrato:g('contrato')||null,cliente:g('cliente').toUpperCase(),entrada:ent,cidade:g('cidade')||null,zona:g('zona')||null,
     kwp:n(g('kwp')),modulos:n(g('mod')),estrutura:g('estrut')||null,envio:g('envio')||null,valor:n(g('valor')),assinado_em:g('assinado')||null,forma_pagamento:g('formaPag')||null,
-    pagamento_na:g('pagNa')||null,material_previsto:mp||null,equipe_id:eq||null,inicio_previsto:ini||null,fim_previsto:ini?fim:null,
+    pagamentos:g('pagNa')?[{id:'p1',etapa:g('pagNa'),...(avisarPadrao()?{avisar:avisarPadrao()}:{})}]:[],material_previsto:mp||null,equipe_id:eq||null,inicio_previsto:ini||null,fim_previsto:ini?fim:null,
     cpf_cnpj:d.cpf_cnpj||null,endereco:d.endereco||null,cep:d.cep||null,email_cliente:d.email_cliente||null,geracao_kwh:d.geracao_kwh||null,equipamentos:d.equipamentos||[],financiamento:d.financiamento??null,
     contrato_path:NOVO?NOVO.path:null,contrato_nome:NOVO?NOVO.nome:null,origem:NOVO?'contrato':'manual'};
   const {error}=await sb.from('obra_obras').insert(linha);
   if(error){E.textContent=msgErro(error);return}
+  if(linha.pagamentos.some(p=>p.avisar))refletir(cod);
   fecharModal();toast(ini&&mp&&diff(ini,mp)<S.cfg.folgaDias?'Obra cadastrada. Atenção: instalação muito próxima da entrega do material.':'Obra cadastrada');
   await recarregar();setTimeout(()=>abrir(cod),200);
 }
@@ -541,7 +585,7 @@ async function salvarCfg(){
 function modal(h){$('#mb').innerHTML=h;$('#modal').classList.add('on')}
 function fecharModal(){$('#modal').classList.remove('on')}
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
-function banner(m){$('#banner').innerHTML=m?`<div class="banner">${esc(m)}</div>`:(!S.pode?'<div class="banner">Você está em modo de consulta. Quem edita o cronograma é a equipe de obras.</div>':'')}
+function banner(m){$('#banner').innerHTML=m?`<div class="banner">${esc(m)}</div>`:(!S.pode?`<div class="banner">Você está em modo de consulta. Quem edita o cronograma é a equipe de obras.${S.podePag?' O pagamento condicionado de cada obra você pode marcar.':''}</div>`:'')}
 document.addEventListener('click',async ev=>{
   const t=ev.target.closest('[data-nav],[data-act],[data-obra]');
   if(!t){if(ev.target.id==='scrim')fechar();if(ev.target.id==='modal')fecharModal();return}
@@ -568,6 +612,9 @@ document.addEventListener('click',async ev=>{
   else if(a==='removerCt')removerCt(t);
   else if(a==='maisTopico'){const nm=prompt('Nome do tópico (só para esta obra):');if(nm&&nm.trim()){const o=S.obras.get(S.sel);await salvar(o.cod,{topx:[...(o.topx||[]),{id:Date.now().toString(36),nome:nm.trim().slice(0,120),valor:'',importante:confirm('Marcar como importante (aparece em destaque)?')}]});gaveta()}}
   else if(a==='tiraTopico'){const o=S.obras.get(S.sel);await salvar(o.cod,{topx:(o.topx||[]).filter((_,i)=>i!==+t.dataset.i)});gaveta()}
+  else if(a==='maisPag'){$('#pags').insertAdjacentHTML('beforeend',linhaPag(S.obras.get(S.sel),{id:Date.now().toString(36),etapa:'',avisar:avisarPadrao()},true))}
+  else if(a==='tiraPag'){t.closest('.pagrow').remove()}
+  else if(a==='salvarPag')salvarPag();
   else if(a==='copiarRel'){try{await navigator.clipboard.writeText($('#resumo').textContent);toast('Resumo copiado')}catch(e){toast('Não foi possível copiar.')}}
   else if(a==='baixarRel')baixarRel();
 });
@@ -614,7 +661,7 @@ async function recarregar(){
     const [linhas,rep]=await Promise.all([lerTudo('obra_obras','*'),lerReprog()]);
     S.obras=new Map(linhas.map(r=>[r.codigo,daLinha(r)]));
     S.reprog={};for(const h of rep)S.reprog[h.obra]=(S.reprog[h.obra]||0)+1;
-    S.ok=true;banner();render();
+    S.ok=true;banner();render();abrirPendente();
     if(S.sel){const a=document.activeElement;if(!(a&&a.closest('#drawer')&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)))gaveta()}
   })().catch(()=>{banner('Não foi possível carregar as obras. Recarregue a página.');S.ok=true;render()}).finally(()=>{carregando=null});
   return carregando;
