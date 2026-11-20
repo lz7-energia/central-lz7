@@ -267,3 +267,6 @@ button:disabled{opacity:.3;cursor:default}
 .eq-st{font-size:.88em;color:var(--muted)}
 .eq-st.concluiu{color:#2e7d4f;font-weight:600}
 .eq-st.recusou{color:var(--alert)}
+
+/* Central: link de volta para a tela de origem */
+.vlink{margin:10px 0 0}.vlink a{display:inline-block;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;font-weight:600}

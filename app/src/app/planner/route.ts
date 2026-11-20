@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 // O planner é uma página própria (HTML + CSS + JS do planner-index.html), fora do layout da Central,
 // para manter telas, cores e temas idênticos. Os dados vêm das rotas /planner/api/*.
-const VERSAO = "2";
+const VERSAO = "3";
 const HTML = `<!DOCTYPE html>
 <html lang="pt-BR" data-theme="normal">
 <head>

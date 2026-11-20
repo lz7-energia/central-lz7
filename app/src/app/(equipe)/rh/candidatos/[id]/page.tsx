@@ -5,6 +5,7 @@ import { carregarListas } from "@/lib/rh-dados";
 import { tituloVaga, type Candidato, type Vaga } from "@/lib/rh";
 import { procurarRepetidos } from "../../acoes";
 import { PainelCandidato } from "../../Componentes";
+import { BotaoTarefa } from "@/components/BotaoTarefa";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,11 @@ export default async function PaginaCandidato({ params }: { params: Promise<{ id
   return (
     <>
       <p className="pequeno" style={{ marginBottom: 8 }}><Link href={`/rh/vagas/${vaga.id}`}>← {vaga.quantidade} {vaga.quantidade === 1 ? "vaga" : "vagas"} {tituloVaga(vaga)}</Link></p>
-      <h1>{cand.nome}</h1>
+      <div className="cabecalho">
+        <h1>{cand.nome}</h1>
+        <BotaoTarefa className="botao secundario pequeno" titulo={`${cand.nome} — ${tituloVaga(vaga)}`}
+          link={{ href: `/rh/candidatos/${cand.id}`, rotulo: `Candidato ${cand.nome}` }} />
+      </div>
       <PainelCandidato c={cand} vaga={vaga} repetidos={repetidos} {...listas} />
     </>
   );

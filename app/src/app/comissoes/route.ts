@@ -49,6 +49,7 @@ export async function GET(req: Request) {
 <script>window.__CENTRAL=${json(central)};</script>
 <script src="/com-app/central-com.js?v=${VERSAO}"></script>
 <script src="/com-app/comissoes.js?v=${VERSAO}"></script>
+<script src="/tarefa-app/tarefa.js?v=1" data-flutuante></script>
 </body>
 </html>`;
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });

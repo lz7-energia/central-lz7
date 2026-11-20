@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState, useTransition } from "react";
+import { BotaoTarefa } from "@/components/BotaoTarefa";
 import {
   FAIXAS, GRUPOS, ORDEM_GRUPOS, faixaDe, limitesDoPeriodo, nomesDoCliente,
   type Atualizacao, type FaixaId, type Grupo, type Periodo, type Recebivel, type Situacao,
@@ -10,7 +11,7 @@ import {
   alterarSituacao, concluirAtualizacao, criarSituacao, darBaixa, desfazerBaixa, editarNome, excluirTitulo, marcarFinanciamento, restaurarTitulo, salvarCobranca,
 } from "./acoes";
 
-type Aba = "vencidos" | "a_vencer" | "recebidos" | "excluidos";
+export type Aba = "vencidos" | "a_vencer" | "recebidos" | "excluidos";
 type Coluna = "cliente" | "vencimento" | "atraso" | "valor" | "previsao" | "recebido";
 type Modo = "cobranca" | "baixa" | "excluir" | "nome";
 
@@ -48,18 +49,33 @@ function NomeCliente({ t }: { t: Recebivel }) {
   );
 }
 
-export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
+/** Tarefa ligada ao título (ex.: rota de cobrança): título sugerido e link que abre os recebíveis já filtrados no cliente. */
+function tarefaDoTitulo(t: Recebivel, aba: Aba) {
+  const nome = t.nome_exibicao || nomesDoCliente(t).principal;
+  const valor = moeda(Number(t.valor_aberto || t.valor));
+  const venc = t.vencimento ? ` (venc. ${fmtData(t.vencimento)})` : "";
+  const q = new URLSearchParams({ aba, busca: nome });
+  return {
+    titulo: aba === "vencidos" ? `Cobrar ${nome} — ${valor}${venc}` : `${nome} — ${valor}${venc}`,
+    obs: [t.codigo_projeto && `Projeto ${t.codigo_projeto}`, t.motivo && `Motivo: ${t.motivo}`].filter(Boolean).join("\n"),
+    link: { href: `/recebiveis?${q}`, rotulo: `Recebíveis · ${nome}` },
+  };
+}
+
+export function Tabela({ titulos, historico, situacoes, podeEditar, hoje, abaInicial, buscaInicial }: {
   titulos: Recebivel[]; historico: Atualizacao[]; situacoes: Situacao[]; podeEditar: boolean; hoje: string;
+  abaInicial?: Aba; buscaInicial?: string;
 }) {
-  const [aba, setAba] = useState<Aba>("vencidos");
-  const [busca, setBusca] = useState("");
+  const [aba, setAba] = useState<Aba>(abaInicial ?? "vencidos");
+  const [busca, setBusca] = useState(buscaInicial ?? "");
   const [editando, setEditando] = useState<{ id: string; modo: Modo } | null>(null);
   const [grupo, setGrupo] = useState<Grupo | null>(null);
   const [faixa, setFaixa] = useState<FaixaId | null>(null);
   const [situacao, setSituacao] = useState<string | null>(null);
-  const [periodoFuturo, setPeriodoFuturo] = useState<Periodo>("mes");
-  const [periodoPassado, setPeriodoPassado] = useState<Periodo>("ano");
-  const [ordem, setOrdem] = useState(ORDEM_PADRAO.vencidos);
+  // vindo de um link (tarefa do planner): período inteiro, para o título aparecer
+  const [periodoFuturo, setPeriodoFuturo] = useState<Periodo>(buscaInicial ? "todos" : "mes");
+  const [periodoPassado, setPeriodoPassado] = useState<Periodo>(buscaInicial ? "todos" : "ano");
+  const [ordem, setOrdem] = useState(ORDEM_PADRAO[abaInicial ?? "vencidos"]);
   const [balde, setBalde] = useState<Balde | null>(null);
   const [baldeFuturo, setBaldeFuturo] = useState<Balde | null>(null);
   const [deData, setDeData] = useState(`${hoje.slice(0, 7)}-01`);
@@ -315,7 +331,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                         <>
                           <button className="link-acao" onClick={() => abrir(t.flow_id, "baixa")}>Dar baixa</button>
                           <button className="link-acao" onClick={() => abrir(t.flow_id, "excluir")}>Excluir</button>
-                          <button className="link-acao" title="Parcela paga por financiamento: fica fora da régua de cobrança"
+                          <button className="link-acao" title="Parcela paga por financiamento"
                             onClick={() => rapido(() => marcarFinanciamento(t.flow_id, !t.financiamento))}>
                             {t.financiamento ? "Tirar do financiamento" : "Pago por financiamento"}
                           </button>
@@ -329,6 +345,7 @@ export function Tabela({ titulos, historico, situacoes, podeEditar, hoje }: {
                         <button className="botao secundario pequeno" onClick={() => rapido(() => restaurarTitulo(t.flow_id))}>Restaurar</button>
                       )}
                       {aba !== "excluidos" && <button className="link-acao" onClick={() => abrir(t.flow_id, "nome")}>Editar nome</button>}
+                      {aba !== "excluidos" && <BotaoTarefa {...tarefaDoTitulo(t, aba)} />}
                     </td>
                   )}
                 </tr>

@@ -58,6 +58,7 @@ export async function GET(req: Request) {
 <script src="/conc-app/central-conc.js?v=${VERSAO}"></script>
 <script src="/conc-app/conc-pdf.js?v=${VERSAO}"></script>
 <script src="/conc-app/conciliacao.js?v=${VERSAO}"></script>
+<script src="/tarefa-app/tarefa.js?v=1" data-flutuante></script>
 </body>
 </html>`;
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });

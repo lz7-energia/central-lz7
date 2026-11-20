@@ -10,7 +10,7 @@ import { sincronizar } from "./sync";
 import type { Tarefa } from "./regras";
 
 export type Colega = { id: string; nome: string; email: string; papel?: string };
-const CAMPOS = ["title", "desc", "cat", "start", "time", "rec", "important", "urgentDays", "dailyQ", "subs"] as const;
+const CAMPOS = ["title", "desc", "cat", "start", "time", "rec", "important", "urgentDays", "dailyQ", "subs", "link"] as const;
 const WD = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 export const idCopia = (tarefaId: string, pessoaId: string) => `eq-${tarefaId}-${pessoaId.slice(0, 8)}`;

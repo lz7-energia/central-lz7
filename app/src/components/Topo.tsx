@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Script from "next/script";
+import { BotaoTarefa } from "./BotaoTarefa";
 import { sair } from "@/app/entrar/acoes";
 import { urlDaFoto, type Perfil } from "@/lib/supabase/server";
 import { Avatar } from "./Avatar";
@@ -15,6 +17,7 @@ export function Topo({ perfil }: { perfil: Perfil }) {
         </Link>
         <Nav diretoria={diretoria} />
         <div className="usuario">
+          <BotaoTarefa className="botao secundario pequeno topo-tarefa" title="Criar tarefa no planner com link para esta tela">+ Tarefa</BotaoTarefa>
           <Link href="/perfil" className="usuario-link" title="Meu perfil">
             <Avatar nome={perfil.nome} foto={urlDaFoto(perfil.foto_caminho)} />
             <span className="usuario-nome">{perfil.nome.split(" ")[0]}</span>
@@ -24,6 +27,7 @@ export function Topo({ perfil }: { perfil: Perfil }) {
           </form>
         </div>
       </div>
+      <Script src="/tarefa-app/tarefa.js?v=1" strategy="afterInteractive" />
     </header>
   );
 }
