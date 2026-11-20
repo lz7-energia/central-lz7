@@ -107,6 +107,15 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - **Pago por financiamento** (`titulo_ajustes.financiamento`): marcado no título (vencidos/a vencer).
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
 
+### Clientes (`/clientes`, menu do topo)
+
+- Ficha do cliente (20/11/2026), só leitura do que já está no banco: `lib/clientes.ts`. Chave = id do cliente no Flow
+  (`clientes_flow.flow_id` = `titulos_receber.id_cliente` = `pedidos_venda.bruto->cliente->>id`).
+- Busca por nome, apelido, CPF/CNPJ (5+ dígitos) ou código do projeto; sem termo, os clientes com títulos em aberto (mais vencido primeiro).
+- Ficha: contato (WhatsApp), em aberto / vencido / recebido, pedidos com a situação do painel (OS, nota, % recebido), cards do
+  Financiamento (casa pelo código do projeto no início do título do card ou pelo nome) e títulos com a anotação de cobrança.
+- O nome do cliente nos Recebíveis abre a ficha.
+
 ### Régua de cobrança: apagada
 
 - Apagada de vez em 20/11/2026 (decisão do usuário), junto com os cards "Central de boletos" (DDA) e "Agenda de entrevistas".

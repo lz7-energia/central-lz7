@@ -8,6 +8,7 @@ const EQUIPE = [
   { href: "/pedidos", rotulo: "Pedidos" },
   { href: "/painel", rotulo: "Faturamento" },
   { href: "/recebiveis", rotulo: "Recebíveis" },
+  { href: "/clientes", rotulo: "Clientes" },
 ];
 const DIRETORIA = [{ href: "/recebiveis", rotulo: "Recebíveis" }];
 
