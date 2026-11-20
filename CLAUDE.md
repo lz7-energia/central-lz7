@@ -172,6 +172,29 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   (o mais importante: Cronograma de instalação; integração: pagamento na entrega/instalação → planner do Financeiro).
 - Cadastrar alguém só de Obras: criar o usuário no Supabase (Authentication) e pôr `papel = 'obras'` no perfil.
 
+### Cronograma de instalação (`/obras/cronograma`)
+
+- Base: briefing "Cronograma de Obras LZ7" (schema, 189 obras, protótipo `index.html`) adaptado à Central (20/11/2026). Decisões no doc
+  `claude/central-obras-cronograma.md` do projeto ADM. Migração `20261120000028_obras_cronograma.sql`.
+- Banco: `obra_obras` (código obrigatório `WB260500COL`, nome do card, nome do contrato, dados do contrato, linha do tempo, tópicos),
+  `obra_historico` (gatilho), `obra_equipes` (cor, base, filial, membros, capacidade/dia), `obra_config` (metas, motivos), `obra_estruturas`,
+  `obra_topicos`; view `obra_v_obras` (status, dias em aberto, atraso, faixa de prazo). Gatilho `obra_antes_de_gravar`: baseline gravada
+  no 1º agendamento e protegida; reprogramação sem motivo é recusada (`app.motivo`). Gravação pela tela = `obra_salvar(codigo, patch, motivo)`.
+  RLS: todo perfil ativo lê (`eh_obras`); **só o perfil `obras` grava** (`obra_pode_editar`). Bucket privado `obra-contratos`.
+- Tela própria (`app/(obras)/obras/cronograma/route.ts` + `public/obras-app/cronograma.js|css`): regras e telas portadas do protótipo
+  (calendário mês/equipe, fila com sugestão, alertas, relatórios previsto × realizado + Excel, validações), dados direto no Supabase com o
+  token da sessão (`/obras/api/token`), tempo real em `obra_obras`. Telas por hash: `#calendario`, `#fila`, `#alertas`, `#entregas` (Logística),
+  `#relatorios` (Indicadores), `#equipes`, `#config` (metas, motivos, estruturas, tópicos). Os cards de Obras/Logística apontam para elas.
+- **Nova obra pelo contrato**: PDF vai direto ao bucket (link assinado, `/obras/api/contrato` acao `url`); `acao: "ler"` lê com unpdf e
+  `lib/obras-contrato.ts` (`lerTextoContrato`, modelo padrão Clicksign: cliente, CPF/CNPJ, endereço, cidade/zona/CEP, kWp, geração,
+  equipamentos, módulos, estrutura pela "junto a estrutura X", valor, forma de pagamento, financiamento, data da assinatura do cliente,
+  e-mail). Nome do contrato e sugestão do nome do card vêm do nome do arquivo (`1114_Fabiano_8_de_Abril` → "1114", "Fabiano – 8 de Abril").
+  Código obrigatório (o contrato não traz). Abrir contrato: `/obras/contrato/[codigo]` (link de 5 min).
+- Tópicos: fixos (`obra_topicos`, valores em `obra_obras.topicos`) e só da obra (`topicos_extra`); importantes aparecem em destaque.
+- `fora_indicadores` (PE-54-2024, licitação) fica no cronograma e sai dos indicadores. As 189 obras da planilha entram por um SQL à parte
+  (não vai ao repositório); WB260267SGL teve a entrada ajustada para 29/06 (material chegou antes da entrada).
+- Ainda não: aviso do "pagamento na entrega/instalação" no planner do Financeiro; integração com o Flow.
+
 ## Planner Eisenhower (`/planner`)
 
 - Recriado do `planner-index.html` (especificação de 11/11/2026, no projeto ADM). Página própria, fora do layout React:

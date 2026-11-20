@@ -1,0 +1,75 @@
+import { NextResponse } from "next/server";
+import { paginaAviso, tokenDaSessao } from "@/lib/colaboradores";
+import { pessoaObras } from "@/lib/obras";
+import { supabaseServico } from "@/lib/supabase/servico";
+
+export const dynamic = "force-dynamic";
+
+// Cronograma de instalação (Central de Obras): página própria com a lógica do protótipo "Cronograma de Obras LZ7"
+// (public/obras-app/cronograma.js|css) falando direto com o banco, sujeito ao RLS (só o perfil obras grava).
+const VERSAO = "3";
+const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
+
+export async function GET(req: Request) {
+  const p = await pessoaObras();
+  if (!p) return NextResponse.redirect(new URL("/entrar?volta=/obras/cronograma", req.url));
+  const t = await tokenDaSessao();
+  if (!t) return paginaAviso("Sessão não encontrada", "Você está logado, mas o site não conseguiu ler a sessão para abrir o módulo. Clique em \"Entrar de novo\" e tente outra vez.");
+  const { data: perfis } = await supabaseServico().from("perfis").select("id, nome");
+  const central = {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
+  };
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cronograma de instalação · Central de Obras</title>
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/obras-app/cronograma.css?v=${VERSAO}">
+</head>
+<body>
+<div class="app">
+  <nav class="side" aria-label="Seções">
+    <div class="brand"><img src="/logo-lz7-branco.png" alt="LZ7">Central de Obras<small>Cronograma de instalação</small></div>
+    <a class="voltar" href="/obras">‹ Início de Obras</a>
+    <hr>
+    <button class="nav" data-nav="calendario">Calendário</button>
+    <button class="nav" data-nav="fila">Fila de agendamento <span class="n" id="nFila" hidden></span></button>
+    <button class="nav" data-nav="alertas">Alertas <span class="n" id="nAl" hidden></span></button>
+    <button class="nav" data-nav="entregas">Entregas de material</button>
+    <button class="nav" data-nav="relatorios">Indicadores</button>
+    <button class="nav" data-nav="equipes">Equipes</button>
+    <hr>
+    ${p.podeEditar ? '<button class="nav" data-act="nova">+ Nova obra</button>' : ""}
+    <span class="sp"></span>
+    <button class="nav" data-nav="config">Configurações</button>
+  </nav>
+  <div class="main">
+    <div id="banner"></div>
+    <header class="top">
+      <h1 id="titulo">Cronograma de instalação</h1>
+      <input type="search" id="fq" placeholder="Buscar cliente, código, contrato ou cidade" aria-label="Buscar" style="width:270px">
+      <select id="ffil" aria-label="Filial"></select>
+      <select id="feq" aria-label="Equipe"></select>
+    </header>
+    <main class="view" id="view"><div class="empty">Carregando obras…</div></main>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Detalhes da obra"></aside>
+<div class="modal" id="modal"><div class="mb" id="mb"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="/colab-app/vendor/xlsx.full.min.js"></script>
+<script src="/colab-app/vendor/supabase.js"></script>
+<script>window.__CENTRAL=${json(central)};</script>
+<script src="/obras-app/cronograma.js?v=${VERSAO}"></script>
+<script src="/tarefa-app/tarefa.js?v=1" data-flutuante></script>
+</body>
+</html>`;
+  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
