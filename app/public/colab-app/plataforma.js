@@ -376,6 +376,7 @@ function colabDetailBody(c){
       ${kv("E-mail pessoal",c.emailPessoal?esc(c.emailPessoal):"")}
       ${kv("Admissão",fd(c.admissao))}${o?kv("Desligamento",fd(c.desligamento)):""}
     </dl>
+    ${window.centralFrotaHtml?window.centralFrotaHtml(c):""}${"" /* Central: carro e multas da Frota */}
     ${c.obs?`<div class="box note" style="white-space:pre-wrap">${esc(c.obs)}</div>`:""}
     <div class="${o&&P.length?"box bad":""}" style="display:flex;flex-direction:column;gap:10px">
       <div class="h3"><span>Materiais em posse (${P.length})${o&&P.length?' — <span style="color:var(--bad)">devolução pendente</span>':""}</span>

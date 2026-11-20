@@ -190,6 +190,19 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Validade com aviso (dias antes): selo vencido/vencendo, lista "Vencendo ou vencidos" e **tarefa "Renovar: …" no planner do
   responsável** (`lib/arquivos-planner.ts`, id `doc-<id>`), que a sincronização do planner leva ao ClickUp.
 
+## Frota (ADM, `/frota`)
+
+- Criada em 20/11/2026 (decisão do usuário: frota nova no ADM, não o estoque "Veículo" da folha). Migração `20261120000026_frota.sql`.
+- `frota_veiculos` (placa única sem hífen, modelo, empresa/unidade de `arq_*`, **motorista = colaborador da folha** `plat_docs` colab,
+  responsável na Central, km, próxima revisão por km/data, em uso ou não), `frota_motoristas` (histórico por gatilho ao trocar o motorista),
+  `frota_documentos` (licenciamento, seguro, IPVA… com vencimento e aviso), `frota_manutencoes`, `frota_multas` (motorista da data preenchido
+  pelo histórico, `frota_motorista_em`), `frota_abastecimentos` (motorista do dia; o maior km vira o km do carro). RLS `eh_equipe()`.
+- Alertas (`lib/frota.ts`, `alertasDoVeiculo`): documento vencido/vencendo, revisão por data (15 dias) ou km (1.000 km), multa pendente.
+- Planner do responsável (`lib/frota-planner.ts`, ids `frota-<carro8>-d|r|m-<registro8>`, refeito a cada mudança): renovar documento,
+  revisão por data e multa pendente com vencimento, com link para o carro.
+- **Ficha do colaborador no RH** mostra o carro e as multas pendentes dele: `central.js` lê a frota e `plataforma.js` chama
+  `window.centralFrotaHtml(c)` (linha marcada "Central:").
+
 ## Fiscal: PIS e COFINS (`/fiscal`)
 
 - Notas do Flow a partir de 10/2026, sincronizadas pela Edge Function `fiscal-sincronizar` (só GET; `supabase/agendar-fiscal.sql`):

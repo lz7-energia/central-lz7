@@ -664,3 +664,34 @@ do $$ declare a text; begin
 end $$;
 delete from public.conc_docs; delete from public.conc_auditoria;
 do $$ begin raise notice 'OK conciliação'; end $$;
+
+-- 24) Frota: histórico de motorista, multa acha quem dirigia, abastecimento atualiza o km
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ declare v uuid; begin
+  insert into public.frota_veiculos (placa, modelo, motorista_colab_id) values ('ABC1D23', 'Strada', 'colab-a') returning id into v;
+  if (select count(*) from public.frota_motoristas where veiculo_id = v and ate is null and colab_id = 'colab-a') <> 1 then raise exception 'histórico inicial'; end if;
+  update public.frota_motoristas set de = current_date - 30 where veiculo_id = v;
+  update public.frota_veiculos set motorista_colab_id = 'colab-b' where id = v;
+  if (select count(*) from public.frota_motoristas where veiculo_id = v) <> 2 then raise exception 'troca de motorista'; end if;
+  insert into public.frota_multas (veiculo_id, data_infracao, valor) values (v, current_date - 10, 130.16);
+  if (select colab_id from public.frota_multas where veiculo_id = v) <> 'colab-a' then raise exception 'multa não achou o motorista da data: %', (select colab_id from public.frota_multas where veiculo_id = v); end if;
+  insert into public.frota_abastecimentos (veiculo_id, data, litros, valor, km) values (v, current_date, 40, 250, 12345);
+  if (select km_atual from public.frota_veiculos where id = v) <> 12345 then raise exception 'km não atualizou'; end if;
+  if (select colab_id from public.frota_abastecimentos where veiculo_id = v) <> 'colab-b' then raise exception 'abastecimento sem motorista'; end if;
+  insert into public.frota_abastecimentos (veiculo_id, data, km) values (v, current_date - 5, 12000);
+  if (select km_atual from public.frota_veiculos where id = v) <> 12345 then raise exception 'km voltou para trás'; end if;
+  if (select alterado_por from public.frota_veiculos where id = v) <> 'Ana' then raise exception 'carimbo: %', (select alterado_por from public.frota_veiculos where id = v); end if;
+  begin
+    insert into public.frota_veiculos (placa) values ('abc-1d23');
+    raise exception 'placa repetida passou';
+  exception when unique_violation then null; end;
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  if exists (select 1 from public.frota_veiculos) then raise exception 'anon vê a frota'; end if;
+exception when insufficient_privilege then null; end $$;
+reset role;
+delete from public.frota_veiculos;
+do $$ begin raise notice 'OK frota'; end $$;
