@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { paginaAviso, tokenDaSessao } from "@/lib/colaboradores";
 import { pessoaConc } from "@/lib/conciliacao";
+import { perfilAtual } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,10 @@ const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
   const p = await pessoaConc();
-  if (!p) return NextResponse.redirect(new URL("/entrar?volta=/conciliacao", req.url));
+  if (!p) {
+    if (!(await perfilAtual())) return NextResponse.redirect(new URL("/entrar?volta=/conciliacao", req.url));
+    return paginaAviso("Sem acesso", "A conciliação bancária é da Central Administrativa.", 403);
+  }
   const t = await tokenDaSessao();
   if (!t) return paginaAviso("Sessão não encontrada", "Você está logado, mas o site não conseguiu ler a sessão para abrir o módulo. Clique em \"Entrar de novo\" e tente outra vez.");
   const central = {

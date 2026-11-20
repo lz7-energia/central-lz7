@@ -695,3 +695,28 @@ exception when insufficient_privilege then null; end $$;
 reset role;
 delete from public.frota_veiculos;
 do $$ begin raise notice 'OK frota'; end $$;
+
+-- 25) Central de Obras: perfil "obras" não vê a Central Administrativa, mas tem o próprio planner
+insert into auth.users values ('66666666-6666-6666-6666-666666666666');
+insert into public.perfis (id, nome, email, papel) values ('66666666-6666-6666-6666-666666666666', 'Letícia', 'leticia@lz7.com.br', 'obras');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin
+  if public.eh_equipe() then raise exception 'obras passou como equipe'; end if;
+  if public.ve_recebiveis() then raise exception 'obras vê recebíveis'; end if;
+  if not public.eh_obras() then raise exception 'obras sem acesso a Obras'; end if;
+  if exists (select 1 from public.pedidos) or exists (select 1 from public.titulos_receber) or exists (select 1 from public.plat_docs)
+     or exists (select 1 from public.frota_veiculos) or exists (select 1 from public.com_docs) then raise exception 'obras vê dados da Administrativa'; end if;
+  insert into public.planner_tasks (user_id, id, data) values ('66666666-6666-6666-6666-666666666666', 't-obras', '{"id":"t-obras","title":"x","start":"2026-11-20"}');
+  insert into public.tela_ordem (ordem) values ('{"obras":["logistica"]}');
+  if (select count(*) from public.planner_tasks) <> 1 then raise exception 'planner de obras'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if not public.eh_equipe() or not public.eh_obras() then raise exception 'equipe perdeu acesso'; end if;
+  if exists (select 1 from public.planner_tasks where user_id = '66666666-6666-6666-6666-666666666666') then raise exception 'viu o planner da Letícia'; end if;
+end $$;
+reset role;
+delete from public.planner_tasks where user_id = '66666666-6666-6666-6666-666666666666';
+delete from public.tela_ordem;
+do $$ begin raise notice 'OK central de obras'; end $$;
