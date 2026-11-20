@@ -213,4 +213,28 @@
 
   const user = { id: C.usuario.id, name: C.usuario.nome, email: C.usuario.email };
   window.claude = { use: async (nome) => ({ db, assets, downloads, user })[nome] || null };
+
+  // Frota → ficha do colaborador: carros em que ele é o motorista e multas pendentes no nome dele (tabelas frota_*).
+  const esc = (t) => String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const placa = (p) => { const x = String(p || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return x.length === 7 ? x.slice(0, 3) + "-" + x.slice(3) : x; };
+  window.CENTRAL_FROTA = { carros: [], multas: [] };
+  async function lerFrota() {
+    const [v, m] = await Promise.all([
+      sb.from("frota_veiculos").select("id, placa, modelo, marca, motorista_colab_id").eq("ativo", true).not("motorista_colab_id", "is", null),
+      sb.from("frota_multas").select("id, veiculo_id, colab_id, data_infracao, valor, descricao").eq("situacao", "pendente").not("colab_id", "is", null),
+    ]);
+    window.CENTRAL_FROTA = { carros: v.data || [], multas: m.data || [] };
+  }
+  lerFrota().catch(() => {});
+  window.centralFrotaHtml = function (c) {
+    const F = window.CENTRAL_FROTA, carros = F.carros.filter((x) => x.motorista_colab_id === c.id), multas = F.multas.filter((x) => x.colab_id === c.id);
+    if (!carros.length && !multas.length) return "";
+    const brl = (v) => (v == null ? "" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+    const fd = (d) => (d ? d.split("-").reverse().join("/") : "");
+    return `<div class="box" style="display:flex;flex-direction:column;gap:8px"><div class="h3"><span>Frota</span></div>` +
+      carros.map((x) => `<div>🚗 <a href="/frota/${esc(x.id)}" target="_top" style="color:inherit"><b class="mono">${esc(placa(x.placa))}</b> ${esc([x.marca, x.modelo].filter(Boolean).join(" "))}</a> <span class="muted">· motorista</span></div>`).join("") +
+      (multas.length ? `<div class="note" style="border-color:var(--warn)">Multa${multas.length > 1 ? "s" : ""} pendente${multas.length > 1 ? "s" : ""}: ` +
+        multas.map((x) => `<a href="/frota/${esc(x.veiculo_id)}" target="_top">${fd(x.data_infracao)}${x.valor ? " · " + brl(x.valor) : ""}${x.descricao ? " · " + esc(x.descricao) : ""}</a>`).join("; ") + `</div>` : "") +
+      `</div>`;
+  };
 })();

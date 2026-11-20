@@ -48,7 +48,7 @@ export const AREAS: Area[] = [
     modulos: [
       { nome: "Pedidos do ADM", icone: "pedidos", descricao: "Compras, manutenção, equipamentos e documentos", href: "/pedidos?setor=adm" },
       { nome: "Documentos da empresa", icone: "documentos", descricao: "Por empresa e unidade, com validades e alertas", href: "/arquivos" },
-      { nome: "Certificado, contratos e frota", icone: "alerta", descricao: "Vencimentos e alertas" },
+      { nome: "Frota", icone: "carro", descricao: "Carros e motoristas, documentos, manutenção, multas e abastecimento", href: "/frota" },
       { nome: "Mural e manuais", icone: "mural", descricao: "Comunicados, procedimentos e contatos" },
     ],
   },
@@ -97,7 +97,7 @@ export function IconeArea({ id, tamanho = 28 }: { id: Area["id"]; tamanho?: numb
 
 export type IconeModuloId =
   | "quadro" | "pedidos" | "imposto" | "calendario" | "cancelada" | "boleto" | "recebiveis" | "cobranca" | "financiamento" | "comissoes"
-  | "caixa" | "conciliacao" | "vagas" | "equipe" | "agenda" | "contrato" | "documentos" | "alerta" | "mural";
+  | "caixa" | "conciliacao" | "vagas" | "equipe" | "agenda" | "contrato" | "documentos" | "alerta" | "mural" | "carro";
 
 /** Ícone de cada módulo (desenho próprio, traço de 24 px). */
 export function IconeModulo({ id, tamanho = 22 }: { id: IconeModuloId; tamanho?: number }) {
@@ -121,6 +121,7 @@ export function IconeModulo({ id, tamanho = 22 }: { id: IconeModuloId; tamanho?:
     contrato: <><path d="M6 3h9l3 3v6M6 3v18h6" /><path d="M9 8h5M9 11.5h6" /><path d="M14.5 20.5l1-3.5 4-4a1.4 1.4 0 0 1 2 2l-4 4z" /></>,
     documentos: <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>,
     alerta: <><path d="M12 3l8 3v6c0 4.4-3.4 7.8-8 9-4.6-1.2-8-4.6-8-9V6z" /><path d="M12 8v4.5M12 15.8v.2" /></>,
+    carro: <><path d="M5 16V11l2-5h10l2 5v5" /><path d="M3 16h18v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" /><path d="M5 11h14M7.5 13.5h1M15.5 13.5h1" /></>,
     mural: <><path d="M4 10v4l3 .5L15 19V5L7 9.5z" /><path d="M7 14.5L8.5 20M18 9.5a3 3 0 0 1 0 5" /></>,
   };
   return <svg {...comum}>{caminhos[id]}</svg>;
