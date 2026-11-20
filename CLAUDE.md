@@ -107,6 +107,15 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - **Pago por financiamento** (`titulo_ajustes.financiamento`): marcado no título (vencidos/a vencer).
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
 
+### Clientes (`/clientes`, menu do topo)
+
+- Ficha do cliente (20/11/2026), só leitura do que já está no banco: `lib/clientes.ts`. Chave = id do cliente no Flow
+  (`clientes_flow.flow_id` = `titulos_receber.id_cliente` = `pedidos_venda.bruto->cliente->>id`).
+- Busca por nome, apelido, CPF/CNPJ (5+ dígitos) ou código do projeto; sem termo, os clientes com títulos em aberto (mais vencido primeiro).
+- Ficha: contato (WhatsApp), em aberto / vencido / recebido, pedidos com a situação do painel (OS, nota, % recebido), cards do
+  Financiamento (casa pelo código do projeto no início do título do card ou pelo nome) e títulos com a anotação de cobrança.
+- O nome do cliente nos Recebíveis abre a ficha.
+
 ### Régua de cobrança: apagada
 
 - Apagada de vez em 20/11/2026 (decisão do usuário), junto com os cards "Central de boletos" (DDA) e "Agenda de entrevistas".
@@ -306,6 +315,9 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Cada área e cada módulo tem ícone próprio (`lib/areas.tsx`: `IconeArea`, `IconeModulo`).
 - **Cada pessoa arruma os próprios cards** (áreas na Início, módulos em cada área): botão "Reorganizar" (arrastar ou setas),
   "Voltar ao padrão". Tabela `tela_ordem` (uma linha por pessoa, RLS só a própria), `lib/ordem.ts` (`aplicarOrdem`; módulo novo vai para o fim).
+- **Meu dia** na Início (`lib/meu-dia.ts`): tarefas do planner atrasadas e de hoje (pelas mesmas regras `Regras.curOcc`; sem os
+  acompanhamentos `soCentral`; com "↗ abrir" quando a tarefa tem `link`), pedidos sob minha responsabilidade com previsão hoje ou vencida,
+  pedidos novos esperando aceite e previsões de pagamento combinadas para hoje (Recebíveis, abre a ficha do cliente).
 - Página `/perfil` (equipe e diretoria): foto (bucket público `fotos-perfil`, pasta = id da pessoa, reduzida no navegador),
   nome, cargo, telefone e troca de senha. Papel e e-mail só o administrador muda (`atualizar_meu_perfil`, `trocar_minha_foto`).
 

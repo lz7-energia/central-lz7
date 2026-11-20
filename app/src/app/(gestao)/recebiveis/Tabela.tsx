@@ -43,7 +43,9 @@ function NomeCliente({ t }: { t: Recebivel }) {
   const { principal, apoio } = nomesDoCliente(t);
   return (
     <>
-      <strong>{principal}</strong>
+      {t.id_cliente
+        ? <a href={`/clientes/${encodeURIComponent(t.id_cliente)}`} className="link-cliente" title="Ficha do cliente"><strong>{principal}</strong></a>
+        : <strong>{principal}</strong>}
       {apoio.map((v) => <div key={v} className="pequeno mudo">{v}</div>)}
     </>
   );
