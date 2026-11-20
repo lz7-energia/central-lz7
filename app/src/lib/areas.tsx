@@ -28,7 +28,7 @@ export const AREAS: Area[] = [
       { nome: "Financiamento e confirmação", icone: "financiamento", descricao: "Cards parados em Financiamento e Confirmação de pagamento", href: "/financiamento" },
       { nome: "Régua de cobrança", icone: "cobranca", descricao: "Mensagens de cobrança por WhatsApp, etapa a etapa", href: "/cobranca" },
       { nome: "Fluxo de caixa projetado", icone: "caixa", descricao: "A pagar, a receber e previsto × realizado" },
-      { nome: "Conciliação bancária", icone: "conciliacao", descricao: "Extrato × movimento do Flow" },
+      { nome: "Conciliação bancária", icone: "conciliacao", descricao: "Extrato × movimento do Flow, mês a mês", href: "/conciliacao" },
     ],
   },
   {
