@@ -183,8 +183,12 @@ table.map select{width:100%}
 .pill.imp{background:var(--warn-soft);color:var(--warn)}
 .cfg-lista{display:flex;flex-direction:column;gap:6px}
 .cfg-lista .row{padding:6px 10px}
-.ro .acts .btn.p,.ro [data-so-edita]{display:none}
+.ro .acts .btn.p:not([data-act=salvarPag]),.ro [data-so-edita]{display:none}
 .lido{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:8px 10px;font-size:13px;margin-top:8px}
 .equip{font-size:12.5px;color:var(--muted);margin:4px 0 0;padding-left:16px}
 .fg label.topico{display:grid!important;grid-template-columns:1fr minmax(170px,46%);align-items:center;gap:10px;color:var(--ink);font-size:14px}
 input[type=email]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0;color:var(--ink);font-size:14px;width:100%}
+
+/* Central: pagamento condicionado */
+.pags{display:flex;flex-direction:column;gap:10px}
+.pagrow{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface)}

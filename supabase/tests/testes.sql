@@ -750,5 +750,38 @@ do $$ begin
   if (select observacoes from public.obra_obras where codigo = 'WB260999COL') is not null then raise exception 'equipe atualizou direto'; end if;
 end $$;
 reset role;
-delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-teste';
 do $$ begin raise notice 'OK cronograma de obras'; end $$;
+
+-- 27) Pagamento condicionado: equipe (Financeiro) e obras marcam; diretoria só vê; pessoa avisada é da Administrativa
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  perform public.obra_salvar_pagamentos('WB260999COL', '[{"id":"a1","etapa":"entrega","valor":"1500.5","avisar":"11111111-1111-1111-1111-111111111111","obs":" 30% "}]');
+  if (select pagamentos->0->>'obs' from public.obra_obras where codigo = 'WB260999COL') <> '30%' then raise exception 'pagamento não gravou'; end if;
+  if (select (pagamentos->0->>'valor')::numeric from public.obra_obras where codigo = 'WB260999COL') <> 1500.5 then raise exception 'valor'; end if;
+  if not exists (select 1 from public.obra_historico where obra = 'WB260999COL' and campo = 'pagamentos') then raise exception 'histórico do pagamento'; end if;
+  begin
+    perform public.obra_salvar_pagamentos('WB260999COL', '[{"etapa":"qualquer"}]');
+    raise exception 'aceitou etapa inválida';
+  exception when invalid_parameter_value then null; end;
+  begin
+    perform public.obra_salvar_pagamentos('WB260999COL', '[{"etapa":"conclusao","avisar":"66666666-6666-6666-6666-666666666666"}]');
+    raise exception 'avisou alguém de Obras';
+  exception when invalid_parameter_value then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin
+  perform public.obra_salvar_pagamentos('WB260999COL', '[{"id":"a1","etapa":"entrega","avisar":"11111111-1111-1111-1111-111111111111"},{"etapa":"conclusao"}]');
+  if (select jsonb_array_length(pagamentos) from public.obra_obras where codigo = 'WB260999COL') <> 2 then raise exception 'obras não marcou'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if (select jsonb_array_length(pagamentos) from public.obra_obras where codigo = 'WB260999COL') <> 2 then raise exception 'diretoria não vê'; end if;
+  begin
+    perform public.obra_salvar_pagamentos('WB260999COL', '[]');
+    raise exception 'diretoria editou o pagamento';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-teste';
+do $$ begin raise notice 'OK pagamento condicionado'; end $$;

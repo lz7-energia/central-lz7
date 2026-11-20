@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Cronograma de instalação (Central de Obras): página própria com a lógica do protótipo "Cronograma de Obras LZ7"
 // (public/obras-app/cronograma.js|css) falando direto com o banco, sujeito ao RLS (só o perfil obras grava).
-const VERSAO = "3";
+const VERSAO = "4";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -15,10 +15,10 @@ export async function GET(req: Request) {
   if (!p) return NextResponse.redirect(new URL("/entrar?volta=/obras/cronograma", req.url));
   const t = await tokenDaSessao();
   if (!t) return paginaAviso("Sessão não encontrada", "Você está logado, mas o site não conseguiu ler a sessão para abrir o módulo. Clique em \"Entrar de novo\" e tente outra vez.");
-  const { data: perfis } = await supabaseServico().from("perfis").select("id, nome");
+  const { data: perfis } = await supabaseServico().from("perfis").select("id, nome, papel, ativo");
   const central = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
+    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, podePagamento: ["obras", "equipe", "admin"].includes(String(p.papel)), usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
   };
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
