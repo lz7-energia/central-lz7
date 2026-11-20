@@ -11,5 +11,5 @@ export async function GET() {
   const [e, time, avisos] = await Promise.all([new DadosPlanner(p.id).estado(), colegas(), avisosNaoLidos(p.id)]);
   const tasks = await situacaoDasCopias(e.tasks);
   return ok({ ...e, tasks, pessoa: { nome: p.nome, id: p.id }, clickupConfigurado: !!process.env.CLICKUP_API_TOKEN,
-    equipe: time.filter((c) => c.id !== p.id).map((c) => ({ id: c.id, nome: c.nome })), avisos });
+    equipe: time.filter((c) => c.id !== p.id).map((c) => ({ id: c.id, nome: c.nome, principal: c.papel === "equipe" })), avisos, euPrincipal: time.some((c) => c.id === p.id && c.papel === "equipe") });
 }

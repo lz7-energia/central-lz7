@@ -102,6 +102,8 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Aba Recebidos com **todo o histórico** do Flow (o número na aba é o total; abre em "Este ano") e períodos hoje / semana (seg–dom) / mês / ano / tudo / escolher datas (de–até); gráfico "Recebimentos"
   por dia, mês ou ano (clique filtra). Todas as colunas principais ordenáveis (clique no título; sem data vai para o fim).
 - O Supabase devolve no máximo 1000 linhas por consulta: telas usam `lib/paginar.ts` (`todasAsLinhas`) e a sincronização `lerTudo`.
+- Caixa de edição na tabela (Atualizar, Dar baixa, Excluir, Editar nome) fica na largura visível e parada ao rolar para o lado;
+  motivo em campo de várias linhas, cursor já no motivo, Ctrl+Enter salva.
 - **Pago por financiamento** (`titulo_ajustes.financiamento`): marcado no título (vencidos/a vencer); fica fora da régua de cobrança.
 - Planilha: `/recebiveis/exportar?aba=vencidos|a_vencer|recebidos&periodo=dia|semana|mes|ano|todos|personalizado[&de=&ate=]` (CSV, padrão Excel pt-BR).
 
@@ -176,6 +178,8 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
   Tarefa passada: a original vira acompanhamento (`soCentral`, não vai ao ClickUp; mostra concluiu / pendente / recusou).
   Call: fica no planner (e no ClickUp) de todos. Quem recebe pode **Recusar** com motivo (`paraRecusas`, aviso a quem mandou);
   concluir avisa quem mandou; editar a original atualiza as cópias; excluir a original some das outras pessoas.
+  Opção **"Para os 4 principais da equipe"** (20/11/2026): passa a tarefa de uma vez para todos os perfis `equipe` ativos (menos quem cria);
+  a lista vem marcada e pode ser ajustada (`principal` na equipe de `/planner/api/estado`, `eqPrinc` só na tela).
 - Importar: Configurações → Dados → Importar tarefas (JSON: lista de tasks ou `{tasks, events, settings, sync}`); importar antes de ligar o ClickUp.
 
 ## Central de arquivos (ADM, `/arquivos`)
