@@ -15,7 +15,7 @@ export const AREAS_OBRAS: AreaObras[] = [
   {
     id: "logistica", nome: "Logística", descricao: "Entregas, rotas e recebimento de material",
     modulos: [
-      { nome: "Agenda de entregas", icone: "agenda", descricao: "O que vai para qual obra e quando; pagamento na entrega avisa o Financeiro" },
+      { nome: "Agenda de entregas", icone: "agenda", descricao: "Material atrasado, previsto e sem previsão, por obra", href: "/obras/cronograma#entregas" },
       { nome: "Rotas do dia", icone: "carro", descricao: "Entregas e instalações do dia agrupadas por cidade e carro" },
       { nome: "Recebimento de material", icone: "documentos", descricao: "Chegou, conferido ou com divergência" },
     ],
@@ -23,11 +23,11 @@ export const AREAS_OBRAS: AreaObras[] = [
   {
     id: "obras", nome: "Obras", descricao: "Cronograma de instalação, equipes, homologação e pós-obra",
     modulos: [
-      { nome: "Cronograma de instalação", icone: "calendario", descricao: "Quem instala o quê e quando, por equipe; arrastar muda a data" },
-      { nome: "Equipes de instalação", icone: "equipe", descricao: "Quem é de cada equipe e a agenda da semana" },
+      { nome: "Cronograma de instalação", icone: "calendario", descricao: "Calendário por mês e por equipe, fila de agendamento, alertas e nova obra pelo contrato", href: "/obras/cronograma" },
+      { nome: "Equipes de instalação", icone: "equipe", descricao: "Quem é de cada equipe, base, cor e quantas obras faz por dia", href: "/obras/cronograma#equipes" },
       { nome: "Homologação na Copel", icone: "alerta", descricao: "Acesso, vistoria, troca de medidor, prazos e pendências" },
       { nome: "Pós-obra e garantia", icone: "pedidos", descricao: "Chamados de manutenção, visita técnica e garantia" },
-      { nome: "Indicadores de obras", icone: "quadro", descricao: "Obras por etapa, tempo da venda à conclusão, instalações e atrasos" },
+      { nome: "Indicadores de obras", icone: "quadro", descricao: "Previsto × realizado, prazo da entrada ao fim, atrasos por mês e por equipe", href: "/obras/cronograma#relatorios" },
     ],
   },
 ];

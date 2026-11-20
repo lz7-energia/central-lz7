@@ -34,11 +34,11 @@ export default async function AreaObras({ params }: { params: Promise<{ area: st
       </div>
       <Reordenar lugar={`obras-${area.id}`} className={`grade-modulos area-o-${area.id}`} titulo={<h2 style={{ margin: 0 }}>Módulos</h2>}
         itens={modulos.map((m) => ({ chave: chaveModulo(m), rotulo: m.nome, conteudo: m.href ? (
-          <Link href={m.href} className="modulo">
+          <a href={m.href} className="modulo">
             <span className="mod-icone"><IconeModulo id={m.icone} /></span>
             <strong>{m.nome}</strong>
             <span>{m.descricao}</span>
-          </Link>
+          </a>
         ) : (
           <div className="modulo em-breve" aria-disabled="true">
             <span className="mod-icone"><IconeModulo id={m.icone} /></span>

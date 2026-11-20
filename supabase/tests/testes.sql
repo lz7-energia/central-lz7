@@ -720,3 +720,35 @@ reset role;
 delete from public.planner_tasks where user_id = '66666666-6666-6666-6666-666666666666';
 delete from public.tela_ordem;
 do $$ begin raise notice 'OK central de obras'; end $$;
+
+-- 26) Cronograma de obras: só o perfil obras edita, baseline protegida, motivo obrigatório, histórico
+insert into public.obra_equipes (id, nome, filial) values ('eq-teste', 'Equipe Teste', 'WB');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin
+  insert into public.obra_obras (codigo, nome_card, cliente, entrada, material_entregue) values ('WB260999COL', 'Teste', 'CLIENTE TESTE', '2026-11-01', '2026-11-05');
+  if (select filial from public.obra_obras where codigo = 'WB260999COL') <> 'WB' then raise exception 'filial pelo código'; end if;
+  perform public.obra_salvar('WB260999COL', '{"equipe_id":"eq-teste","inicio_previsto":"2026-11-20","fim_previsto":"2026-11-21"}');
+  if (select baseline_fim from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-21' then raise exception 'baseline não gravou'; end if;
+  begin
+    perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-25","fim_previsto":"2026-11-25"}');
+    raise exception 'reprogramou sem motivo';
+  exception when check_violation then null; end;
+  perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-25","fim_previsto":"2026-11-25","baseline_fim":"2030-01-01"}', 'Chuva');
+  if (select baseline_fim from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-21' then raise exception 'baseline mudou'; end if;
+  if (select count(*) from public.obra_historico where obra = 'WB260999COL' and motivo = 'Chuva') <> 2 then raise exception 'histórico da reprogramação'; end if;
+  if (select status from public.obra_v_obras where codigo = 'WB260999COL') <> 'agendada' then raise exception 'status'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if (select count(*) from public.obra_v_obras) <> 1 then raise exception 'equipe não vê o cronograma'; end if;
+  begin
+    perform public.obra_salvar('WB260999COL', '{"observacoes":"x"}');
+    raise exception 'equipe editou o cronograma';
+  exception when insufficient_privilege then null; end;
+  update public.obra_obras set observacoes = 'x';
+  if (select observacoes from public.obra_obras where codigo = 'WB260999COL') is not null then raise exception 'equipe atualizou direto'; end if;
+end $$;
+reset role;
+delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-teste';
+do $$ begin raise notice 'OK cronograma de obras'; end $$;
