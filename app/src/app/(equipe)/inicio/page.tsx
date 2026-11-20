@@ -3,16 +3,20 @@ import Link from "next/link";
 import { perfilAtual, supabaseUsuario } from "@/lib/supabase/server";
 import { AREAS, IconeArea } from "@/lib/areas";
 import { cumprimento, dataPorExtenso, resumoDasAreas } from "@/lib/resumo";
+import { aplicarOrdem, type OrdemTela } from "@/lib/ordem";
+import { Reordenar } from "./Reordenar";
 
 export const metadata: Metadata = { title: "Início" };
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
   const sb = await supabaseUsuario();
-  const [perfil, resumo, { data: avisos }] = await Promise.all([
+  const [perfil, resumo, { data: avisos }, { data: tela }] = await Promise.all([
     perfilAtual(), resumoDasAreas(),
     sb.from("planner_avisos").select("id, texto").is("lido_em", null).order("criado_em", { ascending: false }).limit(5),
+    sb.from("tela_ordem").select("ordem").maybeSingle(),
   ]);
+  const areas = aplicarOrdem(AREAS, (tela?.ordem as OrdemTela | undefined)?.areas, (a) => a.id);
   const primeiroNome = perfil?.nome.split(" ")[0] ?? "";
 
   return (
@@ -40,11 +44,10 @@ export default async function Inicio() {
         <span className="ap-seta" aria-hidden="true">→</span>
       </a>
 
-      <div className="grade-areas">
-        {AREAS.map((a) => {
+      <Reordenar lugar="areas" className="grade-areas" itens={areas.map((a) => {
           const r = resumo.setores[a.id] ?? { abertos: 0, atrasados: 0 };
-          return (
-            <Link key={a.id} href={`/area/${a.id}`} className={`cartao-area area-${a.id}`}>
+          return { chave: a.id, rotulo: a.nome, conteudo: (
+            <Link href={`/area/${a.id}`} className={`cartao-area area-${a.id}`}>
               <div className="ca-icone">
                 <IconeArea id={a.id} />
               </div>
@@ -69,9 +72,8 @@ export default async function Inicio() {
                 →
               </span>
             </Link>
-          );
-        })}
-      </div>
+          ) };
+        })} />
     </>
   );
 }

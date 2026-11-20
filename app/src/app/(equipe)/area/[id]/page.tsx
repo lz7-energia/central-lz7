@@ -6,6 +6,8 @@ import { areaPorId, IconeArea, IconeModulo } from "@/lib/areas";
 import { resumoDasAreas } from "@/lib/resumo";
 import { STATUS, STATUS_ABERTOS, type StatusPedido } from "@/lib/tipos";
 import { data as fmtData, hojeSP } from "@/lib/formato";
+import { aplicarOrdem, chaveModulo, type OrdemTela } from "@/lib/ordem";
+import { Reordenar } from "../../inicio/Reordenar";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +31,15 @@ export default async function PaginaArea({ params }: { params: Promise<{ id: str
   if (!area) notFound();
 
   const sb = await supabaseUsuario();
-  const [resumo, { data }] = await Promise.all([
+  const [resumo, { data }, { data: tela }] = await Promise.all([
     resumoDasAreas(),
     sb.from("pedidos")
       .select("id, protocolo, status, prazo, tipos_pedido(nome), solicitantes(nome)")
       .eq("setor_id", area.id).in("status", STATUS_ABERTOS)
       .order("prazo", { ascending: true, nullsFirst: false }).limit(8),
+    sb.from("tela_ordem").select("ordem").maybeSingle(),
   ]);
+  const modulos = aplicarOrdem(area.modulos, (tela?.ordem as OrdemTela | undefined)?.modulos?.[area.id], chaveModulo);
   const pedidos = (data ?? []) as unknown as Linha[];
   const r = resumo.setores[area.id] ?? { abertos: 0, atrasados: 0 };
   const hoje = hojeSP();
@@ -75,26 +79,22 @@ export default async function PaginaArea({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <h2>Módulos</h2>
-      <div className={`grade-modulos area-${area.id}`}>
-        {area.modulos.map((m) =>
-          m.href ? (
-            <Link key={m.nome} href={m.href} className="modulo">
+      <Reordenar lugar={area.id} className={`grade-modulos area-${area.id}`} titulo={<h2 style={{ margin: 0 }}>Módulos</h2>}
+        itens={modulos.map((m) => ({ chave: chaveModulo(m), rotulo: m.nome, conteudo: m.href ? (
+            <Link href={m.href} className="modulo">
               <span className="mod-icone"><IconeModulo id={m.icone} /></span>
               <strong>{m.nome}</strong>
               <span>{m.descricao}</span>
             </Link>
           ) : (
-            <div key={m.nome} className="modulo em-breve" aria-disabled="true">
+            <div className="modulo em-breve" aria-disabled="true">
               <span className="mod-icone"><IconeModulo id={m.icone} /></span>
               <strong>
                 {m.nome} <span className="etiqueta cinza">em breve</span>
               </strong>
               <span>{m.descricao}</span>
             </div>
-          ),
-        )}
-      </div>
+          ) }))} />
 
       <div className="cabecalho" style={{ marginTop: 32, marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Pedidos em aberto</h2>

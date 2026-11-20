@@ -600,57 +600,27 @@ end $$;
 delete from public.com_docs; delete from public.plat_docs where colecao = 'colab' and id in ('c1', 'c2', 'c3');
 do $$ begin raise notice 'OK comissoes x folha'; end $$;
 
--- 22) Régua de cobrança
-insert into public.titulos_receber (flow_id, valor, valor_recebido, vencimento, id_cliente, cliente)
-values ('rg1', 1000, 0, (now() at time zone 'America/Sao_Paulo')::date - 5, 'cli9', 'Cliente Régua');
-insert into public.clientes_flow (flow_id, nome, telefone) values ('cli9', 'Cliente Régua', '43999990000');
+-- 22) Régua apagada; ordem dos cards: cada pessoa só vê e grava a própria
 do $$ begin
-  if (select count(*) from public.cobranca_regua_etapas where ativo) <> 5 then raise exception 'etapas padrão'; end if;
-  if not (select pausa_regua from public.cobranca_situacoes where id = 'negociando') then raise exception 'negociação não pausa'; end if;
-  if (select pausa_regua from public.cobranca_situacoes where id = 'cobrado') then raise exception 'cobrado pausaria'; end if;
-  if not (select pausa_regua from public.cobranca_situacoes where id = 'juridico') then raise exception 'jurídico não pausa'; end if;
+  if to_regclass('public.cobranca_envios') is not null or to_regclass('public.cobranca_regua_etapas') is not null then raise exception 'régua ainda existe'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false); -- equipe
-insert into public.titulo_ajustes (titulo_flow_id, financiamento) values ('rg1', true);
-insert into public.cobranca_envios (titulo_flow_id, etapa_id, telefone, texto) values ('rg1', 'd3', '5543999990000', 'Olá');
-insert into public.cliente_contatos (id_cliente, telefone) values ('cli9', '43988887777');
-do $$ declare r record; begin
-  select * into r from public.recebiveis where flow_id = 'rg1';
-  if r.id_cliente <> 'cli9' or not r.financiamento or r.estado <> 'vencido' or r.dias_atraso <> 5 then raise exception 'recebiveis: %', r; end if;
-  if (select por from public.cobranca_envios where titulo_flow_id = 'rg1') <> 'Ana' then raise exception 'carimbo do envio'; end if;
-  if (select alterado_por from public.cliente_contatos where id_cliente = 'cli9') <> 'Ana' then raise exception 'carimbo do contato'; end if;
-  if (select telefone from public.clientes_flow where flow_id = 'cli9') <> '43999990000' then raise exception 'equipe não lê clientes'; end if;
-end $$;
-select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria (acesso total)
-do $$ begin
-  delete from public.cobranca_envios where titulo_flow_id = 'rg1';
-  if found then raise exception 'apagou envio de outra pessoa'; end if;
-end $$;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
-delete from public.cobranca_envios where titulo_flow_id = 'rg1';
+insert into public.tela_ordem (ordem) values ('{"areas":["rh","fiscal"]}');
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
+do $$ begin
+  if exists (select 1 from public.tela_ordem) then raise exception 'viu a ordem de outra pessoa'; end if;
+  begin
+    insert into public.tela_ordem (perfil_id, ordem) values ('11111111-1111-1111-1111-111111111111', '{}');
+    raise exception 'gravou a ordem de outra pessoa';
+  exception when insufficient_privilege then null; end;
+end $$;
 reset role;
 do $$ begin
-  if exists (select 1 from public.cobranca_envios where titulo_flow_id = 'rg1') then raise exception 'não desfez o próprio envio'; end if;
+  if (select ordem->'areas'->>0 from public.tela_ordem where perfil_id = '11111111-1111-1111-1111-111111111111') <> 'rh' then raise exception 'ordem não gravou'; end if;
 end $$;
--- envio de outro dia não pode ser desfeito
-insert into public.cobranca_envios (titulo_flow_id, etapa_id) values ('rg1', 'd0');
-alter table public.cobranca_envios disable trigger cobranca_envios_carimbo;
-update public.cobranca_envios set em = now() - interval '2 days', por_id = '11111111-1111-1111-1111-111111111111' where titulo_flow_id = 'rg1';
-alter table public.cobranca_envios enable trigger cobranca_envios_carimbo;
-set role authenticated;
-select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
-do $$ begin
-  delete from public.cobranca_envios where titulo_flow_id = 'rg1';
-  if found then raise exception 'desfez envio antigo'; end if;
-end $$;
-set role anon;
-do $$ begin
-  if (select count(*) from public.clientes_flow) <> 0 then raise exception 'anônimo leu clientes'; end if;
-end $$;
-reset role;
-delete from public.titulos_receber where flow_id = 'rg1'; delete from public.clientes_flow; delete from public.cliente_contatos;
-do $$ begin raise notice 'OK régua de cobrança'; end $$;
+delete from public.tela_ordem;
+do $$ begin raise notice 'OK ordem dos cards'; end $$;
 
 -- 23) Conciliação bancária
 set role authenticated;

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Áreas da equipe: exigem login. O resto (portal, consulta, aprovação) é aberto.
-const PROTEGIDAS = ["/inicio", "/area", "/painel", "/pedidos", "/recebiveis", "/perfil", "/arquivos", "/arquivos-abrir", "/rh", "/rh-curriculo", "/colaboradores", "/_blob", "/fiscal", "/financiamento", "/comissoes", "/cobranca", "/conciliacao", "/conciliacao/:path*", "/conciliacao"];
+const PROTEGIDAS = ["/inicio", "/area", "/painel", "/pedidos", "/recebiveis", "/perfil", "/arquivos", "/arquivos-abrir", "/rh", "/rh-curriculo", "/colaboradores", "/_blob", "/fiscal", "/financiamento", "/comissoes", "/conciliacao", "/conciliacao/:path*", "/conciliacao"];
 
 export async function proxy(request: NextRequest) {
   let resposta = NextResponse.next({ request });
@@ -39,5 +39,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/inicio", "/area/:path*", "/painel/:path*", "/pedidos/:path*", "/recebiveis/:path*", "/recebiveis", "/perfil", "/arquivos", "/arquivos/:path*", "/arquivos-abrir/:path*", "/rh", "/rh/:path*", "/rh-curriculo/:path*", "/colaboradores", "/colaboradores/:path*", "/_blob/:path*", "/fiscal", "/fiscal/:path*", "/financiamento", "/financiamento/:path*", "/comissoes", "/comissoes/:path*", "/cobranca", "/conciliacao", "/conciliacao/:path*", "/planner", "/planner/api/:path*", "/entrar", "/"],
+  matcher: ["/inicio", "/area/:path*", "/painel/:path*", "/pedidos/:path*", "/recebiveis/:path*", "/recebiveis", "/perfil", "/arquivos", "/arquivos/:path*", "/arquivos-abrir/:path*", "/rh", "/rh/:path*", "/rh-curriculo/:path*", "/colaboradores", "/colaboradores/:path*", "/_blob/:path*", "/fiscal", "/fiscal/:path*", "/financiamento", "/financiamento/:path*", "/comissoes", "/comissoes/:path*", "/conciliacao", "/conciliacao/:path*", "/planner", "/planner/api/:path*", "/entrar", "/"],
 };
