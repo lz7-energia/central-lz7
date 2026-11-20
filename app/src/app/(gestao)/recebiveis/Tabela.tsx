@@ -780,12 +780,18 @@ function FormCobranca({ t, situacoes, aoSalvar }: { t: Recebivel; situacoes: Sit
         <label htmlFor={`prev-${t.flow_id}`}>Previsão de pagamento</label>
         <input id={`prev-${t.flow_id}`} type="date" value={previsao} onChange={(e) => setPrevisao(e.target.value)} />
       </div>
-      <div style={{ flex: 2 }}>
-        <label htmlFor={`mot-${t.flow_id}`}>Por que está vencido</label>
-        <input id={`mot-${t.flow_id}`} type="text" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={1000} placeholder="Ex.: aguardando liberação do financiamento" />
-      </div>
-      <div style={{ alignSelf: "flex-end" }}>
+      <div style={{ alignSelf: "flex-end", flex: "0 0 auto", minWidth: 0 }}>
         <button className="botao" disabled={pendente}>{pendente ? "Salvando…" : "Salvar"}</button>
+      </div>
+      <div style={{ flexBasis: "100%" }}>
+        <label htmlFor={`mot-${t.flow_id}`}>Por que está vencido</label>
+        <textarea
+          id={`mot-${t.flow_id}`} value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={1000} rows={3} autoFocus
+          placeholder="Ex.: aguardando liberação do financiamento"
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
+          onFocus={(e) => { const n = e.currentTarget.value.length; e.currentTarget.setSelectionRange(n, n); }}
+        />
+        <span className="pequeno mudo">{motivo.length}/1000 · Ctrl+Enter salva</span>
       </div>
       {erro && <div className="erro" style={{ flexBasis: "100%", margin: 0 }}>{erro}</div>}
     </form>

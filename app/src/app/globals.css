@@ -592,3 +592,8 @@ input:disabled { background: var(--fundo); color: var(--texto-2); }
 /* Tabela longa (Recebíveis): rola dentro da caixa, com a barra lateral sempre à vista no pé da tela e o cabeçalho fixo. */
 .tabela-rolagem { max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); overflow: auto; }
 .tabela-rolagem thead th { position: sticky; top: 0; z-index: 1; box-shadow: inset 0 -1px 0 var(--borda); }
+
+/* Caixa de edição dentro da tabela dos Recebíveis: ocupa só a largura visível e não rola junto para o lado. */
+.linha-edicao > td > * { position: sticky; left: 14px; width: min(980px, calc(100vw - 96px)); max-width: 100%; }
+.linha-edicao textarea { width: 100%; font: inherit; line-height: 1.45; resize: vertical; min-height: 64px; }
+.linha-edicao:hover { background: transparent; }

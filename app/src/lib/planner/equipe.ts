@@ -9,7 +9,7 @@ import { DadosPlanner } from "./dados";
 import { sincronizar } from "./sync";
 import type { Tarefa } from "./regras";
 
-export type Colega = { id: string; nome: string; email: string };
+export type Colega = { id: string; nome: string; email: string; papel?: string };
 const CAMPOS = ["title", "desc", "cat", "start", "time", "rec", "important", "urgentDays", "dailyQ", "subs"] as const;
 const WD = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -24,7 +24,7 @@ export function quando(t: { start?: string; time?: string }) {
 const hash = (t: Tarefa) => JSON.stringify([...CAMPOS.map((c) => t[c] ?? null), t.tipo || "tarefa", [...(t.para || [])].sort()]);
 
 export async function colegas(): Promise<Colega[]> {
-  const { data } = await supabaseServico().from("perfis").select("id, nome, email").eq("ativo", true).in("papel", ["equipe", "admin", "diretoria"]).order("nome");
+  const { data } = await supabaseServico().from("perfis").select("id, nome, email, papel").eq("ativo", true).in("papel", ["equipe", "admin", "diretoria"]).order("nome");
   return (data || []) as Colega[];
 }
 

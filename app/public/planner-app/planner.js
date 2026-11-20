@@ -164,7 +164,7 @@ function applyState(j){
   S.events=new Map((j.events||[]).map(e=>[e.id,e]));
   S.settings=mergeSettings(j.settings);S.sync=j.sync||{};S.usage=(S.sync&&S.sync.usage)||{stamps:[]};
   S.cuConfigured=!!j.clickupConfigurado;S.lastStatus=j.status||{};
-  S.equipe=j.equipe||[];S.eu=j.pessoa||{};S.avisos=j.avisos||[];
+  S.equipe=j.equipe||[];S.euPrincipal=!!j.euPrincipal;S.eu=j.pessoa||{};S.avisos=j.avisos||[];
   if(!S.lastSyncAt&&S.lastStatus.em&&S.lastStatus.status==='ok')S.lastSyncAt=new Date(S.lastStatus.em).getTime();
   holCache={};applyTheme();
 }
@@ -613,12 +613,15 @@ function moveSub(sid,to){
 function eqForm(e){
   if(e.origem)return`<p class="hint eq-hint">Recebida de <b>${esc((e.de&&e.de.nome)||'alguém')}</b>. Se essa pessoa mudar título, data ou descrição, a sua cópia acompanha.</p>`;
   if(!(S.equipe||[]).length)return'';
-  const tp=e.para&&e.para.length||e.eqAberto?(e.tipo==='call'?'call':'tarefa'):'eu',sel=new Set(e.para||[]);
-  return`<div class="fld eq-fld"><label for="f-eqtipo">Para quem</label><select id="f-eqtipo"><option value="eu"${tp==='eu'?' selected':''}>Só para mim</option><option value="tarefa"${tp==='tarefa'?' selected':''}>Passar tarefa para alguém da equipe</option><option value="call"${tp==='call'?' selected':''}>Call ou conversa com a equipe</option></select>${tp==='eu'?'':`<div class="eq-pessoas">${S.equipe.map(c=>`<label><input type="checkbox" name="f-eqp" value="${esc(c.id)}"${sel.has(c.id)?' checked':''}> ${esc(c.nome)}</label>`).join('')}</div><span class="hint">${tp==='call'?'Entra no planner de todos os escolhidos (e no seu), com a hora.':'Entra no planner de quem você escolher; aqui fica para você acompanhar quem já concluiu.'}</span>`}</div>`;
+  const princ=(S.equipe||[]).filter(c=>c.principal);
+  const tp=e.para&&e.para.length||e.eqAberto?(e.tipo==='call'?'call':(e.eqPrinc?'principais':'tarefa')):'eu',sel=new Set(e.para||[]);
+  return`<div class="fld eq-fld"><label for="f-eqtipo">Para quem</label><select id="f-eqtipo"><option value="eu"${tp==='eu'?' selected':''}>Só para mim</option>${princ.length?`<option value="principais"${tp==='principais'?' selected':''}>Para os 4 principais da equipe</option>`:''}<option value="tarefa"${tp==='tarefa'?' selected':''}>Passar tarefa para alguém da equipe</option><option value="call"${tp==='call'?' selected':''}>Call ou conversa com a equipe</option></select>${tp==='eu'?'':`<div class="eq-pessoas">${S.equipe.map(c=>`<label><input type="checkbox" name="f-eqp" value="${esc(c.id)}"${sel.has(c.id)?' checked':''}> ${esc(c.nome)}</label>`).join('')}</div><span class="hint">${tp==='call'?'Entra no planner de todos os escolhidos (e no seu), com a hora.':tp==='principais'?`Entra no planner de cada um da equipe principal${S.euPrincipal?' (menos você)':''}; aqui fica para você acompanhar quem já concluiu.`:'Entra no planner de quem você escolher; aqui fica para você acompanhar quem já concluiu.'}</span>`}</div>`;
 }
 function readForm(){
   const e=S.edit.t,v=id=>{const el=document.getElementById(id);return el?el.value:undefined;};
-  if(v('f-eqtipo')!==undefined){const tp=v('f-eqtipo');if(tp==='eu'){e.para=[];delete e.tipo;e.eqAberto=false;}else{e.tipo=tp;e.eqAberto=true;const marc=[...document.querySelectorAll('input[name=f-eqp]')];if(marc.length)e.para=marc.filter(x=>x.checked).map(x=>x.value);}}
+  if(v('f-eqtipo')!==undefined){const tp=v('f-eqtipo');if(tp==='eu'){e.para=[];delete e.tipo;e.eqAberto=false;delete e.eqPrinc;}
+    else if(tp==='principais'&&!e.eqPrinc){e.tipo='tarefa';e.eqAberto=true;e.eqPrinc=true;e.para=(S.equipe||[]).filter(c=>c.principal).map(c=>c.id);}
+    else{if(tp!=='principais')delete e.eqPrinc;e.tipo=tp==='principais'?'tarefa':tp;e.eqAberto=true;const marc=[...document.querySelectorAll('input[name=f-eqp]')];if(marc.length)e.para=marc.filter(x=>x.checked).map(x=>x.value);}}
   if(v('f-title')!==undefined)e.title=v('f-title').trim();
   if(v('f-desc')!==undefined)e.desc=v('f-desc');
   if(v('f-cat')!==undefined)e.cat=v('f-cat');
