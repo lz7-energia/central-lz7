@@ -120,6 +120,28 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 - Telefone/e-mail: `clientes_flow` (sincronização guarda o cadastro `/clientes/` inteiro em `bruto` e extrai o contato por
   `contatoDoCliente`, preferindo celular/WhatsApp); a equipe pode informar outro (`cliente_contatos`, vale no lugar do Flow).
 
+### Conciliação bancária (Financeiro, `/conciliacao`)
+
+- Migrada da plataforma da Controladoria em 20/11/2026 (pacote `Conciliacao_LZ7_exportacao_2026-11-20`: ESPECIFICACAO.md, app,
+  dados_completos.json, conversores). **Regras de conciliação, saldos, encadeamento, relatórios e PDFs são os da especificação.**
+  O Flow continua entrando pelo Excel de Movimento Bancário (API do Flow para isso fica para depois, decisão do usuário).
+- Página própria (`app/conciliacao/route.ts`): `public/conc-app/conciliacao.css|js` = CSS/JS do original; só 15 linhas originais
+  mudaram, todas marcadas "Central:". `central-conc.js` = adaptador `claude.use("db"|"user"|"downloads")` sobre `conc_docs
+  (colecao, id, data jsonb, versao)` com as coleções do original (bancos, conciliacoes, resumos, faltas, config); tempo real
+  (menos conciliações, lidas ao abrir).
+- Melhorias (seção 21 da especificação, menos a API): FITID do OFX guardado no lançamento do extrato (4º campo de `E`) e usado
+  primeiro ao "Atualizar arquivos" (`remapE`; sem FITID vale a chave antiga); gravação condicionada à versão aberta (`conc_gravar`:
+  se outra pessoa salvou, code `conflict`, nada é sobrescrito e a pessoa reabre); auditoria por gatilho (`conc_auditoria`: vínculos,
+  exclusões, justificativas, ajustes e saldos, fechar/reabrir, troca de arquivos, título; painel "Histórico de alterações");
+  lotes do mesmo dia encaixados juntos antes do passo 3 original (`autoMatch` passo 3a); conciliação fechada bloqueada até "Reabrir"
+  (tela + gatilho no banco; o encadeamento ainda traz o saldo inicial); sem o corte do histórico do Flow em 60 caracteres.
+- PDF do banco no próprio envio (`public/conc-app/conc-pdf.js`): tradução dos conversores Sicoob, BB, Cresol e PagueVeloz
+  (pdf.js montando linhas como o `pdftotext -layout`); histórico e FITID iguais ao OFX gerado pelos conversores; recusa o arquivo se
+  os saldos diários/final não baterem. Testado com PDFs montados em cada layout (idêntico aos conversores); falta conferir com PDFs reais.
+- Acesso: todos os perfis ativos veem; equipe e admin editam; diretoria só vê (`conc_pode_editar`, RLS; tela em somente leitura).
+- Migração única: `/conciliacao/importar` (só admin) lê o `dados_completos.json` no navegador. Teste (20/11/2026): as 36 conciliações
+  abrem com situação, pendentes, diferença em aberto e saldos finais iguais aos resumos da plataforma original, sem regravar nada.
+
 ### Financiamento e confirmação de pagamento (Financeiro, `/financiamento`)
 
 - Migrado da aba "Financiamento e confirmação" da plataforma Contas a Receber LZ7 em 17/11/2026 (pacote `central-lz7-financiamento`:

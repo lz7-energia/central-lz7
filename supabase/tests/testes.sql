@@ -651,3 +651,46 @@ end $$;
 reset role;
 delete from public.titulos_receber where flow_id = 'rg1'; delete from public.clientes_flow; delete from public.cliente_contatos;
 do $$ begin raise notice 'OK régua de cobrança'; end $$;
+
+-- 23) Conciliação bancária
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false); -- equipe
+do $$ declare v1 int; v2 int; v3 int; begin
+  v1 := public.conc_gravar('conciliacoes', 'c1', '{"id":"c1","titulo":"Itaú · Out/2026","E":[["2026-10-01",100,"PIX"]],"F":[],"links":[],"exc":{},"mot":{},"saldos":{"eI":0},"fech":null}', null);
+  if v1 <> 1 then raise exception 'versão inicial %', v1; end if;
+  v2 := public.conc_gravar('conciliacoes', 'c1', '{"id":"c1","titulo":"Itaú · Out/2026","E":[["2026-10-01",100,"PIX"]],"F":[["2026-10-01",100,"Fulano","",""]],"links":[["l1",["e0"],["f0"],"exato",0,""]],"exc":{},"mot":{},"saldos":{"eI":0},"fech":null}', v1);
+  if v2 <> 2 then raise exception 'versão 2: %', v2; end if;
+  -- outra aba com a versão antiga não sobrescreve
+  v3 := public.conc_gravar('conciliacoes', 'c1', '{"id":"c1","titulo":"velho"}', v1);
+  if v3 is not null then raise exception 'sobrescreveu com versão antiga'; end if;
+  if (select data->>'titulo' from public.conc_docs where id = 'c1') <> 'Itaú · Out/2026' then raise exception 'perdeu o trabalho'; end if;
+  -- fechar
+  perform public.conc_gravar('conciliacoes', 'c1', (select data || '{"fech":{"manual":true,"por":"VICTOR"},"justif":"ok"}' from public.conc_docs where id = 'c1'), 2);
+  -- fechada: não muda vínculos
+  begin
+    perform public.conc_gravar('conciliacoes', 'c1', (select data || '{"links":[]}' from public.conc_docs where id = 'c1'), 3);
+    raise exception 'alterou conciliação fechada';
+  exception when raise_exception then
+    if sqlerrm not like 'Conciliação fechada%' then raise; end if;
+  end;
+  -- fechada: encadeamento traz o saldo inicial
+  perform public.conc_mesclar('conciliacoes', 'c1', (select jsonb_build_object('saldos', data->'saldos' || '{"eI":500,"origem":{"eI":"final de Set/2026"}}') from public.conc_docs where id = 'c1'));
+  if (select (data->'saldos'->>'eI')::int from public.conc_docs where id = 'c1') <> 500 then raise exception 'encadeamento bloqueado'; end if;
+  -- reabrir é permitido
+  perform public.conc_gravar('conciliacoes', 'c1', (select data || '{"fech":null}' from public.conc_docs where id = 'c1'), (select versao from public.conc_docs where id = 'c1'));
+end $$;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false); -- diretoria: só vê
+do $$ begin
+  if (select count(*) from public.conc_docs) <> 1 then raise exception 'diretoria não vê'; end if;
+  begin perform public.conc_gravar('bancos', 'b1', '{"nome":"x"}', null); raise exception 'diretoria gravou'; exception when insufficient_privilege then null; end;
+  update public.conc_docs set data = '{}' where id = 'c1';
+  if found then raise exception 'diretoria alterou'; end if;
+end $$;
+reset role;
+do $$ declare a text; begin
+  select string_agg(acao, ',' order by id) into a from public.conc_auditoria where doc_id = 'c1';
+  if a <> 'criar,vincular,fechar,saldo,reabrir' then raise exception 'auditoria: %', a; end if;
+  if (select por from public.conc_auditoria where doc_id = 'c1' and acao = 'vincular') <> 'Ana' then raise exception 'quem na auditoria'; end if;
+end $$;
+delete from public.conc_docs; delete from public.conc_auditoria;
+do $$ begin raise notice 'OK conciliação'; end $$;
