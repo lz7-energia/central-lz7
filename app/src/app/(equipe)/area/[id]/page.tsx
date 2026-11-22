@@ -62,9 +62,9 @@ export default async function PaginaArea({ params }: { params: Promise<{ id: str
       <div className="resumo" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         {area.id === "fiscal" && (
           <Link href="/painel" className={`indicador${resumo.prontosFaturar ? " destaque" : ""}`} style={{ textDecoration: "none", color: "inherit" }}>
-            <div className="rotulo">Pronto pra faturar</div>
+            <div className="rotulo">Notas a emitir</div>
             <div className="numero">{resumo.prontosFaturar}</div>
-            <div className="detalhe">no painel de faturamento</div>
+            <div className="detalhe">obras concluídas sem nota</div>
           </Link>
         )}
         <div className="indicador">

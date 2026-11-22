@@ -7,7 +7,7 @@ import type { Central } from "@/lib/centrais";
 const ADM = [
   { href: "/inicio", rotulo: "Início" },
   { href: "/pedidos", rotulo: "Pedidos" },
-  { href: "/painel", rotulo: "Faturamento" },
+  { href: "/painel", rotulo: "Notas a emitir" },
   { href: "/recebiveis", rotulo: "Recebíveis" },
   { href: "/clientes", rotulo: "Clientes" },
 ];

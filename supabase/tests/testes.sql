@@ -785,3 +785,33 @@ end $$;
 reset role;
 delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-teste';
 do $$ begin raise notice 'OK pagamento condicionado'; end $$;
+
+-- 28) Notas a emitir: Flow (OS concluída sem nota), cronograma (obra concluída e OS ainda não) e obra sem pedido
+insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valor_total) values
+  ('PV9', '1009', 'SP000009ABC', 'Cliente Nove', 9000), ('PV10', '1010', 'SP000010ABC', 'Cliente Dez', 10000);
+insert into public.ordens_servico (flow_id, pedido_flow_id, status, status_desde) values
+  ('OS9', 'PV9', 'Instalação', now() - interval '1 day'), ('OS10', 'PV10', 'Obra concluída.', now() - interval '4 days');
+insert into public.obra_obras (codigo, nome_card, cliente, entrada, material_entregue, inicio_real, fim_real) values
+  ('SP000009ABC', 'Nove', 'CLIENTE NOVE', current_date - 30, current_date - 10, current_date - 3, current_date - 2),
+  ('SP000077ABC', 'Sem pedido', 'CLIENTE SETE', current_date - 30, current_date - 10, current_date - 6, current_date - 5),
+  ('SP000078ABC', 'Antiga', 'CLIENTE ANTIGO', current_date - 300, current_date - 200, current_date - 100, current_date - 90);
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if not exists (select 1 from public.notas_a_emitir where chave = 'PV10' and origem = 'flow' and dias = 4) then raise exception 'flow'; end if;
+  if not exists (select 1 from public.notas_a_emitir where chave = 'PV9' and origem = 'cronograma' and dias = 2 and aviso like '%Instalação%') then raise exception 'cronograma'; end if;
+  if not exists (select 1 from public.notas_a_emitir where chave = 'obra:SP000077ABC' and origem = 'sem_pedido') then raise exception 'sem pedido'; end if;
+  if exists (select 1 from public.notas_a_emitir where codigo_projeto = 'SP000078ABC') then raise exception 'obra antiga entrou'; end if;
+  if exists (select 1 from public.notas_a_emitir where chave in ('PV3', 'PV4')) then raise exception 'pedido com nota entrou'; end if;
+  insert into public.notas_ocultas_obra (codigo) values ('SP000077ABC');
+  if exists (select 1 from public.notas_a_emitir where chave = 'obra:SP000077ABC') then raise exception 'ocultar obra'; end if;
+  update public.notas_config set responsavel = '11111111-1111-1111-1111-111111111111' where id;
+  if (select alterado_por from public.notas_config) is null then raise exception 'carimbo'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin
+  if exists (select 1 from public.notas_a_emitir) or exists (select 1 from public.notas_config) then raise exception 'obras viu notas'; end if;
+end $$;
+reset role;
+delete from public.obra_obras where codigo like 'SP0000%';
+do $$ begin raise notice 'OK notas a emitir'; end $$;

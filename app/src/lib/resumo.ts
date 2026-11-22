@@ -5,14 +5,13 @@ import { hojeSP } from "@/lib/formato";
 
 export type ResumoSetor = { abertos: number; atrasados: number };
 
-/** Pedidos em aberto e atrasados por setor, e cards do painel prontos pra faturar. */
+/** Pedidos em aberto e atrasados por setor, e notas a emitir. */
 export async function resumoDasAreas() {
   const sb = await supabaseUsuario();
   const hoje = hojeSP();
   const [{ data: pedidos }, { count: prontos }] = await Promise.all([
     sb.from("pedidos").select("setor_id, prazo").in("status", STATUS_ABERTOS),
-    sb.from("painel_faturamento").select("flow_id", { count: "exact", head: true })
-      .eq("coluna", "pronto_faturar").eq("oculto", false),
+    sb.from("notas_a_emitir").select("chave", { count: "exact", head: true }),
   ]);
   const setores: Record<string, ResumoSetor> = {};
   for (const p of pedidos ?? []) {

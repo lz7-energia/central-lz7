@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseServico } from "@/lib/supabase/servico";
 import { sincronizar } from "@/lib/planner/sync";
 import { refletirTodasAsObras } from "@/lib/obras-planner";
+import { refletirNotasAEmitir } from "@/lib/notas-planner";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,6 +14,8 @@ export async function POST(req: NextRequest) {
   if (!segredo || req.headers.get("x-cron-secret") !== segredo) return NextResponse.json({ erro: "não autorizado" }, { status: 401 });
   // pagamentos condicionados das obras: acerta datas no planner antes de mandar ao ClickUp
   await refletirTodasAsObras().catch(() => {});
+  // notas a emitir: tarefa "Emitir nota" no planner de quem emite
+  await refletirNotasAEmitir().catch(() => {});
   const sb = supabaseServico();
   const { data } = await sb.from("planner_sync_state").select("user_id, perfis(email, ativo)").eq("data->>enabled", "true");
   const resultados: Record<string, string> = {};
