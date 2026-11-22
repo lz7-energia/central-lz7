@@ -61,7 +61,19 @@ Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada co
 
 ## Fase 1
 
-### Painel de faturamento
+### Notas a emitir (antigo Painel de faturamento, `/painel`)
+
+- Entrou no lugar do quadro de 4 colunas em 22/11/2026 (migração `20261122000030_notas_a_emitir.sql`): aba **A emitir** (view
+  `notas_a_emitir`, mais parado primeiro), **Emitidas** (faturado/recebido do `painel_faturamento`, por mês, com % recebido) e **Ocultos**.
+- Fontes da lista: `flow` (coluna pronto_faturar abaixo), `cronograma` (obra com `fim_real` no Cronograma cujo pedido com o mesmo código
+  ainda está em execução no Flow; aviso "falta mudar a OS") e `sem_pedido` (obra concluída nos últimos 60 dias sem pedido com o código;
+  ocultar em `notas_ocultas_obra`). A view só responde à Central Administrativa (e ao servidor).
+- "Tarefas no planner de" (`notas_config.responsavel`, começa em ninguém): tarefa `nf-<chave>` "Emitir nota: <cliente>" por item, data =
+  desde quando está pronto, categoria FIS (`lib/notas-planner.ts`); refeita a cada ação da tela e pelo agendador do planner (15 min);
+  some quando a nota aparece, o card é ocultado ou "Já tem nota". Link `/painel?busca=<código>`.
+- Card "Canceladas e cartas de correção" saiu (decisão do usuário: não vão ter).
+
+Regras do pedido de venda (base das fontes `flow` e Emitidas):
 
 - Base: **pedido de venda**. Todo pedido de venda tem OS, e toda OS tem pedido.
 - Colunas: Em execução → Pronto pra faturar → Faturado → Recebido.

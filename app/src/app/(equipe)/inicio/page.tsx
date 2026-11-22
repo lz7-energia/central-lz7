@@ -46,7 +46,7 @@ export default async function Inicio() {
               <div className="ca-numeros">
                 {a.id === "fiscal" && (
                   <span className={resumo.prontosFaturar ? "destaque" : ""}>
-                    <strong>{resumo.prontosFaturar}</strong> pronto{resumo.prontosFaturar === 1 ? "" : "s"} pra faturar
+                    <strong>{resumo.prontosFaturar}</strong> nota{resumo.prontosFaturar === 1 ? "" : "s"} a emitir
                   </span>
                 )}
                 <span>
