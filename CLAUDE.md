@@ -123,6 +123,13 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 
 ### Clientes (`/clientes`, menu do topo)
 
+- **Projetos** (aba padrão, 22/11/2026, migração `20261122000031_projetos_fechamento.sql`): um por pedido de venda (view `projetos_fechamento`
+  sobre o `painel_faturamento`): % recebido e quanto falta, nota (em obra / falta emitir / emitida) e **indicador** (não informado / sem /
+  a pagar / pago, com nome, valor, data e observação em `projeto_fechamento`, só na central). **Fechado** = recebido 100% + nota emitida +
+  indicador pago ou sem indicador; "Fechar mesmo assim" exige motivo ("Reabrir" desfaz). Abas Em aberto / Fechados / Todos, filtro por
+  pendência e "Marcar como sem indicador" em lote. Ações em `app/(equipe)/clientes/acoes.ts`. A ficha mostra o fechamento de cada pedido.
+- **Buscar cliente** (`?aba=clientes`): a busca antiga, abaixo.
+
 - Ficha do cliente (20/11/2026), só leitura do que já está no banco: `lib/clientes.ts`. Chave = id do cliente no Flow
   (`clientes_flow.flow_id` = `titulos_receber.id_cliente` = `pedidos_venda.bruto->cliente->>id`).
 - Busca por nome, apelido, CPF/CNPJ (5+ dígitos) ou código do projeto; sem termo, os clientes com títulos em aberto (mais vencido primeiro).
