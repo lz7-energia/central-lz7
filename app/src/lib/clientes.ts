@@ -61,6 +61,9 @@ export async function fichaDoCliente(id: string) {
   const { data: painel } = pedidos.length
     ? await sb.from("painel_faturamento").select("*").in("flow_id", pedidos.map((p) => p.flow_id))
     : { data: [] as LinhaPainel[] };
+  const { data: fech } = pedidos.length
+    ? await sb.from("projetos_fechamento").select("flow_id, fechado, indicador, indicador_nome").in("flow_id", pedidos.map((p) => p.flow_id))
+    : { data: [] };
   const nome = cad?.nome || titulos[0]?.cliente || pedidos[0]?.cliente || "";
   const apelido = cad?.apelido || titulos[0]?.cliente_apelido || pedidos[0]?.cliente_apelido || null;
   if (!nome && !apelido) return null;
@@ -82,5 +85,6 @@ export async function fichaDoCliente(id: string) {
   return {
     id, nome, apelido, doc: cad?.cnpj_cpf ?? null, telefone: cad?.telefone ?? null, email: cad?.email ?? null,
     titulos, pedidos, painel: (painel ?? []) as LinhaPainel[], cards,
+    fechamento: (fech ?? []) as { flow_id: string; fechado: boolean; indicador: string; indicador_nome: string | null }[],
   };
 }

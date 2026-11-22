@@ -652,3 +652,18 @@ a.link-cliente:hover strong { text-decoration: underline; color: var(--marca); }
 .esc-ic { width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center; background: #e4efe9; color: var(--marca); }
 .esc-card.obras .esc-ic { background: #fef7c3; color: #a15c07; }
 .esc-rodape { margin-top: 22px; opacity: .8; font-size: .9rem; }
+
+/* Clientes → Projetos (fechamento) */
+.chip-proj { display: inline-block; font-size: 0.8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.chip-proj.ok { background: #e3f4ea; color: #1b6b3a; }
+.chip-proj.alerta { background: #fdf3dc; color: #8a5a00; }
+.chip-proj.perigo { background: #fde8e6; color: var(--perigo); }
+.chip-proj.cinza { background: #eef1f0; color: var(--texto-2); }
+.link-botao { background: none; border: 0; padding: 0; color: var(--marca); cursor: pointer; font: inherit; text-decoration: underline; }
+.link-botao.pequeno { font-size: 0.82rem; }
+.tabela-projetos tr.fechado td { background: #fafcfb; }
+.tabela-projetos tr.linha-edicao td { background: #f6f9f8; border-top: 0; }
+.form-indicador { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.form-indicador label { display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; color: var(--texto-2); }
+.form-indicador label.opcao { flex-direction: row; align-items: center; gap: 6px; color: var(--texto); font-size: 0.9rem; padding-bottom: 8px; }
+.aviso-lote { display: flex; gap: 10px; align-items: center; background: #eef6f2; border: 1px solid #cfe3d9; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }

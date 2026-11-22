@@ -22,6 +22,7 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
   const vencido = f.titulos.filter((t) => t.estado === "vencido").reduce((s, t) => s + Number(t.valor_aberto || 0), 0);
   const aberto = abertos.reduce((s, t) => s + Number(t.valor_aberto || 0), 0);
   const recebido = f.titulos.reduce((s, t) => s + Number(t.valor_recebido || 0), 0);
+  const fechPor = new Map(f.fechamento.map((x) => [x.flow_id, x]));
   const painelPor = new Map(f.painel.map((p) => [p.flow_id, p]));
   const coluna = (c: string | undefined) => COLUNAS.find((x) => x.id === c)?.rotulo ?? "—";
   const link = zap(f.telefone);
@@ -53,7 +54,7 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
         <h2>Pedidos e obras</h2>
         {f.pedidos.length === 0 ? <p className="mudo">Nenhum pedido de venda deste cliente no Flow.</p> : (
           <div className="tabela-caixa"><table>
-            <thead><tr><th>Pedido</th><th>Projeto</th><th>Data</th><th>Valor</th><th>Obra (OS)</th><th>Nota</th><th>Situação</th><th>Recebido</th></tr></thead>
+            <thead><tr><th>Pedido</th><th>Projeto</th><th>Data</th><th>Valor</th><th>Obra (OS)</th><th>Nota</th><th>Situação</th><th>Recebido</th><th>Fechamento</th></tr></thead>
             <tbody>{f.pedidos.map((p) => { const l = painelPor.get(p.flow_id); return (
               <tr key={p.flow_id}>
                 <td>{p.numero ?? p.flow_id}</td>
@@ -64,6 +65,10 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
                 <td>{l?.nf_numero ? <>NF {l.nf_numero}<div className="pequeno mudo">{fmtData(l.nf_emitida_em)}</div></> : "—"}</td>
                 <td>{l ? <Link href="/painel">{coluna(l.coluna)}</Link> : "—"}{l?.coluna === "pronto_faturar" && l.dias_parado != null ? <div className="pequeno atrasado">{l.dias_parado} dias parado</div> : null}</td>
                 <td>{l?.pct_recebido != null ? `${Math.round(Number(l.pct_recebido))}%` : "—"}</td>
+                <td>{(() => { const x = fechPor.get(p.flow_id); if (!x) return "—";
+                  const ind = { sem: "sem indicador", pago: `indicador pago (${x.indicador_nome})`, a_pagar: `indicador a pagar (${x.indicador_nome})`, nao_informado: "indicador não informado" }[x.indicador] ?? "";
+                  return <Link href={`/clientes?q=${encodeURIComponent(p.codigo_projeto ?? p.numero ?? "")}`} className={x.fechado ? "" : "atrasado"}>
+                    {x.fechado ? "✓ Fechado" : "Em aberto"}<div className="pequeno mudo">{ind}</div></Link>; })()}</td>
               </tr>); })}</tbody>
           </table></div>
         )}

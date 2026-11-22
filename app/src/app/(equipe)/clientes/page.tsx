@@ -2,23 +2,48 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buscarClientes } from "@/lib/clientes";
 import { moeda } from "@/lib/formato";
+import { supabaseUsuario } from "@/lib/supabase/server";
+import { todasAsLinhas } from "@/lib/paginar";
+import { Projetos, type Projeto } from "./Projetos";
 
 export const metadata: Metadata = { title: "Clientes" };
 export const dynamic = "force-dynamic";
 
-export default async function Clientes({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q = "" } = await searchParams;
+export default async function Clientes({ searchParams }: { searchParams: Promise<{ q?: string; aba?: string }> }) {
+  const { q = "", aba } = await searchParams;
   const termo = q.trim().slice(0, 100);
-  const lista = await buscarClientes(termo);
+  const verClientes = aba === "clientes";
   return (
     <>
       <div className="cabecalho">
         <div>
           <h1>Clientes</h1>
-          <p className="sub">Tudo de um cliente numa tela: pedido, obra, nota, títulos e financiamento.</p>
+          <p className="sub">{verClientes ? "Tudo de um cliente numa tela: pedido, obra, nota, títulos e financiamento."
+            : "Cada projeto até fechar 100%: recebido, nota emitida e indicador pago."}</p>
+        </div>
+        <div className="abas">
+          <Link href="/clientes" className={!verClientes ? "ativo" : ""}>Projetos</Link>
+          <Link href="/clientes?aba=clientes" className={verClientes ? "ativo" : ""}>Buscar cliente</Link>
         </div>
       </div>
+      {verClientes ? <ListaClientes termo={termo} /> : <ListaProjetos busca={termo} />}
+    </>
+  );
+}
+
+async function ListaProjetos({ busca }: { busca: string }) {
+  const sb = await supabaseUsuario();
+  const { data, error } = await todasAsLinhas<Projeto>((de, ate) => sb.from("projetos_fechamento").select("*").order("flow_id").range(de, ate));
+  if (error) return <div className="erro">Não foi possível carregar os projetos.</div>;
+  return <Projetos projetos={data} buscaInicial={busca} />;
+}
+
+async function ListaClientes({ termo }: { termo: string }) {
+  const lista = await buscarClientes(termo);
+  return (
+    <>
       <form className="busca-clientes" action="/clientes">
+        <input type="hidden" name="aba" value="clientes" />
         <input type="search" name="q" defaultValue={termo} placeholder="Nome, apelido, CPF/CNPJ ou código do projeto" autoFocus aria-label="Buscar cliente" />
         <button className="botao">Buscar</button>
       </form>

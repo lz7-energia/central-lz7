@@ -815,3 +815,38 @@ end $$;
 reset role;
 delete from public.obra_obras where codigo like 'SP0000%';
 do $$ begin raise notice 'OK notas a emitir'; end $$;
+
+-- 29) Fechamento do projeto: recebido 100% + nota + indicador (pago ou sem); fechar mesmo assim com motivo
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  -- PV4: nota e 100% recebido, indicador não informado → aberto
+  if (select fechado from public.projetos_fechamento where flow_id = 'PV4') then raise exception 'fechou sem indicador'; end if;
+  if (select indicador from public.projetos_fechamento where flow_id = 'PV4') <> 'nao_informado' then raise exception 'indicador'; end if;
+  insert into public.projeto_fechamento (pedido_flow_id, indicador_nome, indicador_valor) values ('PV4', 'João Indica', 500);
+  if (select indicador from public.projetos_fechamento where flow_id = 'PV4') <> 'a_pagar' or (select fechado from public.projetos_fechamento where flow_id = 'PV4') then raise exception 'a pagar'; end if;
+  update public.projeto_fechamento set indicador_pago_em = current_date where pedido_flow_id = 'PV4';
+  if not (select fechado from public.projetos_fechamento where flow_id = 'PV4') then raise exception 'não fechou'; end if;
+  if (select alterado_por from public.projeto_fechamento where pedido_flow_id = 'PV4') is null then raise exception 'carimbo'; end if;
+  -- PV3: 50% recebido → aberto mesmo sem indicador; fechar mesmo assim exige motivo
+  insert into public.projeto_fechamento (pedido_flow_id, sem_indicador) values ('PV3', true);
+  if (select fechado from public.projetos_fechamento where flow_id = 'PV3') then raise exception 'fechou com saldo'; end if;
+  if (select falta_receber from public.projetos_fechamento where flow_id = 'PV3') <> 15000 then raise exception 'falta receber'; end if;
+  begin
+    update public.projeto_fechamento set fechado_manual = true where pedido_flow_id = 'PV3';
+    raise exception 'fechou sem motivo';
+  exception when check_violation then null; end;
+  update public.projeto_fechamento set fechado_manual = true, fechado_motivo = 'Cliente pagou por fora' where pedido_flow_id = 'PV3';
+  if not (select fechado from public.projetos_fechamento where flow_id = 'PV3') then raise exception 'fechar mesmo assim'; end if;
+  begin
+    insert into public.projeto_fechamento (pedido_flow_id, sem_indicador, indicador_nome) values ('PV2', true, 'X');
+    raise exception 'sem indicador com nome';
+  exception when check_violation then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin
+  if exists (select 1 from public.projetos_fechamento) or exists (select 1 from public.projeto_fechamento) then raise exception 'obras viu fechamento'; end if;
+end $$;
+reset role;
+delete from public.projeto_fechamento;
+do $$ begin raise notice 'OK fechamento do projeto'; end $$;
