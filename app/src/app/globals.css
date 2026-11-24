@@ -702,3 +702,10 @@ a.link-cliente:hover strong { text-decoration: underline; color: var(--marca); }
 .dfc-rank-barra { height: 14px; display: block; }
 .dfc-rank-barra span { display: block; height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; }
 .dfc-rank-valor { text-align: right; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+
+/* Sistema (bastidor do administrador) */
+.sist-historico { display: inline-flex; gap: 3px; }
+.sist-historico span { width: 10px; height: 18px; border-radius: 2px; background: #d9d8d3; }
+.sist-historico span.ok { background: #0ca30c; }
+.sist-historico span.perigo { background: var(--perigo); }
+.sist-historico span.alerta { background: #fab219; }

@@ -876,3 +876,22 @@ end $$;
 reset role;
 delete from public.dfc_titulos; delete from public.dfc_naturezas; delete from public.dfc_centros;
 do $$ begin raise notice 'OK dfc'; end $$;
+
+-- 31) Sistema: só o administrador lê a saúde e dispara; equipe recebe recusa
+insert into public.sincronizacoes (recurso, iniciada_em, terminada_em, sucesso, erro) values
+  ('flow', now() - interval '40 min', now() - interval '39 min', false, 'HTTP 500'), ('flow', now() - interval '10 min', now() - interval '9 min', false, 'HTTP 502');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', false);
+do $$ declare j jsonb; begin
+  j := public.admin_saude();
+  if jsonb_array_length(j->'sincronizacoes') <> 3 then raise exception 'saude: %', j; end if;
+  if (j->'sincronizacoes'->0->'rodadas'->0->>'erro') <> 'HTTP 502' then raise exception 'rodadas'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  begin perform public.admin_saude(); raise exception 'equipe viu a saúde'; exception when insufficient_privilege then null; end;
+  begin perform public.admin_disparar_sincronizacao('flow'); raise exception 'equipe disparou'; exception when insufficient_privilege then null; end;
+  if exists (select 1 from public.sync_funcoes) then raise exception 'equipe leu sync_funcoes'; end if;
+end $$;
+reset role;
+do $$ begin raise notice 'OK sistema'; end $$;

@@ -396,6 +396,16 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   importação (`com_sincronizar_folha`). Auditoria com autor "Folha (sincronização)". Conferência em `/comissoes/folha`
   (`com_conferencia_folha`, sem CPF/Pix): pendentes de cargo, admissão diferente, ligados fora do Comercial, sem par na folha.
 
+## Sistema (bastidor do administrador, `/sistema`)
+
+- 23/11/2026, migração `20261123000033_sistema_saude.sql`. Fora dos menus: só um link discreto "Sistema" no fim do `/perfil` do admin;
+  outros perfis recebem "não encontrada". `admin_saude()` (só `eh_admin`): últimas 8 rodadas de cada sincronização (`sync_funcoes` +
+  `sincronizacoes`), agendamentos do pg_cron (`cron.job` + última execução) e o planner/ClickUp de cada pessoa.
+- **Atualizar agora** por sincronização: `admin_disparar_sincronizacao(recurso)` chama a função pelo pg_net (não espera); a trava de
+  10 minutos de cada função continua. Endereços em `sync_funcoes` (no teste: hyper-function, fiscal-sincronizar, super-function).
+- Duas falhas seguidas de uma sincronização → tarefa `saude-<recurso>` no planner de cada admin (`lib/saude-planner.ts`, `soCentral`,
+  não vai ao ClickUp), pelo agendador do planner; some quando volta a dar certo.
+
 ## Visual e perfil
 
 - Cor da marca `#124735` (verde do logo); logo branco em `app/public/logo-lz7-branco.png`, ícone do site em `app/src/app/icon.png`.

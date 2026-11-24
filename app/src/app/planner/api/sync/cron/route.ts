@@ -4,6 +4,7 @@ import { supabaseServico } from "@/lib/supabase/servico";
 import { sincronizar } from "@/lib/planner/sync";
 import { refletirTodasAsObras } from "@/lib/obras-planner";
 import { refletirNotasAEmitir } from "@/lib/notas-planner";
+import { refletirSaude } from "@/lib/saude-planner";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
   await refletirTodasAsObras().catch(() => {});
   // notas a emitir: tarefa "Emitir nota" no planner de quem emite
   await refletirNotasAEmitir().catch(() => {});
+  // sincronização com 2 falhas seguidas: aviso no planner do administrador (só na Central, não vai ao ClickUp)
+  await refletirSaude().catch(() => {});
   const sb = supabaseServico();
   const { data } = await sb.from("planner_sync_state").select("user_id, perfis(email, ativo)").eq("data->>enabled", "true");
   const resultados: Record<string, string> = {};
