@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // A plataforma de colaboradores é uma página própria (HTML + CSS + JS do original), fora do layout da Central,
 // para manter telas, cálculos e recibos idênticos. O adaptador /colab-app/central.js liga ao Supabase.
-const VERSAO = "3";
+const VERSAO = "5";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -43,6 +43,7 @@ ${TELA}
 <script src="/colab-app/vendor/jspdf.umd.min.js"></script>
 <script src="/colab-app/vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="/colab-app/vendor/supabase.js"></script>
+<script src="/sessao.js?v=1"></script>
 <script>window.__CENTRAL=${json(central)};</script>
 <script src="/colab-app/central.js?v=${VERSAO}"></script>
 <script src="/colab-app/plataforma.js?v=${VERSAO}"></script>

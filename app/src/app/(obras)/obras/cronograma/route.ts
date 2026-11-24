@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Cronograma de instalação (Central de Obras): página própria com a lógica do protótipo "Cronograma de Obras LZ7"
 // (public/obras-app/cronograma.js|css) falando direto com o banco, sujeito ao RLS (só o perfil obras grava).
-const VERSAO = "4";
+const VERSAO = "6";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -66,6 +66,7 @@ export async function GET(req: Request) {
 <div class="toast" id="toast" role="status"></div>
 <script src="/colab-app/vendor/xlsx.full.min.js"></script>
 <script src="/colab-app/vendor/supabase.js"></script>
+<script src="/sessao.js?v=1"></script>
 <script>window.__CENTRAL=${json(central)};</script>
 <script src="/obras-app/cronograma.js?v=${VERSAO}"></script>
 <script src="/tarefa-app/tarefa.js?v=1" data-flutuante></script>

@@ -361,7 +361,10 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - `public/colab-app/central.js` fornece `window.claude.use("db"|"assets"|"downloads"|"user")` com a mesma interface:
   tabela `plat_docs (colecao, id, data jsonb)`, `update` = `plat_atualizar` (fusão profunda no banco: mapas mesclam, listas
   substituem; não perde marcação simultânea), tempo real do Supabase (`plat_docs` na publicação `supabase_realtime`),
-  token da sessão do site (`/colaboradores/api/token`; a página não renova a sessão sozinha).
+  token da sessão do site (`/colaboradores/api/token`; o proxy renova o login a cada pedido de token).
+- **Sessão nas páginas próprias** (colaboradores, comissões, financiamento, conciliação, cronograma; 23/11/2026): `public/sessao.js`
+  (`window.centralSessao`) pede token novo a cada 20 min e ao voltar para a aba; login acabado (401 ou redirecionamento, `redirect: "manual"`)
+  **não** leva para "Entrar": mostra aviso para entrar em outra aba e continuar (o que está na tela não se perde). Mudou um adaptador, suba o `VERSAO` da rota.
 - Anexos no bucket privado `colab-anexos`, nome = assetId; `/_blob/<id>` → `/colaboradores/anexo/[id]` (confere equipe e entrega o arquivo).
 - Acesso: equipe, admin e diretoria (RLS `eh_equipe()`). Importação única em `/colaboradores/importar` (só admin):
   `dados_plataforma.json` + PDFs; os dados pessoais nunca vão para o repositório.

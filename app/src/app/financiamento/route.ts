@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Página própria (HTML + CSS + JS da plataforma original), fora do layout da Central, para manter telas, regras e cálculos
 // idênticos. O adaptador /fin-app/central-fin.js liga ao Supabase (tabela fin_docs).
-const VERSAO = "1";
+const VERSAO = "3";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -43,6 +43,7 @@ export async function GET(req: Request) {
 ${TELA}
 <script src="/colab-app/vendor/xlsx.full.min.js"></script>
 <script src="/colab-app/vendor/supabase.js"></script>
+<script src="/sessao.js?v=1"></script>
 <script>window.__CENTRAL=${json(central)};</script>
 <script src="/fin-app/central-fin.js?v=${VERSAO}"></script>
 <script src="/fin-app/financiamento.js?v=${VERSAO}"></script>
