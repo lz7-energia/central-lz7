@@ -39,6 +39,9 @@ export default async function Perfil() {
           <FormSenha />
         </section>
       </div>
+      {perfil.papel === "admin" && (
+        <p className="pequeno mudo" style={{ marginTop: 24, textAlign: "right" }}><a href="/sistema" className="mudo">Sistema</a></p>
+      )}
     </>
   );
 }
