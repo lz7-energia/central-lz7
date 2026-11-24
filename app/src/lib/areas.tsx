@@ -25,7 +25,7 @@ export const AREAS: Area[] = [
       { nome: "Recebíveis e inadimplência", icone: "recebiveis", descricao: "Vencidos, previsões e motivos, do Flow", href: "/recebiveis" },
       { nome: "Fechamento de projetos", icone: "recebiveis", descricao: "Recebido, nota e indicador até fechar 100%", href: "/clientes" },
       { nome: "Financiamento e confirmação", icone: "financiamento", descricao: "Cards parados em Financiamento e Confirmação de pagamento", href: "/financiamento" },
-      { nome: "Fluxo de caixa projetado", icone: "caixa", descricao: "A pagar, a receber e previsto × realizado" },
+      { nome: "Fluxo de caixa (DFC)", icone: "caixa", descricao: "Entradas e saídas baixadas no Flow, com rateio", href: "/dfc" },
       { nome: "Conciliação bancária", icone: "conciliacao", descricao: "Extrato × movimento do Flow, mês a mês", href: "/conciliacao" },
     ],
   },

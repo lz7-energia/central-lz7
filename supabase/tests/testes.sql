@@ -850,3 +850,29 @@ end $$;
 reset role;
 delete from public.projeto_fechamento;
 do $$ begin raise notice 'OK fechamento do projeto'; end $$;
+
+-- 30) DFC: rateio vira uma linha por parte; diferença (juros) vira linha própria; equipe lê, obras não
+insert into public.dfc_naturezas (id, descricao, grupo) values (44, 'Combustível', 'Despesas operacionais'), (14, 'Pedágio', 'Despesas operacionais'), (2, 'Receita com vendas', 'Receitas operacionais');
+insert into public.dfc_centros (id, descricao) values (11, 'Obras'), (19, 'Logística'), (2, 'Comercial');
+insert into public.dfc_titulos (tipo, flow_id, data_baixa, valor, valor_pago, juros, natureza_id, centro_id, pessoa, tem_rateio, detalhado) values
+  ('pagar', '43', '2026-07-07', 202.74, 210.00, 7.26, 44, 11, 'KATIA PG', true, true),
+  ('receber', '24', '2026-07-14', 3000, 3000, 0, 2, 2, 'JAIR', false, false);
+insert into public.dfc_rateios (tipo, flow_id, titulo_id, valor, natureza_id, centro_id) values
+  ('pagar', '5673', '43', 141.44, 44, 11), ('pagar', '5674', '43', 61.30, 14, 19);
+set role authenticated;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
+do $$ begin
+  if (select count(*) from public.dfc_lancamentos where titulo_id = '43') <> 3 then raise exception 'linhas do rateio'; end if;
+  if (select sum(valor) from public.dfc_lancamentos where titulo_id = '43') <> 210.00 then raise exception 'total pago'; end if;
+  if (select valor from public.dfc_lancamentos where titulo_id = '43' and parte = 'diferenca') <> 7.26 then raise exception 'diferença'; end if;
+  if (select centro from public.dfc_lancamentos where rateio_id = '5674') <> 'Logística' then raise exception 'centro do rateio'; end if;
+  if (select valor_sinal from public.dfc_lancamentos where titulo_id = '24') <> 3000 or (select valor_sinal from public.dfc_lancamentos where rateio_id = '5673') <> -141.44 then raise exception 'sinal'; end if;
+  if (select natureza_grupo from public.dfc_lancamentos where titulo_id = '24') <> 'Receitas operacionais' then raise exception 'grupo'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin
+  if exists (select 1 from public.dfc_lancamentos) or exists (select 1 from public.dfc_titulos) then raise exception 'obras viu o DFC'; end if;
+end $$;
+reset role;
+delete from public.dfc_titulos; delete from public.dfc_naturezas; delete from public.dfc_centros;
+do $$ begin raise notice 'OK dfc'; end $$;
