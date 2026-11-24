@@ -182,6 +182,11 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - Tela: período (este mês / mês passado / este ano / datas), saldo inicial por banco (avisa conciliação atrasada), "Por natureza"
   (grupo → natureza, clique filtra), filtros por valor, fornecedor/cliente, descrição, centro de custo, grupo, natureza, OS, código do
   projeto e banco; planilha CSV. Base para o DRE futuro.
+- Filtros com vários valores (23/11/2026): centro de custo, grupo, natureza e banco em lista com caixas de marcar (`MultiSelecao`, com busca);
+  fornecedor, descrição, OS e código do projeto aceitam vários termos separados por vírgula. Botão **Números / Gráficos** (lembrado no
+  navegador): `dfc/Graficos.tsx`, SVG próprio seguindo o skill de dataviz — entradas × saídas por dia (até 62 dias) ou mês (azul `#2a78d6`
+  × vermelho `#e34948`, validados), saldo dia a dia a partir da conciliação, e rankings (10 maiores + Outros) de saídas/entradas por
+  natureza e centro de custo; clique no ranking acrescenta o filtro. Os gráficos usam os lançamentos já filtrados.
 
 ### Financiamento e confirmação de pagamento (Financeiro, `/financiamento`)
 

@@ -667,3 +667,38 @@ a.link-cliente:hover strong { text-decoration: underline; color: var(--marca); }
 .form-indicador label { display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; color: var(--texto-2); }
 .form-indicador label.opcao { flex-direction: row; align-items: center; gap: 6px; color: var(--texto); font-size: 0.9rem; padding-bottom: 8px; }
 .aviso-lote { display: flex; gap: 10px; align-items: center; background: #eef6f2; border: 1px solid #cfe3d9; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+
+/* DFC: filtros com vários valores e gráficos */
+.multi { position: relative; }
+.multi-botao { font: inherit; background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 9px 12px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; color: var(--texto); }
+.multi-botao.ativo { border-color: var(--marca); box-shadow: inset 0 0 0 1px var(--marca); }
+.multi-painel { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; min-width: 260px; max-width: 360px; background: #fff; border: 1px solid var(--borda); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 8px; }
+.multi-painel input[type=search] { width: 100%; margin-bottom: 6px; }
+.multi-lista { max-height: 260px; overflow: auto; display: grid; gap: 2px; }
+.multi-lista label { display: flex; gap: 8px; align-items: center; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.multi-lista label:hover { background: #f4f6f5; }
+.multi-rodape { display: flex; justify-content: space-between; border-top: 1px solid var(--borda); margin-top: 6px; padding-top: 6px; }
+.filtros-ativos { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 8px; }
+.chip-filtro { font: inherit; font-size: 0.82rem; background: #eef6f2; border: 1px solid #cfe3d9; color: var(--texto); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.dfc-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dfc-graficos .dfc-largo { grid-column: 1 / -1; }
+@media (max-width: 900px) { .dfc-graficos { grid-template-columns: 1fr; } }
+.dfc-graf-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.dfc-graf-topo h2 { margin: 0; font-size: 1rem; }
+.dfc-legenda { display: flex; gap: 14px; font-size: 0.85rem; color: var(--texto-2); }
+.dfc-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.dfc-chave { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.dfc-grafico { position: relative; }
+.dfc-grafico svg { width: 100%; height: auto; display: block; }
+.dfc-eixo { font-size: 12px; fill: #6b6a65; }
+.dfc-dica { position: absolute; pointer-events: none; background: #fff; border: 1px solid var(--borda); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 8px 10px; font-size: 0.85rem; min-width: 170px; z-index: 5; }
+.dfc-dica-titulo { font-weight: 600; margin-bottom: 4px; }
+.dfc-ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.dfc-ranking button { width: 100%; display: grid; grid-template-columns: minmax(0, 38%) 1fr 64px; gap: 10px; align-items: center; background: none; border: 0; font: inherit; font-size: 0.85rem; padding: 5px 4px; border-radius: 6px; cursor: pointer; text-align: left; color: var(--texto); }
+.dfc-ranking button:hover:not(:disabled), .dfc-ranking button.ativo { background: #f4f6f5; }
+.dfc-ranking button.ativo .dfc-rank-nome { font-weight: 600; }
+.dfc-ranking button:disabled { cursor: default; }
+.dfc-rank-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dfc-rank-barra { height: 14px; display: block; }
+.dfc-rank-barra span { display: block; height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; }
+.dfc-rank-valor { text-align: right; color: var(--texto-2); font-variant-numeric: tabular-nums; }
