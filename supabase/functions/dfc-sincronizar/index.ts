@@ -25,10 +25,17 @@ const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : 
 const txt = (v: unknown) => (v === null || v === undefined || String(v).trim() === "" ? null : String(v).trim());
 
 async function flow(caminho: string): Promise<any> {
+  // Tenta de novo em erro de rede (conexão caída) e em 429/5xx, com pausa crescente.
   for (let tentativa = 1; ; tentativa++) {
-    const r = await fetch(`${BASE}/${caminho}`, { method: "GET", headers: { Authorization: `Bearer ${TOKEN}`, Accept: "application/json" } });
+    let r: Response;
+    try {
+      r = await fetch(`${BASE}/${caminho}`, { method: "GET", headers: { Authorization: `Bearer ${TOKEN}`, Accept: "application/json" } });
+    } catch (e) {
+      if (tentativa < 4) { await espera(1500 * tentativa); continue; }
+      throw new Error(`Flow ${caminho.split("?")[0]}: sem conexão (${String((e as Error)?.message ?? e).slice(0, 80)})`);
+    }
     if (r.ok) return await r.json();
-    if (tentativa < 3 && (r.status === 429 || r.status >= 500)) { await espera(2000 * tentativa); continue; }
+    if (tentativa < 4 && (r.status === 429 || r.status >= 500)) { await espera(2000 * tentativa); continue; }
     throw new Error(`Flow ${caminho.split("?")[0]}: HTTP ${r.status}`);
   }
 }
