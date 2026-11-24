@@ -164,6 +164,25 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - Migração única: `/conciliacao/importar` (só admin) lê o `dados_completos.json` no navegador. Teste (20/11/2026): as 36 conciliações
   abrem com situação, pendentes, diferença em aberto e saldos finais iguais aos resumos da plataforma original, sem regravar nada.
 
+### Fluxo de caixa — DFC realizado (Financeiro, `/dfc`)
+
+- Pedido de 23/11/2026: **só o realizado, só do Flow**, exatamente como lá: títulos **baixados** do contas a pagar (saídas) e a receber
+  (entradas), na data da baixa, **com o rateio**. Saldo inicial = saldo final do extrato (`sFinE`) da última conciliação de cada banco que
+  termina antes do período (`conc_docs` resumos); saldo final = inicial + entradas − saídas. Migração `20261123000032_dfc.sql`.
+- Sincronização: Edge Function `dfc-sincronizar` (no central-teste publicada como `super-function`; só GET; `supabase/agendar-dfc.sql`).
+  Endereços (explorador de 23/11/2026): lista `pagars/` com `carregarValor/Fornecedor/Natureza/CentroCusto/Banco` (a lista não traz valor pago,
+  juros, OS nem rateio) + detalhe `pagars/{id}` (`valorpago`, `juros`, `multa`, `desconto`, `idOrdemServico`, `codigoProjeto`,
+  `historicoEmissaoObservacao`, `rateios[] {id, valor, idNatureza, idCentroCusto}`); `recebers/` com `carregarCliente/Natureza/CentroCusto/Banco`
+  (já traz `valorRecebido`; detalhe só se `temRateio`); `naturezas/` (com grupo) e `centrosCusto/`. O Flow **não filtra por data** na lista:
+  cada rodada lê as listas inteiras e só abre o detalhe de título novo ou mudado (`assinatura`), até 80 s por rodada; a primeira carga leva
+  algumas rodadas. Título que deixa de estar baixado sai do DFC. `movimentosBancarios/` existe (PG/RC/MB por banco) e não é usado.
+- `dfc_titulos`, `dfc_rateios`, `dfc_naturezas`, `dfc_centros`; view `dfc_lancamentos` = uma linha por parte do rateio (ou o título inteiro);
+  diferença entre valor pago e soma do rateio (juros/multa/desconto) vira linha própria na natureza/centro do título. Nome do cliente que
+  não vier na lista sai do `clientes_flow`. RLS `eh_equipe()`.
+- Tela: período (este mês / mês passado / este ano / datas), saldo inicial por banco (avisa conciliação atrasada), "Por natureza"
+  (grupo → natureza, clique filtra), filtros por valor, fornecedor/cliente, descrição, centro de custo, grupo, natureza, OS, código do
+  projeto e banco; planilha CSV. Base para o DRE futuro.
+
 ### Financiamento e confirmação de pagamento (Financeiro, `/financiamento`)
 
 - Migrado da aba "Financiamento e confirmação" da plataforma Contas a Receber LZ7 em 17/11/2026 (pacote `central-lz7-financiamento`:
