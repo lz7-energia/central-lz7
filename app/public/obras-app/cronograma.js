@@ -639,12 +639,13 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#modal').classList.con
 
 /* ---------- dados (Supabase) ---------- */
 let token=C.token,tokenExp=C.tokenExp||0;
-async function tokenAtual(){
-  if(Date.now()/1000<tokenExp-120)return token;
-  try{const r=await fetch('/obras/api/token',{cache:'no-store'});if(r.ok){const j=await r.json();if(j.token){token=j.token;tokenExp=j.exp||0}}else if(r.status===401)location.href='/entrar?volta=/obras/cronograma'}catch(_){}
+async function tokenAtual(forcar){
+  if(!forcar&&Date.now()/1000<tokenExp-120)return token;
+  try{const r=await fetch('/obras/api/token',{cache:'no-store',redirect:'manual'});if(r.ok){const j=await r.json();if(j.token){token=j.token;tokenExp=j.exp||0;window.centralSessao?.voltou()}}else if(r.status===401||r.type==='opaqueredirect')window.centralSessao?.expirou('/obras/cronograma')}catch(_){}
   return token;
 }
 const sb=window.supabase.createClient(C.url,C.anon,{accessToken:tokenAtual});
+window.centralSessao?.manterVivo(tokenAtual);
 async function carregarCfg(){
   const [cfg,eqs,est,tops]=await Promise.all([sb.from('obra_config').select('chave,valor'),sb.from('obra_equipes').select('*').order('nome'),sb.from('obra_estruturas').select('*').order('ordem'),sb.from('obra_topicos').select('*').order('ordem')]);
   const m=Object.fromEntries((cfg.data||[]).map(r=>[r.chave,r.valor])),metas=m.metas||{};

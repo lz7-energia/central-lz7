@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Página própria com o CSS e o JS da plataforma Comissões LZ7 (sem mudar regras, cálculos nem recibos), fora do layout
 // da Central. As bibliotecas vêm de /colab-app/vendor (mesmas versões do CDN original) e o adaptador
 // /com-app/central-com.js liga ao Supabase (tabela com_docs).
-const VERSAO = "2";
+const VERSAO = "4";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -46,6 +46,7 @@ export async function GET(req: Request) {
 <script src="/colab-app/vendor/jspdf.umd.min.js"></script>
 <script src="/colab-app/vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="/colab-app/vendor/supabase.js"></script>
+<script src="/sessao.js?v=1"></script>
 <script>window.__CENTRAL=${json(central)};</script>
 <script src="/com-app/central-com.js?v=${VERSAO}"></script>
 <script src="/com-app/comissoes.js?v=${VERSAO}"></script>

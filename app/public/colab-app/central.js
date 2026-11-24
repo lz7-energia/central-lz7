@@ -14,16 +14,17 @@
   const COLECOES = ["colab", "setores", "produtos", "itens", "entregas", "eventos", "folhas", "config", "log"];
   let token = C.token, tokenExp = C.tokenExp || 0;
 
-  async function tokenAtual() {
-    if (Date.now() / 1000 < tokenExp - 120) return token;
+  async function tokenAtual(forcar) {
+    if (!forcar && Date.now() / 1000 < tokenExp - 120) return token;
     try {
-      const r = await fetch("/colaboradores/api/token", { cache: "no-store" });
-      if (r.ok) { const j = await r.json(); if (j.token) { token = j.token; tokenExp = j.exp || 0; } }
-      else if (r.status === 401) { location.href = "/entrar?volta=/colaboradores"; }
+      const r = await fetch("/colaboradores/api/token", { cache: "no-store", redirect: "manual" });
+      if (r.ok) { const j = await r.json(); if (j.token) { token = j.token; tokenExp = j.exp || 0; window.centralSessao?.voltou(); } }
+      else if (r.status === 401 || r.type === "opaqueredirect") { window.centralSessao?.expirou("/colaboradores"); }
     } catch (_) {}
     return token;
   }
   const sb = window.supabase.createClient(C.url, C.anon, { accessToken: tokenAtual, realtime: { params: { eventsPerSecond: 20 } } });
+  window.centralSessao?.manterVivo(tokenAtual);
 
   /* ---------- utilidades ---------- */
   const clone = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
