@@ -58,6 +58,9 @@ não é `obras` (equipe, admin, diretoria); `eh_obras()` = qualquer perfil ativo
 
 Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada com o nome automático `hyper-function`; só GET no Flow) copia os dados para o banco da central a cada
 30 min (8h–00h de Brasília, seg–sáb; `supabase/agendar-sincronizacao.sql`); as telas leem do banco. Detalhes em `supabase/README.md`.
+Rodadas **leves** a cada 30 min (23/11/2026): não releem `clientes/` (usam a cópia em `clientes_flow`) nem `pedidosVenda/itens` (só se
+apareceu pedido novo; pedido existente mantém o `valor_total` gravado). **Completa** todo dia às 3h10 com corpo `{"completo": true}`
+(`supabase/agendar-sincronizacao-completa.sql`); sem cópia do cadastro, a leve vira completa. O resumo da rodada traz `modo`.
 
 ## Fase 1
 

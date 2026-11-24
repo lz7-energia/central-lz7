@@ -107,7 +107,8 @@ async function emLotes<T>(linhas: T[], fazer: (lote: T[]) => Promise<{ error: an
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  const corpo = await req.json().catch(() => ({}));
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -127,14 +128,26 @@ Deno.serve(async () => {
   try {
     const agora = new Date().toISOString();
 
+    // Rodada LEVE (padrão, a cada 30 min) ou COMPLETA (de madrugada: corpo {"completo": true}).
+    // O Flow não filtra por data, então o que dá para poupar é o que quase não muda: o cadastro de clientes
+    // (a leve usa a cópia de clientes_flow) e os itens dos pedidos (a leve só lê se apareceu pedido novo;
+    // pedido que já existe mantém o valor gravado até a próxima completa). Sem cópia do cadastro, faz a completa.
+    const { count: clientesGuardados } = await sb.from("clientes_flow").select("flow_id", { count: "exact", head: true });
+    const completa = corpo?.completo === true || !clientesGuardados;
+
     // 1) Leitura do Flow (em sequência, para não pesar a API)
     const pedidos = await todos("pedidosVenda");
-    const itens = await todos("pedidosVenda/itens");
+    const valoresAntigos = new Map((await lerTudo(sb, "pedidos_venda", "flow_id, valor_total")).map((p: any) => [p.flow_id, p.valor_total]));
+    const temPedidoNovo = pedidos.some((p) => !valoresAntigos.has(String(p.id)));
+    const leuItens = completa || temPedidoNovo;
+    const itens = leuItens ? await todos("pedidosVenda/itens") : [];
     const ordens = await todos("ordensServico");
     const titulos = await todos("recebers");
     const documentos = await todos("documentosSaida"); // página "Notas de Produto" do Flow
-    const clientes = await todos("clientes"); // cadastro de clientes (nome e apelido de todos)
-    const cadastro = new Map(clientes.map((c) => [String(c.id), c]));
+    const clientes = completa ? await todos("clientes") : []; // cadastro de clientes (nome e apelido de todos)
+    const cadastro = new Map<string, any>(completa
+      ? clientes.map((c) => [String(c.id), c])
+      : (await lerTudo(sb, "clientes_flow", "flow_id, bruto")).map((c: any) => [String(c.flow_id), c.bruto ?? {}]));
 
     // 2) Pedidos de venda. O valor do pedido é a soma dos itens (o total do cabeçalho vem vazio na API).
     const somaItens = new Map<string, number>();
@@ -150,7 +163,8 @@ Deno.serve(async () => {
       codigo_projeto: p.codigoProjeto || null,
       cliente: cadastro.get(String(p.cliente?.id))?.nomeRazaoSocial || p.cliente?.nomeRazaoSocial || p.cliente?.apelido || null,
       cliente_apelido: cadastro.get(String(p.cliente?.id))?.apelido || p.cliente?.apelido || null,
-      valor_total: somaItens.has(String(p.id)) ? Math.round(somaItens.get(String(p.id))! * 100) / 100 : null,
+      valor_total: somaItens.has(String(p.id)) ? Math.round(somaItens.get(String(p.id))! * 100) / 100
+        : leuItens ? null : (valoresAntigos.get(String(p.id)) ?? null),
       data_pedido: dataISO(p.dataEmissao),
       bruto: p,
       sincronizado_em: agora,
@@ -332,9 +346,10 @@ Deno.serve(async () => {
       return { flow_id: String(c.id), nome: c.nomeRazaoSocial ?? null, apelido: c.apelido ?? null, cnpj_cpf: c.cnpjCpf ?? null,
                telefone: k.telefone, email: k.email, bruto: c, sincronizado_em: agora };
     });
-    await emLotes(linhasClientes, (l) => sb.from("clientes_flow").upsert(l, { onConflict: "flow_id" }));
+    if (completa) await emLotes(linhasClientes, (l) => sb.from("clientes_flow").upsert(l, { onConflict: "flow_id" }));
 
     const resumo = {
+      modo: completa ? "completa" : "leve", leuItens,
       clientesComTelefone: linhasClientes.filter((c) => c.telefone).length,
       pedidos: linhasPedidos.length, itens: itens.length, ordens: linhasOS.length,
       notas: notas.size, notasProduto: documentos.length, clientes: clientes.length, notasSemCerteza: ambiguas, titulos: linhasTitulos.length,
