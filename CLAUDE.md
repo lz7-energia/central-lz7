@@ -167,7 +167,7 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 ### Fluxo de caixa — DFC realizado (Financeiro, `/dfc`)
 
 - Pedido de 23/11/2026: **só o realizado, só do Flow**, exatamente como lá: títulos **baixados** do contas a pagar (saídas) e a receber
-  (entradas), na data da baixa, **com o rateio**. Saldo inicial = saldo final do extrato (`sFinE`) da última conciliação de cada banco que
+  (entradas), na data da baixa, **com o rateio**. Saldo inicial = saldo final do extrato (`sFinE`, **em centavos** na conciliação) da última conciliação de cada banco que
   termina antes do período (`conc_docs` resumos); saldo final = inicial + entradas − saídas. Migração `20261123000032_dfc.sql`.
 - Sincronização: Edge Function `dfc-sincronizar` (no central-teste publicada como `super-function`; só GET; `supabase/agendar-dfc.sql`).
   Endereços (explorador de 23/11/2026): lista `pagars/` com `carregarValor/Fornecedor/Natureza/CentroCusto/Banco` (a lista não traz valor pago,

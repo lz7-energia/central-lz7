@@ -29,7 +29,7 @@ export default async function PaginaDfc({ searchParams }: { searchParams: Promis
     const x = r.data as { bancoId?: string; banco?: string; fim?: string; sFinE?: number | null };
     if (!x?.bancoId || !x.fim || x.fim > antes || x.sFinE == null) continue;
     const atual = porBanco.get(x.bancoId);
-    if (!atual || x.fim > atual.ate) porBanco.set(x.bancoId, { banco: x.banco ?? x.bancoId, ate: x.fim, saldo: Number(x.sFinE) });
+    if (!atual || x.fim > atual.ate) porBanco.set(x.bancoId, { banco: x.banco ?? x.bancoId, ate: x.fim, saldo: Number(x.sFinE) / 100 }); // a conciliação guarda em centavos
   }
   const saldos = [...porBanco.values()].sort((a, b) => a.banco.localeCompare(b.banco));
 
