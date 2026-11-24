@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "prebuild": "node scripts/copiar-vendor.mjs",
-    "predev": "node scripts/copiar-vendor.mjs"
+    "predev": "node scripts/copiar-vendor.mjs",
+    "test:regras": "TZ=America/Sao_Paulo npx tsx testes/regras-planner.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

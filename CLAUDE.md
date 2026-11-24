@@ -251,7 +251,8 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   Telas, textos, cores, temas e regras de datas idênticos ao original; só troca `claude.use` pelas rotas `/planner/api/*`.
 - Um planner por pessoa (equipe, admin e diretoria). Tabelas `planner_tasks`, `planner_events`, `planner_settings`,
   `planner_sync_state` (jsonb com os mesmos campos do original); anexos no bucket privado `planner-anexos` (pasta = id da pessoa).
-- Regras de datas existem em dois lugares: `public/planner-app/planner.js` (tela) e `lib/planner/regras.ts` (servidor). Mudou uma, mude a outra.
+- Regras de datas existem em dois lugares: `public/planner-app/planner.js` (tela) e `lib/planner/regras.ts` (servidor). Mudou uma, mude a outra
+  e rode `npm run test:regras` (`app/testes/regras-planner.ts`: carrega o bloco de regras do planner.js e compara feriados e ocorrências com o servidor, 400 casos).
 - ClickUp pela API REST, só no servidor (`lib/planner/sync.ts`, `CLICKUP_API_TOKEN`, time `CLICKUP_TEAM_ID`=90171579328):
   mão dupla com as tarefas abertas atribuídas à pessoa; categoria ↔ lista; quadrante ↔ prioridade; vale a última edição.
   Roda logo depois de cada edição (navegador chama `/planner/api/sync`) e a cada 15 min (pg_cron → `/planner/api/sync/cron`
@@ -430,6 +431,8 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - Funções da Vercel na região `gru1` (São Paulo, `app/vercel.json`), perto do Supabase; `perfilAtual` usa `cache` (layout e página dividem a leitura).
 - `Referrer-Policy: same-origin` (os links de consulta/aprovação têm token; `no-referrer` quebra as Server Actions).
 - Testes: `bash supabase/tests/rodar.sh` (banco) e `testes/ponta-a-ponta/` (site inteiro, sem Docker).
+- **Regras de acesso rápidas** (migração `20261123000034_rls_rapido.sql`): políticas no formato `(select eh_equipe())` (calculado uma vez por
+  consulta, não por linha). Política nova: escreva já assim. Medido: quadro de faturamento com 4.000 pedidos de ~150 ms para ~45 ms.
 
 ## Documentos de referência
 
