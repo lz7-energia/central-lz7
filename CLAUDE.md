@@ -259,8 +259,9 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   Pedido "Aprovado"/"Faturado" aprovado desde `obra_config.flow_desde` (2026-11-01), sem obra, com OS que não está concluída nem cancelada →
   obra `origem = 'flow'`: nome do card = apelido do cliente no Flow (kWp tirado de "(x kWp)"), cliente, CPF/CNPJ, endereço/CEP/cidade e
   telefone (`clientes_flow`), valor e equipamentos (itens do pedido), financiamento (campo adicional "Tipo de Financiamento"), entrada =
-  data de aprovação. Código = código do projeto se no padrão `AA000000AAA`; senão `PV-<pedido>` com `codigo_provisorio` (troca sozinho
-  quando corrigirem no Flow). Ligação pelo `id_cab_pedido_venda`; obra antiga liga pelo código e só recebe o que estiver vazio.
+  data de aprovação. Código = código do projeto se no padrão `AA000000AAA`; senão o código que abre o **apelido** do cliente ("WB260410SLO -
+  NOME (x kWp)", migração `20261125000040_obras_codigo_do_apelido.sql`); sem nenhum dos dois, `PV-<pedido>` com `codigo_provisorio` (troca
+  sozinho quando aparecer o código). Ligação pelo `id_cab_pedido_venda`; obra antiga liga pelo código e só recebe o que estiver vazio.
   Toda rodada atualiza `flow_situacao`, `os_flow`, `os_status`, `os_coordenador`, `flow_info` (complemento da OS) e `flow_valores`; campo
   mudado por alguém na Central entra em `flow_editado` e o Flow não sobrescreve mais (a ficha mostra "Diferente do Flow"). Avisos na ficha:
   código provisório, pedido que saiu de aprovado, obra concluída com OS ainda aberta.

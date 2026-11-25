@@ -951,20 +951,24 @@ insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valo
   ('313', '313', 'WB260100ABC', 'CLIENTE A', 5000, null, '{"situacao":"Aprovado","dataAprovacao":"2026-10-01T00:00:00","cliente":{"id":3,"nomeRazaoSocial":"CLIENTE A FLOW","apelido":"WB260100ABC - CLIENTE A (4 kWp)"}}'),
   -- segundo pedido do mesmo projeto (serviços) e segundo pedido "Adilson": não podem virar outra obra
   ('314', '314', 'WB260200COL', 'PAULO TESTE', 3000, null, '{"situacao":"Aprovado","dataAprovacao":"2026-11-20T00:00:00","cliente":{"id":509}}'),
-  ('315', '315', 'Adilson', 'ADILSON TESTE', 500, null, '{"situacao":"Faturado","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":520}}');
+  ('315', '315', 'Adilson', 'ADILSON TESTE', 500, null, '{"situacao":"Faturado","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":520}}'),
+  -- código do projeto fora do padrão, mas o apelido traz o código: a obra usa o do apelido
+  ('316', '316', 'Jacir', 'JACIR TESTE', 800, null, '{"situacao":"Aprovado","dataAprovacao":"2026-11-21T00:00:00","cliente":{"id":530,"nomeRazaoSocial":"JACIR TESTE","apelido":"WB260700SLO - JACIR TESTE (14.88 KWp)"}}');
 insert into public.ordens_servico (flow_id, pedido_flow_id, numero, status, bruto) values
   ('289', '302', '289', 'Separação', '{"id":289,"coordenador":{"nome":"Rafael"},"complemento":"O projeto está em nome de X"}'),
   ('299', '310', '299', 'Adição no Cronograma', '{"id":299}'),
   ('300', '312', '300', 'Obra concluída.', '{"id":300}');
 do $$ declare j jsonb; o record; begin
   j := public.obra_importar_flow();
-  if (j->>'criadas')::int <> 2 or (j->>'ligadas')::int <> 1 then raise exception 'importação: %', j; end if;
+  if (j->>'criadas')::int <> 3 or (j->>'ligadas')::int <> 1 then raise exception 'importação: %', j; end if;
   select * into o from public.obra_obras where codigo = 'WB260200COL';
   if o.origem <> 'flow' or o.kwp <> 7.38 or o.valor <> 37183 or o.cidade <> 'Wenceslau Braz' or o.os_status <> 'Separação'
      or o.os_coordenador <> 'Rafael' or o.telefone <> '43988887777' or o.entrada <> '2026-11-19' or o.endereco <> 'RUA A, 430, CENTRO'
      or o.equipamentos->0->>'produto' <> 'KIT GERADOR 7 A 7,5KW (220V)' or o.cliente <> 'PAULO TESTE' then raise exception 'obra do Flow: %', to_jsonb(o); end if;
   select * into o from public.obra_obras where codigo = 'PV-310';
   if not o.codigo_provisorio or o.financiamento is not true or o.flow_situacao <> 'Faturado' then raise exception 'código provisório: %', to_jsonb(o); end if;
+  if not exists (select 1 from public.obra_obras where codigo = 'WB260700SLO' and not codigo_provisorio and id_cab_pedido_venda = 316) then
+    raise exception 'código pelo apelido'; end if;
   if exists (select 1 from public.obra_obras where codigo in ('WB260300FCT', 'WB260400FCT')) then raise exception 'criou em digitação/concluída'; end if;
   if exists (select 1 from public.obra_obras where codigo in ('PV-314', 'PV-315')) then raise exception 'duplicou obra do mesmo projeto'; end if;
   -- obra antiga ligada pelo código: só preenche o vazio (cliente da planilha fica)
@@ -991,7 +995,7 @@ do $$ declare j jsonb; o record; begin
 end $$;
 delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-a';
 delete from public.ordens_servico where flow_id in ('289', '299', '300');
-delete from public.pedidos_venda where flow_id in ('302', '310', '311', '312', '313', '314', '315');
+delete from public.pedidos_venda where flow_id in ('302', '310', '311', '312', '313', '314', '315', '316');
 delete from public.clientes_flow where flow_id = '509';
 do $$ begin raise notice 'OK obras por área e Flow'; end $$;
 
