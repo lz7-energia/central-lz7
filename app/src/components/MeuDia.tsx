@@ -24,11 +24,11 @@ export function AtalhoPlanner({ avisos }: { avisos: { id: number | string; texto
 }
 
 /** "Meu dia": o que é da pessoa hoje (lib/meu-dia.ts). */
-export function MeuDia({ itens: dia }: { itens: ItemDia[] }) {
+export function MeuDia({ itens: dia, titulo = "Meu dia" }: { itens: ItemDia[]; titulo?: string }) {
   return (
         <section className="meu-dia">
           <div className="md-cab">
-            <h2>Meu dia</h2>
+            <h2>{titulo}</h2>
             <span className="mudo pequeno">{dia.length ? `${dia.length} ${dia.length === 1 ? "coisa" : "coisas"} para hoje${dia.some((i) => i.atrasado) ? `, ${dia.filter((i) => i.atrasado).length} atrasada${dia.filter((i) => i.atrasado).length === 1 ? "" : "s"}` : ""}` : ""}</span>
           </div>
           {dia.length === 0 ? <p className="mudo" style={{ margin: 0 }}>Nada atrasado nem para hoje. 👌</p> : (

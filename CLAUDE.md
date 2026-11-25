@@ -221,6 +221,17 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   Logística: Entregas pendentes (`#entregas`), Indicadores da logística (`#ind-logistica`). Obras: Instalações pendentes (`#pendentes`),
   Equipes (`#equipes`), Indicadores de obras (`#indicadores`), Configurações (`#config`). Cada tela abre sozinha, sem menu lateral,
   com "‹ volta" para a área (endereços antigos `#fila`, `#alertas`, `#relatorios` ainda funcionam).
+- **Pendências e Meu dia de Obras** (24/11/2026; migração `20261124000037_obras_pendencias_tags.sql`): na Início, cada um vê as pendências
+  da sua área (`obra_area`; quem não é do perfil obras vê as duas), calculadas em `lib/obras-resumo.ts` e que somem quando a obra é preenchida:
+  logística = obra nova sem previsão de entrega, entrega atrasada; obras = avisos da logística, obra para agendar a instalação (material
+  previsto ou entregue, sem data), instalação atrasada. **Avisos** (`obra_avisos`, gatilho `obra_gerar_avisos`): previsão de entrega mudou
+  numa obra com instalação marcada, e material entregue; um aviso aberto por obra e tipo (atualiza o texto); resolvem sozinhos quando a
+  instalação é remarcada/iniciada/concluída ou com **Ciente** (`obra_aviso_ciente`; na Início, em Instalações pendentes e na ficha).
+  "Meu dia de Obras": entregas e instalações de hoje e amanhã (área da pessoa primeiro) + "Do seu planner" (`MeuDia` com `titulo`).
+- **Tags padronizadas**: catálogo `obra_tags` (nome único sem diferença de maiúscula, cor); `obra_salvar_tags` usa a grafia do catálogo e cria
+  a que faltar; renomear/cor/excluir em Configurações (`obra_tag_editar`, `obra_tag_excluir`; perfil obras ou admin).
+- **Filtros** no cronograma (todas as telas menos Equipes/Configurações): Tags, Cidade, Filial, Equipe e Etapa, vários ao mesmo tempo
+  (dentro de um filtro vale qualquer um; entre filtros, todos), com "Limpar filtros". Homologação na Copel saiu da lista (é do Leandro, depois).
 - Esqueleto: módulos sem endereço ainda "em breve". Ideias aprovadas e prioridades no doc `claude/central-lz7-ideias.md` do projeto ADM
   (o mais importante: Cronograma de instalação; integração: pagamento na entrega/instalação → planner do Financeiro).
 - Cadastrar alguém só de Obras: criar o usuário no Supabase (Authentication) e pôr `papel = 'obras'` no perfil.
