@@ -24,13 +24,16 @@ export function AtalhoPlanner({ avisos }: { avisos: { id: number | string; texto
 }
 
 /** "Meu dia": o que é da pessoa hoje (lib/meu-dia.ts). */
-export function MeuDia({ itens: dia, titulo = "Meu dia" }: { itens: ItemDia[]; titulo?: string }) {
+/** `planner`: mostra "Abrir planner →" e os avisos do planner dentro da caixa (Central de Obras: uma caixa só). */
+export function MeuDia({ itens: dia, titulo = "Meu dia", planner, avisos = [] }: { itens: ItemDia[]; titulo?: string; planner?: boolean; avisos?: { id: number | string; texto: string }[] }) {
   return (
         <section className="meu-dia">
           <div className="md-cab">
             <h2>{titulo}</h2>
             <span className="mudo pequeno">{dia.length ? `${dia.length} ${dia.length === 1 ? "coisa" : "coisas"} para hoje${dia.some((i) => i.atrasado) ? `, ${dia.filter((i) => i.atrasado).length} atrasada${dia.filter((i) => i.atrasado).length === 1 ? "" : "s"}` : ""}` : ""}</span>
+            {planner && <a href="/planner" className="pequeno" style={{ marginLeft: "auto" }}>Abrir planner →</a>}
           </div>
+          {!!avisos.length && <div className="ap-avisos" style={{ marginBottom: 8 }}>{avisos.map((a) => <span key={a.id}>🔔 {a.texto}</span>)}</div>}
           {dia.length === 0 ? <p className="mudo" style={{ margin: 0 }}>Nada atrasado nem para hoje. 👌</p> : (
             <ul className="md-lista">
               {dia.slice(0, 12).map((i, n) => (

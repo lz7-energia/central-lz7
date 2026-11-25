@@ -214,7 +214,7 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - Login → `/escolher` (Administrativa ou Obras) para quem vê as duas; perfil `obras` vai direto para `/obras` e qualquer página da
   Administrativa o manda de volta (layouts `(equipe)`/`(gestao)` com `veAdm`; páginas próprias com checagem de papel). `lib/centrais.ts`.
 - Topo com `central="obras"` (menu Início, Compras, Logística, Obras, Planner; botão ↔ para trocar de central). `/perfil` em `(conta)`, vale para as duas.
-- Início de Obras: atalho do planner, Meu dia (só planner: `meuDia(id, { soPlanner: true })`, componentes em `components/MeuDia.tsx`) e cards
+- Início de Obras: Meu dia (só planner: `meuDia(id, { soPlanner: true })`, componentes em `components/MeuDia.tsx`) e cards
   das áreas `lib/areas-obras.tsx` (Compras, Logística, Obras), reorganizáveis (`tela_ordem.ordem.obras`, módulos em `modulos["obras-<área>"]`).
 - **Telas separadas** (24/11/2026, pedido da diretoria): Início de Obras = card grande **Cronograma de instalação** no topo (semana e obras em
   aberto, `lib/obras-resumo.ts`), planner e Meu dia embaixo, depois Compras (em breve), Logística e Obras com os pendentes no card.
@@ -227,7 +227,8 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   previsto ou entregue, sem data), instalação atrasada. **Avisos** (`obra_avisos`, gatilho `obra_gerar_avisos`): previsão de entrega mudou
   numa obra com instalação marcada, e material entregue; um aviso aberto por obra e tipo (atualiza o texto); resolvem sozinhos quando a
   instalação é remarcada/iniciada/concluída ou com **Ciente** (`obra_aviso_ciente`; na Início, em Instalações pendentes e na ficha).
-  "Meu dia de Obras": entregas e instalações de hoje e amanhã (área da pessoa primeiro) + "Do seu planner" (`MeuDia` com `titulo`).
+  Início enxuta (pedido do usuário): Cronograma no topo, depois **Pendências** (uma linha por tipo que abre ao clicar; avisos já abertos) e
+  **Meu dia** (planner numa caixa só: `MeuDia` com `planner` e `avisos`, link "Abrir planner →"), depois os cards das áreas. Sem agenda de obras do dia.
 - **Tags padronizadas**: catálogo `obra_tags` (nome único sem diferença de maiúscula, cor); `obra_salvar_tags` usa a grafia do catálogo e cria
   a que faltar; renomear/cor/excluir em Configurações (`obra_tag_editar`, `obra_tag_excluir`; perfil obras ou admin).
 - **Filtros** no cronograma (todas as telas menos Equipes/Configurações): Tags, Cidade, Filial, Equipe e Etapa, vários ao mesmo tempo

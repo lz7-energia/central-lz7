@@ -9,7 +9,6 @@ type Aviso = { id: number; obra: string; para: string; tipo: string; texto: stri
 
 export type ItemPendencia = { codigo: string; titulo: string; detalhe: string; avisoId?: number };
 export type GrupoPendencia = { chave: string; area: "logistica" | "obras"; titulo: string; itens: ItemPendencia[]; ver: string; grave?: boolean };
-export type ItemAgenda = { codigo: string; titulo: string; tipo: "entrega" | "instalacao"; quando: "hoje" | "amanhã"; detalhe: string };
 
 const hojeSP = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 const somaDias = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
@@ -25,7 +24,7 @@ export function tituloObra(o: { nome_card: string | null; cliente: string }) {
   return c ? (c === c.toUpperCase() ? nome(c) : c) : nome(o.cliente ?? "");
 }
 
-/** Números, pendências e agenda da Início de Obras (mesmas regras da tela do cronograma). */
+/** Números e pendências da Início de Obras (mesmas regras da tela do cronograma). */
 export async function resumoObras(sb: Awaited<ReturnType<typeof supabaseUsuario>>) {
   const [{ data }, { data: avisos }] = await Promise.all([
     todasAsLinhas<Obra>((de, ate) => sb.from("obra_obras")
@@ -33,7 +32,7 @@ export async function resumoObras(sb: Awaited<ReturnType<typeof supabaseUsuario>
       .order("codigo").range(de, ate)),
     sb.from("obra_avisos").select("id, obra, para, tipo, texto, criado_em").is("resolvido_em", null).order("criado_em", { ascending: false }).limit(200),
   ]);
-  const hoje = hojeSP(), amanha = somaDias(hoje, 1), dow = (new Date(hoje + "T12:00:00").getDay() + 6) % 7, s0 = somaDias(hoje, -dow), s1 = somaDias(s0, 6);
+  const hoje = hojeSP(), dow = (new Date(hoje + "T12:00:00").getDay() + 6) % 7, s0 = somaDias(hoje, -dow), s1 = somaDias(s0, 6);
   const ab = data.filter((o) => !o.fim_real);
   const porCod = new Map(data.map((o) => [o.codigo, o]));
   const item = (o: Obra, detalhe: string): ItemPendencia => ({ codigo: o.codigo, titulo: tituloObra(o), detalhe });
@@ -59,27 +58,16 @@ export async function resumoObras(sb: Awaited<ReturnType<typeof supabaseUsuario>
       itens: instAtr.map((o) => item(o, `deveria ter terminado em ${br(o.fim_previsto!)}, atrasada há ${dias(dif(hoje, o.fim_previsto!))}`)) },
   ].filter((g) => g.itens.length) as GrupoPendencia[];
 
-  const agenda: ItemAgenda[] = [];
-  for (const d of [hoje, amanha]) {
-    const quando = d === hoje ? "hoje" : "amanhã";
-    for (const o of ab) {
-      if (!o.material_entregue && o.material_previsto === d) agenda.push({ codigo: o.codigo, titulo: tituloObra(o), tipo: "entrega", quando, detalhe: o.cidade ?? "" });
-      const ini = o.inicio_previsto, fim = o.fim_previsto ?? o.inicio_previsto;
-      if (ini && fim && ini <= d && fim >= d) agenda.push({ codigo: o.codigo, titulo: tituloObra(o), tipo: "instalacao", quando,
-        detalhe: [o.cidade, ini !== fim ? `${br(ini)} a ${br(fim)}` : null].filter(Boolean).join(" · ") });
-    }
-  }
-
   return {
     abertas: ab.length,
     instSemana: ab.filter((o) => o.inicio_previsto && o.inicio_previsto <= s1 && (o.fim_previsto ?? o.inicio_previsto) >= s0).length,
     entSemana: ab.filter((o) => !o.material_entregue && o.material_previsto && o.material_previsto >= s0 && o.material_previsto <= s1).length,
     logistica: { atrasadas: entAtr.length, semPrevisao: novas.length },
     obras: {
-      aAgendar: agendar.length + ab.filter((o) => !o.inicio_previsto && !o.material_previsto && !o.material_entregue).length,
+      aAgendar: agendar.length,
       atrasadas: instAtr.length, avisos: avisosObras.length,
       avisosFlow: ab.filter((o) => o.codigo_provisorio || (o.flow_situacao && !["Aprovado", "Faturado"].includes(o.flow_situacao))).length,
     },
-    pendencias, agenda,
+    pendencias,
   };
 }
