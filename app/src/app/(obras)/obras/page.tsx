@@ -6,11 +6,11 @@ import { AREAS_OBRAS, IconeAreaObras } from "@/lib/areas-obras";
 import { cumprimento, dataPorExtenso } from "@/lib/resumo";
 import { aplicarOrdem, type OrdemTela } from "@/lib/ordem";
 import { meuDia } from "@/lib/meu-dia";
-import { AtalhoPlanner, MeuDia } from "@/components/MeuDia";
+import { MeuDia } from "@/components/MeuDia";
 import { Reordenar } from "../../(equipe)/inicio/Reordenar";
 import { resumoObras } from "@/lib/obras-resumo";
 import { pessoaObras } from "@/lib/obras";
-import { AgendaObras, Pendencias } from "./Pendencias";
+import { Pendencias } from "./Pendencias";
 
 export const metadata: Metadata = { title: "Central de Obras" };
 export const dynamic = "force-dynamic";
@@ -62,13 +62,9 @@ export default async function InicioObras() {
         </span>
         <span className="ap-seta" aria-hidden="true">→</span>
       </a>
-      <AtalhoPlanner avisos={avisos ?? []} />
       <div className="ob-duas">
         <Pendencias grupos={r.pendencias} area={area} />
-        <div>
-          <AgendaObras itens={r.agenda} area={area} />
-          <MeuDia itens={dia} titulo="Do seu planner" />
-        </div>
+        <MeuDia itens={dia} planner avisos={avisos ?? []} />
       </div>
 
       <Reordenar lugar="central-obras" className="grade-areas grade-obras" itens={areas.map((a) => ({

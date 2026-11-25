@@ -719,19 +719,22 @@ a.link-cliente:hover strong { text-decoration: underline; color: var(--marca); }
 .atalho-cronograma .ac-texto .mudo { font-size: 0.9rem; }
 .atalho-cronograma .ac-numeros { display: flex; flex-direction: column; gap: 2px; font-size: 0.88rem; color: var(--texto-2); }
 .atalho-cronograma .ac-numeros strong { color: var(--texto); }
-/* Central de Obras: pendências e Meu dia de Obras (24/11/2026) */
-.ob-duas { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; margin-bottom: 18px; align-items: start; }
+/* Central de Obras: pendências e Meu dia (24/11/2026) */
+.ob-duas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-bottom: 18px; align-items: start; }
+.ob-duas .meu-dia { margin: 0; }
 @media (max-width: 900px) { .ob-duas { grid-template-columns: 1fr; } }
-.ob-pend, .ob-agenda { background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 18px; }
-.ob-agenda { margin-bottom: 14px; }
-.ob-pend ul, .ob-agenda ul { list-style: none; margin: 4px 0 0; padding: 0; }
-.ob-pend li, .ob-agenda li { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid var(--borda); }
-.ob-pend li a, .ob-agenda li a { flex: 1; color: var(--texto); text-decoration: none; font-size: 0.92rem; }
-.ob-pend li a:hover, .ob-agenda li a:hover { text-decoration: underline; }
-.ob-grupo { margin-top: 10px; }
-.ob-grupo-cab { display: flex; align-items: center; gap: 8px; }
-.ob-grupo-cab strong { flex: 1; color: var(--aviso); }
-.ob-grupo.grave .ob-grupo-cab strong { color: var(--perigo); }
-.ob-quando { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--texto-2); margin: 10px 0 2px; }
+.ob-pend { background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; padding: 14px 18px; box-shadow: var(--sombra); }
+.ob-grupo { border-top: 1px solid var(--borda); }
+.ob-grupo summary { display: flex; align-items: center; gap: 8px; padding: 9px 0; cursor: pointer; list-style: none; }
+.ob-grupo summary::-webkit-details-marker { display: none; }
+.ob-grupo summary strong { flex: 1; color: var(--aviso); font-size: 0.95rem; }
+.ob-grupo.grave summary strong { color: var(--perigo); }
+.ob-grupo summary::after { content: "›"; color: var(--texto-2); font-size: 1.2rem; transition: transform .15s; }
+.ob-grupo[open] summary::after { transform: rotate(90deg); }
+.ob-grupo ul { list-style: none; margin: 0 0 4px; padding: 0 0 0 10px; }
+.ob-grupo li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.ob-grupo li a { flex: 1; color: var(--texto); text-decoration: none; font-size: 0.9rem; }
+.ob-grupo li a:hover { text-decoration: underline; }
+.ob-ver { display: inline-block; margin: 0 0 10px 10px; }
 .botao-mini { font-size: 0.8rem; padding: 3px 10px; border-radius: 8px; border: 1px solid var(--borda); background: var(--superficie); cursor: pointer; }
 .botao-mini:hover { border-color: var(--marca); color: var(--marca); }
