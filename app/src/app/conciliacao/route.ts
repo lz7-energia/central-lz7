@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Página própria com o CSS e o JS da plataforma de Conciliação Bancária (regras iguais; melhorias marcadas "Central:" no JS),
 // fora do layout da Central. Bibliotecas de /colab-app/vendor (mesmas versões do CDN original); adaptador /conc-app/central-conc.js.
-const VERSAO = "3";
+const VERSAO = "4";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -62,6 +62,7 @@ export async function GET(req: Request) {
 <script>window.__CENTRAL=${json(central)};</script>
 <script src="/conc-app/central-conc.js?v=${VERSAO}"></script>
 <script src="/conc-app/conc-pdf.js?v=${VERSAO}"></script>
+<script src="/conc-app/conc-relatorio.js?v=${VERSAO}"></script>
 <script src="/conc-app/conciliacao.js?v=${VERSAO}"></script>
 <script src="/tarefa-app/tarefa.js?v=1" data-flutuante></script>
 </body>
