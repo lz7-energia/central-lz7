@@ -18,10 +18,10 @@ const dias = (n: number) => `${n} ${Math.abs(n) === 1 ? "dia" : "dias"}`;
 const ha = (n: number) => (n <= 0 ? "hoje" : `há ${dias(n)}`);
 const MINI = new Set(["de", "da", "do", "das", "dos", "e"]);
 const nome = (s: string) => s.toLowerCase().split(/\s+/).map((w, i) => (MINI.has(w) && i ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
-/** Mesmo nome da tela do cronograma: o nome do card sem o código e a potência; senão o cliente. */
+/** Mesmo título da tela do cronograma: o nome do card como está no Flow (apelido do cliente); senão o cliente. */
 export function tituloObra(o: { nome_card: string | null; cliente: string }) {
-  const c = String(o.nome_card ?? "").replace(/^[A-Z0-9-]{6,}\s*-\s*/, "").replace(/\s*\(\s*[\d.,]+\s*kwp\s*\)\s*$/i, "").trim();
-  return c ? (c === c.toUpperCase() ? nome(c) : c) : nome(o.cliente ?? "");
+  const c = String(o.nome_card ?? "").trim();
+  return c || nome(o.cliente ?? "");
 }
 
 /** Números e pendências da Início de Obras (mesmas regras da tela do cronograma). */
