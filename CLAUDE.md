@@ -165,6 +165,10 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - PDF do banco no próprio envio (`public/conc-app/conc-pdf.js`): tradução dos conversores Sicoob, BB, Cresol e PagueVeloz
   (pdf.js montando linhas como o `pdftotext -layout`); histórico e FITID iguais ao OFX gerado pelos conversores; recusa o arquivo se
   os saldos diários/final não baterem. Testado com PDFs montados em cada layout (idêntico aos conversores); falta conferir com PDFs reais.
+- **Relatório por conta e mês** (25/11/2026): no Histórico, filtros **Conta** e **Mês** (além de busca e situação); "Exportar resumo em PDF"
+  (original) sai com o filtro e "Exportar planilha" (`public/conc-app/conc-relatorio.js`, `exportarPlanilhaHist`) gera Excel com as abas
+  Resumo (uma linha por conciliação) e Lançamentos (extrato e Flow com situação conciliado/justificado/pendente/excluído, tipo ou motivo e
+  observação). Só lê; nome do arquivo com a conta e o mês. Linhas novas no `conciliacao.js` marcadas "Central:".
 - Acesso: todos os perfis ativos veem; equipe e admin editam; diretoria só vê (`conc_pode_editar`, RLS; tela em somente leitura).
 - Migração única: `/conciliacao/importar` (só admin) lê o `dados_completos.json` no navegador. Teste (20/11/2026): as 36 conciliações
   abrem com situação, pendentes, diferença em aberto e saldos finais iguais aos resumos da plataforma original, sem regravar nada.
