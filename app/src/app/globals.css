@@ -709,3 +709,13 @@ a.link-cliente:hover strong { text-decoration: underline; color: var(--marca); }
 .sist-historico span.ok { background: #0ca30c; }
 .sist-historico span.perigo { background: var(--perigo); }
 .sist-historico span.alerta { background: #fab219; }
+
+/* Central de Obras: cronograma no topo da Início (24/11/2026) */
+.atalho-cronograma { display: flex; align-items: center; gap: 16px; background: var(--superficie); border: 2px solid var(--marca); border-radius: 14px; padding: 18px 20px; margin: 0 0 14px; text-decoration: none; color: var(--texto); flex-wrap: wrap; }
+.atalho-cronograma:hover { box-shadow: 0 6px 18px rgba(16, 24, 20, 0.1); }
+.atalho-cronograma .ac-icone { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--marca-clara); color: var(--marca); flex-shrink: 0; }
+.atalho-cronograma .ac-texto { flex: 1 1 260px; min-width: 0; }
+.atalho-cronograma .ac-texto strong { display: block; font-size: 1.15rem; }
+.atalho-cronograma .ac-texto .mudo { font-size: 0.9rem; }
+.atalho-cronograma .ac-numeros { display: flex; flex-direction: column; gap: 2px; font-size: 0.88rem; color: var(--texto-2); }
+.atalho-cronograma .ac-numeros strong { color: var(--texto); }

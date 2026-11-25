@@ -192,3 +192,15 @@ input[type=email]{background:var(--surface);border:1px solid var(--line);border-
 /* Central: pagamento condicionado */
 .pags{display:flex;flex-direction:column;gap:10px}
 .pagrow{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface)}
+/* Central (24/11/2026): cada tela sozinha, sem menu lateral */
+.app.solo{display:flex;flex-direction:column}
+.top .voltar{display:inline-block}
+.tags{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.pill.tag{background:var(--accent-soft);color:var(--accent);border:0}
+.pill.tag button{border:0;background:none;color:inherit;padding:0 0 0 4px;font-size:13px;line-height:1;cursor:pointer}
+.flowbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface2);font-size:13px}
+.flowbox .info{white-space:pre-wrap;margin-top:6px;max-height:9em;overflow:auto}
+.lista-proj td,.lista-proj th{vertical-align:top}
+.lista-proj tr{cursor:pointer}
+.lista-proj .orig{color:var(--muted);font-size:12px}
+.conf-ok{color:var(--ok)} .conf-x{color:var(--crit);font-weight:600}

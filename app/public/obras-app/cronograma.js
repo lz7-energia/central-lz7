@@ -1,7 +1,10 @@
 /* Central LZ7 — Cronograma de instalação (Central de Obras).
  * Regras e telas portadas do protótipo "Cronograma de Obras LZ7" (index.html: calendário, fila, alertas, relatórios, sugestão,
- * validações). Dados no Supabase (tabelas obra_*, view de regras e gatilhos de baseline/histórico no banco). Separado em telas:
- * Cronograma (#calendario, #fila, #alertas), Logística (#entregas), Indicadores (#relatorios), Equipes (#equipes), Configurações (#config).
+ * validações). Dados no Supabase (tabelas obra_*, view de regras e gatilhos de baseline/histórico no banco).
+ * Cada tela abre sozinha (24/11/2026), vinda dos cards: Cronograma (#calendario, com Calendário | Lista de projetos),
+ * Logística (#entregas, #ind-logistica), Obras (#pendentes, #equipes, #indicadores, #config).
+ * Quem edita: perfil obras. Área "logistica" edita entrega/material/dados do cliente; área "obras" também a instalação
+ * (o banco confere: obra_area() no gatilho). Tags: qualquer perfil. Obra nova vem do Flow (obra_importar_flow).
  */
 "use strict";
 /* ---------- utilidades ---------- */
@@ -29,9 +32,12 @@ const num=(n,d=0)=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:d,
 // Central: dados no Supabase (tabelas obra_*), quem edita = perfil "obras" (o banco confere de novo).
 const C=window.__CENTRAL;
 const CFG0={metaDias:30,limiteDias:45,folgaDias:1,equipes:[],estruturas:[],motivos:['Chuva','Material atrasou','Cliente pediu','Equipe indisponível','Obra anterior atrasou','Outro'],topicos:[]};
-const S={obras:new Map(),cfg:CFG0,pode:!!C.podeEditar,podePag:!!C.podePagamento,ok:false,view:'calendario',
-  modo:'mes',ref:HOJE.slice(0,7)+'-01',mi:true,me:true,q:'',fil:'',eq:'',sel:null,
-  rep:{mes:'',min:1,so:false},reprog:{},nomes:{},hist:{}};
+const S={obras:new Map(),cfg:CFG0,pode:!!C.podeEditar,podeInst:!!C.podeEditar&&C.area!=='logistica',podePag:!!C.podePagamento,ok:false,view:'calendario',
+  modo:'mes',ref:HOJE.slice(0,7)+'-01',mi:true,me:true,q:'',fil:'',eq:'',tag:'',sel:null,lista:false,listaF:'abertas',
+  rep:{mes:'',min:1,so:false},repL:{mes:''},reprog:{},reprogMat:{},hInst:[],hMat:[],nomes:{},hist:{}};
+const INST=new Set(['equipe','iniPrev','fimPrev','iniReal','fimReal']); // campos da instalação: só a área de obras
+const ed=f=>S.pode&&(!INST.has(f)||S.podeInst);
+try{S.lista=localStorage.getItem('obraVista')==='lista'}catch(_){}
 const FIL={WB:'Wenceslau Braz',LD:'Londrina',PG:'Ponta Grossa'};
 const filial=o=>o.filial||(FIL[o.cod.slice(0,2)]?o.cod.slice(0,2):'Outras');
 const eqp=id=>S.cfg.equipes.find(e=>e.id===id);
@@ -57,7 +63,7 @@ function calc(o){
 const ST={aguard:'Aguardando material',pronta:'Pronta para agendar',agend:'Agendada',inst:'Em instalação',final:'Finalizada'};
 function visiveis(){
   const q=S.q.trim().toLowerCase();
-  return[...S.obras.values()].filter(o=>(!S.fil||filial(o)===S.fil)&&(!S.eq||(S.eq==='-'?!o.equipe:o.equipe===S.eq))&&
+  return[...S.obras.values()].filter(o=>(!S.fil||filial(o)===S.fil)&&(!S.eq||(S.eq==='-'?!o.equipe:o.equipe===S.eq))&&(!S.tag||(o.tags||[]).includes(S.tag))&&
     (!q||(o.cod+' '+o.cliente+' '+(o.card||'')+' '+(o.nomeContrato||'')+' '+(o.cidade||'')+' '+(o.pedido||'')).toLowerCase().includes(q)));
 }
 function carga(excluir){ // equipe|dia -> obras em aberto
@@ -126,14 +132,34 @@ function vCal(){
    <div class="tile"><b>${ab.length}</b><span>obras em aberto · ${num(kw)} kWp</span></div>
    <div class="tile"><b>${iw}</b><span>instalações nesta semana</span></div>
    <div class="tile"><b>${ew}</b><span>entregas previstas nesta semana</span></div>
-   <button class="tile ${cr?'crit':'ok'}" data-nav="alertas"><b>${cr}</b><span>alertas críticos</span></button></div>
-  <div class="bar"><button class="btn" data-act="mes" data-d="-1" aria-label="Mês anterior">‹</button><h2>${MESES[mo-1]} ${y}</h2>
+   <button class="tile ${cr?'crit':'ok'}" data-nav="pendentes"><b>${cr}</b><span>alertas críticos</span></button></div>`;
+  const vista=`<div class="seg"><button data-act="vista" data-v="cal" class="${S.lista?'':'on'}">Calendário</button><button data-act="vista" data-v="lista" class="${S.lista?'on':''}">Lista</button></div>`;
+  if(S.lista)return h+vLista(vista);
+  h+=`<div class="bar">${vista}<button class="btn" data-act="mes" data-d="-1" aria-label="Mês anterior">‹</button><h2>${MESES[mo-1]} ${y}</h2>
    <button class="btn" data-act="mes" data-d="1" aria-label="Próximo mês">›</button><button class="btn" data-act="mes" data-d="0">Hoje</button><span class="sp"></span>
-   <label class="ck f"><input type="checkbox" id="mi" ${S.mi?'checked':''}> Instalações</label>
-   <label class="ck f"><input type="checkbox" id="me" ${S.me?'checked':''}> Entregas</label>
+   <label class="ck f"><input type="checkbox" id="mi" ${S.mi?'checked':''}> Obras (instalações)</label>
+   <label class="ck f"><input type="checkbox" id="me" ${S.me?'checked':''}> Logística (entregas)</label>
    <div class="seg"><button data-act="modo" data-m="mes" class="${S.modo==='mes'?'on':''}">Mês</button><button data-act="modo" data-m="eq" class="${S.modo==='eq'?'on':''}">Por equipe</button></div></div>`;
   return h+(S.modo==='mes'?calMes():calEq());
 }
+/* ---------- lista de projetos ---------- */
+const tagPills=o=>(o.tags||[]).map(t=>`<span class="pill tag">${esc(t)}</span>`).join('');
+function listaFiltrada(){const f=S.listaF;return visiveis().filter(o=>f==='todas'||(f==='finalizadas'?!!o.fimReal:!o.fimReal)).sort((a,b)=>(b.entrada||'').localeCompare(a.entrada||''))}
+function vLista(vista){
+  const l=listaFiltrada();
+  const quando=(real,prev,orig)=>real?`${br(real)} <span class="pill ok">feito</span>${orig&&orig!==real?`<div class="orig">previsão original ${br(orig)}</div>`:''}`:prev?`${br(prev)}${orig&&orig!==prev?`<div class="orig">original ${br(orig)}</div>`:''}`:'<span class="muted">sem data</span>';
+  return`<div class="bar">${vista}<label class="f">Mostrar <select id="lf"><option value="abertas"${S.listaF==='abertas'?' selected':''}>Em aberto</option><option value="finalizadas"${S.listaF==='finalizadas'?' selected':''}>Finalizadas</option><option value="todas"${S.listaF==='todas'?' selected':''}>Todas</option></select></label>
+   <span class="muted small">${l.length} ${l.length===1?'obra':'obras'}</span><span class="sp"></span><button class="btn" data-act="baixarLista">Baixar Excel</button></div>
+  <div class="rep"><table class="lista-proj"><thead><tr><th>Obra</th><th>Etapa</th><th>Entrega</th><th>Instalação</th><th>Equipe</th><th>Tags</th></tr></thead><tbody>`+
+  (l.map(o=>{const k=calc(o);return`<tr data-obra="${esc(o.cod)}"><td><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)}${o.cidade?' · '+esc(o.cidade):''}${o.kwp!=null?' · '+num(o.kwp,2)+' kWp':''}</span>${avisosFlow(o).length?'<br><span class="pill warn">ver aviso do Flow</span>':''}</td>
+   <td><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${o.osStatus?`<div class="orig">OS: ${esc(o.osStatus)}</div>`:''}</td>
+   <td>${quando(o.matReal,o.matPrev,o.bMat)}</td><td>${quando(o.fimReal,o.iniPrev?(o.iniPrev+(o.fimPrev&&o.fimPrev!==o.iniPrev?'':'')):null,k.bIni)}${o.iniPrev&&o.fimPrev&&o.fimPrev!==o.iniPrev&&!o.fimReal?`<div class="orig">até ${br(o.fimPrev)}</div>`:''}</td>
+   <td>${o.equipe?eqChip(o.equipe):'<span class="muted">—</span>'}</td><td><div class="tags">${tagPills(o)}</div></td></tr>`}).join('')||'<tr><td colspan="6" class="muted">Nenhuma obra neste filtro.</td></tr>')+'</tbody></table></div>';
+}
+function linhasLista(){return listaFiltrada().map(o=>{const k=calc(o);return{'Código':o.cod,'Obra':tit(o),'Cliente':o.cliente||'','Cidade':o.cidade||'','kWp':o.kwp??'','Etapa':ST[k.st],'Status da OS (Flow)':o.osStatus||'',
+  'Entrada':brA(o.entrada),'Entrega: previsão original':brA(o.bMat),'Entrega: previsão atual':brA(o.matPrev),'Entregue em':brA(o.matReal),
+  'Instalação: previsão original':brA(k.bIni),'Instalação: início previsto':brA(o.iniPrev),'Instalação: fim previsto':brA(o.fimPrev),'Finalizada em':brA(o.fimReal),
+  'Equipe':o.equipe?eqNome(o.equipe):'','Tags':(o.tags||[]).join(', ')}})}
 function calMes(){
   const ev=eventos(),ini=seg(S.ref),ult=iso(new Date(+S.ref.slice(0,4),+S.ref.slice(5,7),0));
   let h='<div class="cal">'+DSEM.map(d=>`<div class="dw">${d}</div>`).join('');
@@ -171,7 +197,7 @@ function mDia(d){
   modal(`<h2>${DSEM[(dt(d).getDay()+6)%7]}, ${brA(d)}</h2>
    <h3 class="sec" style="margin-top:0">Instalações (${e.inst.length})</h3><div class="list">${e.inst.map(o=>linha(o)).join('')||'<span class="muted">Nenhuma instalação.</span>'}</div>
    <h3 class="sec">Entregas de material (${e.ent.length})</h3><div class="list">${e.ent.map(o=>linha(o,o.matReal?'Entregue':'Prevista')).join('')||'<span class="muted">Nenhuma entrega.</span>'}</div>
-   <div class="acts"><button class="btn p" data-act="escolher" data-d="${d}">Agendar obra neste dia</button><button class="btn" data-act="fechar">Fechar</button></div>`);
+   <div class="acts">${S.podeInst?`<button class="btn p" data-act="escolher" data-d="${d}">Agendar obra neste dia</button>`:''}<button class="btn" data-act="fechar">Fechar</button></div>`);
 }
 const linha=(o,x)=>{const k=calc(o);return`<button class="row" data-obra="${esc(o.cod)}"><span class="g"><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)} · ${esc(o.cidade||'')}${o.kwp!=null?' · '+num(o.kwp,2)+' kWp':''}</span></span>${x?`<span class="pill">${x}</span>`:''}${eqChip(o.equipe)}<span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span></button>`};
 function mEscolher(d){
@@ -192,19 +218,59 @@ function vFila(){
     return`<div class="row"><button class="g" data-obra="${esc(o.cod)}" style="border:0;background:none;text-align:left;padding:0"><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)} · ${esc(o.cidade||'')} · ${o.mod??'?'} módulos${o.kwp!=null?' · '+num(o.kwp,2)+' kWp':''}</span></button>
     ${matPill(o)}<span class="pill ${k.cls}">${dias(k.aberto)} em aberto</span>
     <span class="small">Sugestão: ${s.eq?eqChip(s.eq):'<span class="muted">sem equipe</span>'} em <b>${br(s.d)}</b></span>
-    <button class="btn s p" data-act="agendarEm" data-cod="${esc(o.cod)}" data-d="${s.d}" data-eq="${esc(s.eq||'')}">Agendar</button></div>`}).join('')+'</div>';
+    ${S.podeInst?`<button class="btn s p" data-act="agendarEm" data-cod="${esc(o.cod)}" data-d="${s.d}" data-eq="${esc(s.eq||'')}">Agendar</button>`:''}</div>`}).join('')+'</div>';
 }
 
 /* ---------- alertas ---------- */
-function vAlertas(){
-  const vis=new Set(visiveis().map(o=>o.cod)),al=alertas().filter(a=>a.t==='conflito'?(!S.eq||S.eq===a.eq):vis.has(a.cod));
-  if(!al.length)return'<div class="empty"><h2>Nenhum alerta</h2><p>Tudo dentro do previsto.</p></div>';
-  const cr=al.filter(a=>a.sev==='crit').length;
-  let h=`<div class="tiles"><div class="tile crit"><b>${cr}</b><span>críticos</span></div><div class="tile warn"><b>${al.length-cr}</b><span>de atenção</span></div></div>`;
-  for(const t of Object.keys(TA)){const l=al.filter(a=>a.t===t);if(!l.length)continue;
+const T_OBRAS=['atrasada','semagenda','conflito','prazo','dados'],T_LOG=['material','semprev','folga'];
+function alertasDe(tipos){const vis=new Set(visiveis().map(o=>o.cod));return alertas().filter(a=>tipos.includes(a.t)&&(a.t==='conflito'?(!S.eq||S.eq===a.eq):vis.has(a.cod)))}
+function vAlertas(tipos){
+  const al=alertasDe(tipos);
+  if(!al.length)return'';
+  let h='';
+  for(const t of Object.keys(TA).filter(x=>tipos.includes(x))){const l=al.filter(a=>a.t===t);if(!l.length)continue;
     h+=`<h3 class="sec">${TA[t]} <span class="pill ${l[0].sev}">${l.length}</span></h3><div class="list">`+l.map(a=>`<button class="row ${a.sev}" data-obra="${esc(a.cod)}"><span class="g"><b>${t==='conflito'?esc(a.tx):esc(tit(a.o))}</b>${t==='conflito'?'':`<br><span class="muted small">${esc(a.tx)}</span>`}</span>${t==='conflito'?'':eqChip(a.o.equipe)}</button>`).join('')+'</div>'}
   return h;
 }
+
+/* ---------- pendentes de obras ---------- */
+function vPend(){
+  const ab=visiveis().filter(o=>!o.fimReal),fila=ab.filter(o=>!o.iniPrev),atr=ab.filter(o=>o.fimPrev&&o.fimPrev<HOJE),al=alertasDe(T_OBRAS);
+  return`<div class="tiles"><div class="tile ${fila.length?'warn':'ok'}"><b>${fila.length}</b><span>sem data de instalação</span></div><div class="tile ${atr.length?'crit':'ok'}"><b>${atr.length}</b><span>instalações atrasadas</span></div>
+   <div class="tile ${al.filter(a=>a.sev==='crit').length?'crit':'ok'}"><b>${al.length}</b><span>alertas de obras</span></div></div>
+   <h3 class="sec">A agendar <span class="pill">${fila.length}</span></h3>${vFila()}${vAlertas(T_OBRAS)}`;
+}
+/* ---------- motivos das remarcações ---------- */
+function painelMotivos(lista,titulo){
+  const c={};let sem=0;for(const h of lista){if(h.motivo)c[h.motivo]=(c[h.motivo]||0)+1;else sem++}
+  const linhas=Object.entries(c).sort((a,b)=>b[1]-a[1]);if(sem)linhas.push(['Sem motivo informado',sem]);
+  return`<div class="panel"><h3>${titulo}</h3>${lista.length?linhas.map(([m,n])=>`<div class="row" style="border:0;padding:3px 0"><span class="g small">${esc(m)}</span><span class="pill">${n}</span></div>`).join(''):'<span class="muted">Nenhuma remarcação.</span>'}<p class="muted small">${lista.length} ${lista.length===1?'remarcação':'remarcações'} no filtro. O motivo é opcional.</p></div>`;
+}
+/* ---------- indicadores da logística ---------- */
+function dadosLog(){
+  const ob=visiveis().filter(o=>!o.fora),meses=[...new Set(ob.filter(o=>o.matReal).map(o=>o.matReal.slice(0,7)))].sort();
+  const sel=ob.filter(o=>o.matReal&&(!S.repL.mes||o.matReal.slice(0,7)===S.repL.mes)).map(o=>{const b=o.bMat||o.matPrev||null;return{o,b,d:b?diff(o.matReal,b):null,r:S.reprogMat[o.cod]||0}});
+  return{ob,meses,sel};
+}
+function vIndLog(){
+  const{ob,meses,sel}=dadosLog(),com=sel.filter(x=>x.d!=null),noP=com.filter(x=>x.d<=0).length,atr=com.filter(x=>x.d>0);
+  const mAt=atr.length?atr.reduce((a,x)=>a+x.d,0)/atr.length:0,mRem=sel.length?sel.reduce((a,x)=>a+x.r,0)/sel.length:0;
+  const abertas=ob.filter(o=>!o.matReal&&(o.bMat||o.matPrev)&&(o.matPrev||o.bMat)<HOJE).sort((a,b)=>(a.matPrev||'')<(b.matPrev||'')?-1:1);
+  const cods=new Set(sel.map(x=>x.o.cod)),mot=S.hMat.filter(h=>cods.has(h.obra));
+  const per=S.repL.mes?'Em '+nomeMes(S.repL.mes):'No período todo';
+  let h=`<div class="bar"><label class="f">Entregues em <select id="lmes"><option value="">Todo o período</option>${meses.map(m=>`<option value="${m}"${S.repL.mes===m?' selected':''}>${nomeMes(m)}</option>`).join('')}</select></label><span class="sp"></span><button class="btn p" data-act="baixarLog">Baixar Excel</button></div>
+  <div class="resumo">${per}, ${sel.length} ${sel.length===1?'entrega foi feita':'entregas foram feitas'}: ${noP} na previsão original ou antes e <b>${atr.length} depois</b>${atr.length?`, em média ${num(mAt,1)} dias depois`:''}. Cada entrega foi remarcada ${num(mRem,1)} vez(es) em média.</div>
+  <div class="tiles"><div class="tile"><b>${sel.length}</b><span>entregas feitas</span></div><div class="tile ok"><b>${noP}</b><span>na previsão original ou antes</span></div>
+   <div class="tile ${atr.length?'crit':'ok'}"><b>${atr.length}</b><span>depois da previsão original</span></div><div class="tile"><b>${num(mAt,1)}</b><span>dias de atraso médio (das atrasadas)</span></div>
+   <div class="tile"><b>${num(mRem,1)}</b><span>remarcações por entrega</span></div><div class="tile ${abertas.length?'crit':'ok'}"><b>${abertas.length}</b><span>em aberto, já passadas da previsão</span></div></div>`;
+  const lin=sel.slice().sort((a,b)=>(b.d??-999)-(a.d??-999));
+  h+=`<div class="rep"><table><thead><tr><th>Obra</th><th>Previsão original</th><th>Última previsão</th><th>Entregue em</th><th>Diferença</th><th>Remarcações</th></tr></thead><tbody>`+
+   (lin.map(({o,b,d,r})=>`<tr data-obra="${esc(o.cod)}"><td><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)} · ${esc(o.cidade||'')}</span></td><td>${br(b)}</td><td>${br(o.matPrev)}</td><td>${br(o.matReal)}</td>
+    <td>${d==null?'—':d>0?`<span class="pill crit">+${dias(d)}</span>`:d<0?`<span class="pill ok">${dias(d)}</span>`:'<span class="pill ok">na data</span>'}</td><td>${r||'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">Nenhuma entrega neste filtro.</td></tr>')+'</tbody></table></div>';
+  h+=`<div class="two">${painelMotivos(mot,'Motivos das remarcações de entrega')}<div class="panel"><h3>Em aberto, já passadas da previsão</h3>${abertas.map(o=>`<button class="row crit" data-obra="${esc(o.cod)}" style="width:100%"><span class="g"><b>${esc(tit(o))}</b><br><span class="muted small">Previsão ${br(o.matPrev)}${o.bMat&&o.bMat!==o.matPrev?' · original '+br(o.bMat):''}</span></span><span class="pill crit">+${dias(diff(HOJE,o.matPrev||o.bMat))}</span></button>`).join('')||'<span class="muted">Nenhuma.</span>'}</div></div>`;
+  return h+'<p class="muted small" style="max-width:75ch;margin-top:14px">A previsão original é a primeira data de entrega marcada para a obra. Mudar a previsão não pede explicação; quando alguém escolhe um motivo, ele entra na contagem acima.</p>';
+}
+function linhasLog(){return dadosLog().sel.map(({o,b,d,r})=>({'Código':o.cod,'Obra':tit(o),'Cidade':o.cidade||'','Previsão original':brA(b),'Última previsão':brA(o.matPrev),'Entregue em':brA(o.matReal),'Diferença (dias)':d??'','Remarcações':r}))}
 
 /* ---------- relatórios ---------- */
 function dadosRel(){
@@ -242,6 +308,8 @@ function vRel(){
   const pe={};for(const{o,k}of sel){const e=pe[o.equipe||'-']||(pe[o.equipe||'-']={n:0,a:0,s:0});e.n++;if(k.desvio>N)e.a++;e.s+=k.aberto||0}
   h+=`<div class="two"><div class="panel"><h3>Prazo médio da entrada à finalização, por mês</h3>${pm.map(x=>`<div class="hb"><span>${MESES[+x.m.slice(5)-1].slice(0,3)}/${x.m.slice(2,4)}</span><span class="tr"><i class="${x.v<=S.cfg.metaDias?'ok':x.v<=S.cfg.limiteDias?'warn':'crit'}" style="width:${x.v/mx*100}%"></i><u style="left:${S.cfg.metaDias/mx*100}%" title="Meta"></u></span><span>${num(x.v,1)} d</span></div>`).join('')}<p class="muted small">Traço vertical = meta de ${S.cfg.metaDias} dias.</p></div>
    <div class="panel"><h3>Por equipe (${S.rep.mes?nomeMes(S.rep.mes):'todo o período'})</h3>${Object.keys(pe).sort((a,b)=>pe[b].n-pe[a].n).map(e=>`<div class="row" style="border:0;padding:4px 0">${eqChip(e==='-'?null:e)}<span class="g small">${pe[e].n} finalizadas · ${pe[e].a} com atraso maior que ${dias(N)}</span><span class="small muted">${num(pe[e].s/pe[e].n,1)} d em média</span></div>`).join('')||'<span class="muted">Sem dados.</span>'}</div></div>`;
+  {const cods=new Set(sel.map(x=>x.o.cod)),mot=S.hInst.filter(h=>cods.has(h.obra)),mR=sel.length?sel.reduce((a,x)=>a+(x.k.reprog||0),0)/sel.length:0;
+   h+=`<div class="two">${painelMotivos(mot,'Motivos das remarcações de instalação')}<div class="panel"><h3>Remarcações</h3><p style="font-size:28px;margin:4px 0"><b>${num(mR,1)}</b></p><p class="muted small">vez(es) em média por obra finalizada no filtro. A data programada é a previsão original; ela não muda quando a obra é remarcada.</p></div></div>`}
   if(abertas.length)h+=`<h3 class="sec">Em aberto, já passadas da data programada <span class="pill crit">${abertas.length}</span></h3><div class="list">${abertas.map(({o,k})=>`<button class="row crit" data-obra="${esc(o.cod)}"><span class="g"><b>${esc(tit(o))}</b><br><span class="muted small">Programada para terminar em ${br(k.bFim)}</span></span>${eqChip(o.equipe)}<span class="pill crit">+${dias(k.desvio)} até hoje</span></button>`).join('')}</div>`;
   return h+'<p class="muted small" style="max-width:75ch;margin-top:14px">A data programada é a primeira agenda registrada para a obra. Nas obras trazidas da planilha, vale a última previsão que estava anotada lá, por isso a maioria aparece na data. Daqui para frente, cada reprogramação fica guardada no histórico da obra.</p>';
 }
@@ -251,26 +319,28 @@ function linhasRel(){const{sel,atr}=dadosRel();return(S.rep.so?atr:sel).map(({o,
 
 const matPill=o=>o.matReal?`<span class="pill ok">Material entregue ${br(o.matReal)}</span>`:o.matPrev?`<span class="pill ${o.matPrev<HOJE?'crit':''}">Material previsto ${br(o.matPrev)}</span>`:'<span class="pill warn">Material sem previsão</span>';
 /* ---------- navegação e casca ---------- */
-const TIT={calendario:'Cronograma de instalação',fila:'Fila de agendamento',alertas:'Alertas',entregas:'Agenda de entregas',relatorios:'Indicadores de obras',equipes:'Equipes de instalação',config:'Configurações do cronograma'};
-function rota(){const h=location.hash.slice(1);if(h.startsWith('obra=')){S.abrirDepois=decodeURIComponent(h.slice(5));S.view='calendario';render();abrirPendente();return}S.view=TIT[h]?h:'calendario';render()}
+const TIT={calendario:'Cronograma de instalação',entregas:'Entregas pendentes','ind-logistica':'Indicadores da logística',pendentes:'Instalações pendentes',equipes:'Equipes de instalação',indicadores:'Indicadores de obras',config:'Configurações do cronograma'};
+const APELIDO={fila:'pendentes',alertas:'pendentes',relatorios:'indicadores'}; // endereços antigos
+const VOLTA={calendario:['/obras','Início de Obras'],entregas:['/obras/logistica','Logística'],'ind-logistica':['/obras/logistica','Logística'],pendentes:['/obras/obras','Obras'],equipes:['/obras/obras','Obras'],indicadores:['/obras/obras','Obras'],config:['/obras/obras','Obras']};
+function rota(){let h=location.hash.slice(1);if(h.startsWith('obra=')){S.abrirDepois=decodeURIComponent(h.slice(5));if(!TIT[S.view])S.view='calendario';render();abrirPendente();return}h=APELIDO[h]||h;S.view=TIT[h]?h:'calendario';render()}
 function abrirPendente(){const c=S.abrirDepois;if(c&&S.ok&&S.obras.has(c)){S.abrirDepois=null;abrir(c)}}
 addEventListener('hashchange',rota);
 function casca(){
-  document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===S.view));
-  $('#titulo').textContent=TIT[S.view];
+  $('#titulo').textContent=TIT[S.view];document.title=TIT[S.view]+' · Central de Obras';
+  const[vh,vt]=VOLTA[S.view]||VOLTA.calendario,vo=$('#voltar');vo.href=vh;vo.textContent='‹ '+vt;
+  const tags=[...new Set([...S.obras.values()].flatMap(o=>o.tags||[]))].sort((a,b)=>a.localeCompare(b));
+  $('#ftag').innerHTML='<option value="">Todas as tags</option>'+tags.map(t=>`<option${S.tag===t?' selected':''}>${esc(t)}</option>`).join('');$('#ftag').hidden=!tags.length;
   const fs=$('#ffil'),es=$('#feq');
   fs.innerHTML='<option value="">Todas as filiais</option>'+['WB','LD','PG','Outras'].map(f=>`<option value="${f}"${S.fil===f?' selected':''}>${FIL[f]||f}</option>`).join('');
   es.innerHTML='<option value="">Todas as equipes</option>'+S.cfg.equipes.map(e=>`<option value="${esc(e.id)}"${S.eq===e.id?' selected':''}>${esc(e.nome)}</option>`).join('')+`<option value="-"${S.eq==='-'?' selected':''}>Sem equipe</option>`;
-  const al=alertas().filter(a=>a.sev==='crit').length,fl=[...S.obras.values()].filter(o=>!o.fimReal&&!o.iniPrev).length;
-  $('#nAl').hidden=!al;$('#nAl').textContent=al;$('#nFila').hidden=!fl;$('#nFila').textContent=fl;$('#nFila').style.cssText='background:var(--surface2);color:var(--muted)';
   document.body.classList.toggle('ro',!S.pode);
-  const filtros=!['equipes','config'].includes(S.view);['#fq','#ffil','#feq'].forEach(s=>$(s).hidden=!filtros);
+  const filtros=!['equipes','config'].includes(S.view);['#fq','#ffil','#feq'].forEach(s=>$(s).hidden=!filtros);if(!filtros)$('#ftag').hidden=true;
 }
 function render(){
   casca();const v=$('#view');
   if(!S.ok){v.innerHTML='<div class="empty">Carregando obras…</div>';return}
-  if(!S.obras.size&&!['equipes','config'].includes(S.view)){v.innerHTML=`<div class="empty"><h2>Nenhuma obra cadastrada</h2><p>Cadastre a primeira obra pelo contrato.</p>${S.pode?'<p><button class="btn p" data-act="nova">+ Nova obra</button></p>':''}</div>`;return}
-  v.innerHTML=({calendario:vCal,fila:vFila,alertas:vAlertas,entregas:vEntregas,relatorios:vRel,equipes:vEquipes,config:vConfig})[S.view]();
+  if(!S.obras.size&&!['equipes','config'].includes(S.view)){v.innerHTML=`<div class="empty"><h2>Nenhuma obra ainda</h2><p>As obras entram sozinhas quando o pedido de venda fica Aprovado ou Faturado no Flow.</p></div>`;return}
+  v.innerHTML=({calendario:vCal,entregas:vEntregas,'ind-logistica':vIndLog,pendentes:vPend,equipes:vEquipes,indicadores:vRel,config:vConfig})[S.view]();
 }
 
 /* ---------- entregas de material (Logística) ---------- */
@@ -284,12 +354,13 @@ function vEntregas(){
   const bloco=(t,l,cls)=>l.length?`<h3 class="sec">${t} <span class="pill ${cls||''}">${l.length}</span></h3><div class="list">${l.map(lin).join('')}</div>`:'';
   return `<div class="tiles"><div class="tile ${atras.length?'crit':'ok'}"><b>${atras.length}</b><span>entregas atrasadas</span></div><div class="tile"><b>${prox.length}</b><span>previstas nas próximas 2 semanas</span></div><div class="tile warn"><b>${sem.length}</b><span>sem previsão de entrega</span></div><div class="tile ok"><b>${chegou.length}</b><span>chegaram nos últimos 7 dias</span></div></div>`
     +bloco('Atrasadas',atras,'crit')+bloco('Próximas 2 semanas',prox)+bloco('Sem previsão',sem,'warn')+bloco('Chegaram nos últimos 7 dias',chegou,'ok')
+    +vAlertas(['folga'])
     +(atras.length+prox.length+sem.length+chegou.length?'':'<div class="empty">Nenhuma entrega pendente.</div>');
 }
 
 /* ---------- gaveta da obra ---------- */
-const inp=(f,l,v,t='text',x='',w='')=>`<label class="${w}">${l}<input type="${t}" id="o_${f}" data-f="${f}" value="${esc(v??'')}" ${x} ${S.pode?'':'disabled'}></label>`;
-const sel=(f,l,v,ops,x='')=>`<label>${l}<select id="o_${f}" data-f="${f}" ${x} ${S.pode?'':'disabled'}><option value="">—</option>${ops.map(o=>{const[a,b]=Array.isArray(o)?o:[o,o];return`<option value="${esc(a)}"${a===v?' selected':''}>${esc(b)}</option>`}).join('')}</select></label>`;
+const inp=(f,l,v,t='text',x='',w='')=>`<label class="${w}">${l}<input type="${t}" id="o_${f}" data-f="${f}" value="${esc(v??'')}" ${x} ${ed(f)?'':'disabled'}></label>`;
+const sel=(f,l,v,ops,x='')=>`<label>${l}<select id="o_${f}" data-f="${f}" ${x} ${ed(f)?'':'disabled'}><option value="">—</option>${ops.map(o=>{const[a,b]=Array.isArray(o)?o:[o,o];return`<option value="${esc(a)}"${a===v?' selected':''}>${esc(b)}</option>`}).join('')}</select></label>`;
 const moeda=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function abrir(cod,pre){S.sel=cod;S.pre=pre||null;gaveta();$('#drawer').classList.add('on');$('#scrim').classList.add('on');fecharModal();carregarHist(cod)}
 function fechar(){S.sel=null;$('#drawer').classList.remove('on');$('#scrim').classList.remove('on')}
@@ -311,34 +382,90 @@ function gaveta(){
   const cid=[...new Set([...S.obras.values()].map(x=>x.cidade).filter(Boolean))].sort();
   const imp=[...S.cfg.topicos.filter(t=>t.ativo&&t.importante&&(o.top||{})[t.id]==='sim').map(t=>t.nome),...(o.topx||[]).filter(t=>t.importante).map(t=>t.nome)];
   d.innerHTML=`<div class="dh"><div style="flex:1"><h2>${esc(tit(o))}</h2><span class="muted">${esc(o.cod)}${o.nomeContrato?' · Contrato '+esc(o.nomeContrato):''}${o.pedido?' · Pedido '+esc(o.pedido):''} · ${esc(FIL[filial(o)]||filial(o))}</span></div><button class="x" data-act="fecharG" aria-label="Fechar">×</button></div>
-  <div class="ln" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px"><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${k.aberto!=null?`<span class="pill ${k.cls}">${dias(k.aberto)} ${o.fimReal?'da entrada ao fim':'em aberto'}</span>`:''}${o.equipe?eqChip(o.equipe):''}${imp.map(n=>`<span class="pill imp">★ ${esc(n)}</span>`).join('')}${pagPend(o).map(p=>`<span class="pill imp">$ ${esc(ETAPA[p.etapa])}</span>`).join('')}${o.fora?'<span class="pill">fora dos indicadores</span>':''}</div>
+  <div class="ln" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px"><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${k.aberto!=null?`<span class="pill ${k.cls}">${dias(k.aberto)} ${o.fimReal?'da entrada ao fim':'em aberto'}</span>`:''}${o.equipe?eqChip(o.equipe):''}${imp.map(n=>`<span class="pill imp">★ ${esc(n)}</span>`).join('')}${pagPend(o).map(p=>`<span class="pill imp">$ ${esc(ETAPA[p.etapa])}</span>`).join('')}${o.fora?'<span class="pill">fora dos indicadores</span>':''}${o.codProv?'<span class="pill warn">código provisório</span>':''}${tagPills(o)}</div>
+  <div class="step"><h3>Flow</h3>${flowHtml(o)}</div>
+  <div class="step"><h3>Tags</h3>${tagsHtml(o)}</div>
   <div class="step done"><h3>Venda e contrato</h3><div class="fg">${inp('card','Nome do card',o.card,'text','','w')}${inp('cliente','Cliente',o.cliente,'text','','w')}${inp('nomeContrato','Nome do contrato',o.nomeContrato)}${inp('entrada','Data de entrada',o.entrada,'date')}
    ${inp('cidade','Cidade',o.cidade,'text','list="dlc"')}${sel('zona','Zona',o.zona,['Urbano','Rural'])}${inp('kwp','Potência (kWp)',o.kwp,'number','step="0.01" min="0"')}${inp('mod','Módulos',o.mod,'number','step="1" min="0"')}
    ${sel('estrut','Estrutura',o.estrut,S.cfg.estruturas)}${sel('envio','Envio do material',o.envio,['Estoque','Distribuidora'])}${inp('valor','Valor do contrato (R$)',o.valor,'number','step="0.01" min="0"')}${inp('assinado','Assinado em',o.assinado,'date')}
    ${inp('formaPag','Forma de pagamento',o.formaPag,'text','','w')}${inp('pedido','Nº do pedido no Flow',o.pedido)}
-   ${inp('end','Endereço',o.end,'text','','w')}${inp('cpf','CPF/CNPJ',o.cpf)}${inp('email','E-mail do cliente',o.email,'email')}</div><datalist id="dlc">${cid.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+   ${inp('end','Endereço',o.end,'text','','w')}${inp('cpf','CPF/CNPJ',o.cpf)}${inp('tel','Telefone / WhatsApp',o.tel,'tel')}${inp('email','E-mail do cliente',o.email,'email')}</div><datalist id="dlc">${cid.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
    ${(o.equip||[]).length?`<ul class="equip">${o.equip.map(e=>`<li>${esc(e.quantidade)}× ${esc(e.produto)}</li>`).join('')}</ul>`:''}
    ${o.assinado?`<div class="note">Pelo contrato, a instalação é agendada em até 90 dias após o pagamento${o.financ?' (financiamento: depende da liberação)':''}.</div>`:''}</div>
   <div class="step"><h3>Pagamento condicionado</h3>${pagHtml(o)}</div>
   <div class="step"><h3>Tópicos</h3>${topicosHtml(o)}</div>
-  <div class="step ${o.matReal?'done':'now'}"><h3>Material</h3><div class="fg">${inp('matPrev','Previsão de entrega',o.matPrev,'date')}${inp('matReal','Entregue em',o.matReal,'date')}</div>
+  <div class="step ${o.matReal?'done':'now'}"><h3>Material (logística)</h3><div class="fg">${inp('matPrev','Previsão de entrega',o.matPrev,'date')}${inp('matReal','Entregue em',o.matReal,'date')}
+   ${o.matPrev&&!o.matReal&&S.pode?`<label class="w">Motivo, se mudar a previsão (opcional)<select id="o_motivoMat"><option value="">—</option>${S.cfg.motivos.map(m=>`<option>${esc(m)}</option>`).join('')}</select></label>`:''}</div>
+   ${o.bMat&&o.bMat!==(o.matReal||o.matPrev)?`<div class="note">Previsão original de entrega: ${br(o.bMat)}${S.reprogMat[o.cod]?' · remarcada '+S.reprogMat[o.cod]+' vez(es)':''}${o.matReal?` · entregue ${dias(Math.abs(diff(o.matReal,o.bMat)))} ${o.matReal>o.bMat?'depois':'antes'}`:''}.</div>`:''}
    <div class="acts"><label class="ck f"><input type="checkbox" id="o_kit" data-f="kit" ${o.kit?'checked':''} ${S.pode?'':'disabled'}> Kit de estrutura comprado</label>${!o.matReal&&S.pode?'<button class="btn s" data-act="rapido" data-f="matReal">Chegou hoje</button>':''}</div></div>
-  <div class="step ${tinha?'done':o.matReal?'now':''}"><h3>Agendamento</h3><div class="fg">${sel('equipe','Equipe',vEq,eqs,'data-ag')}<label>Início previsto<input type="date" id="o_iniPrev" value="${esc(vIni)}" ${S.pode?'':'disabled'}></label><label>Fim previsto<input type="date" id="o_fimPrev" value="${esc(vFim)}" ${S.pode?'':'disabled'}></label>
-   ${tinha?`<label class="w">Motivo da reprogramação (obrigatório se mudar as datas)<select id="o_motivo" ${S.pode?'':'disabled'}><option value="">—</option>${S.cfg.motivos.map(m=>`<option>${esc(m)}</option>`).join('')}</select></label>`:''}</div>
-   ${sg&&!p.d?`<div class="note">Sugestão preenchida: ${sg.eq?esc(eqNome(sg.eq)):'sem equipe habitual na cidade'}, primeiro dia útil livre em ${br(sg.d)}. Ajuste se precisar e salve.</div>`:''}
-   ${tinha&&(k.bIni!==o.iniPrev||k.bFim!==o.fimPrev)?`<div class="note">Programação original: ${br(k.bIni)} a ${br(k.bFim)}. Reprogramada ${k.reprog?k.reprog+' vez(es)':''}.</div>`:''}
-   <div class="err" id="e_ag"></div>${S.pode&&!o.fimReal?`<div class="acts"><button class="btn p" data-act="salvarAg">${tinha?'Salvar reprogramação':'Agendar instalação'}</button></div>`:''}</div>
+  <div class="step ${tinha?'done':o.matReal?'now':''}"><h3>Agendamento (obras)</h3><div class="fg">${sel('equipe','Equipe',vEq,eqs,'data-ag')}<label>Início previsto<input type="date" id="o_iniPrev" value="${esc(vIni)}" ${S.podeInst?'':'disabled'}></label><label>Fim previsto<input type="date" id="o_fimPrev" value="${esc(vFim)}" ${S.podeInst?'':'disabled'}></label>
+   ${tinha?`<label class="w">Motivo, se mudar as datas (opcional)<select id="o_motivo" ${S.podeInst?'':'disabled'}><option value="">—</option>${S.cfg.motivos.map(m=>`<option>${esc(m)}</option>`).join('')}</select></label>`:''}</div>
+   ${sg&&!p.d&&S.podeInst?`<div class="note">Sugestão preenchida: ${sg.eq?esc(eqNome(sg.eq)):'sem equipe habitual na cidade'}, primeiro dia útil livre em ${br(sg.d)}. Ajuste se precisar e salve.</div>`:''}
+   ${tinha&&(k.bIni!==o.iniPrev||k.bFim!==o.fimPrev)?`<div class="note">Previsão original: ${br(k.bIni)} a ${br(k.bFim)}.${k.reprog?' Remarcada '+k.reprog+' vez(es).':''}</div>`:''}
+   <div class="err" id="e_ag"></div>${S.podeInst&&!o.fimReal?`<div class="acts"><button class="btn p" data-act="salvarAg">${tinha?'Salvar reprogramação':'Agendar instalação'}</button></div>`:''}</div>
   <div class="step ${o.fimReal?'done':k.st==='inst'?'now':''}"><h3>Instalação</h3><div class="fg">${inp('iniReal','Início realizado',o.iniReal,'date')}${inp('fimReal','Finalizada em',o.fimReal,'date')}</div>
    ${o.fimReal&&k.desvio!=null?`<div class="note">${k.desvio>0?`Finalizada ${dias(k.desvio)} depois da data programada (${br(k.bFim)}).`:k.desvio<0?`Finalizada ${dias(-k.desvio)} antes da data programada (${br(k.bFim)}).`:'Finalizada na data programada.'}${k.durPrev&&k.durReal?` Programada para ${dias(k.durPrev)}, levou ${dias(k.durReal)}.`:''}</div>`:''}
-   ${S.pode&&!o.fimReal?`<div class="acts">${!o.iniReal?'<button class="btn s" data-act="rapido" data-f="iniReal">Iniciou hoje</button>':''}<button class="btn s" data-act="rapido" data-f="fimReal">Finalizou hoje</button></div>`:''}</div>
+   ${S.podeInst&&!o.fimReal?`<div class="acts">${!o.iniReal?'<button class="btn s" data-act="rapido" data-f="iniReal">Iniciou hoje</button>':''}<button class="btn s" data-act="rapido" data-f="fimReal">Finalizou hoje</button></div>`:''}</div>
   <div class="step"><h3>Observações</h3><div class="fg"><label class="w"><span class="muted">Anotações da obra</span><textarea id="o_obs" data-f="obs" rows="2" ${S.pode?'':'disabled'}>${esc(o.obs||'')}</textarea></label>
    <label class="ck f"><input type="checkbox" data-f="fora" ${o.fora?'checked':''} ${S.pode?'':'disabled'}> Fora dos indicadores (ex.: licitação)</label></div><div class="err" id="e_o"></div></div>
-  <div class="step ${o.ctPath?'done':''}"><h3>Contrato</h3>${o.ctPath?`<div class="acts"><a class="btn s" href="/obras/contrato/${encodeURIComponent(o.cod)}" target="_blank" rel="noopener">Abrir ${esc(o.ctNome||'contrato')}</a>${S.pode?'<button class="btn s d" data-act="removerCt">Remover</button>':''}</div>`:'<span class="muted">Nenhum contrato anexado.</span>'}
+  <div class="step ${o.ctPath?'done':''}"><h3>Contrato</h3>${o.ctPath?`<div class="acts"><a class="btn s" href="/obras/contrato/${encodeURIComponent(o.cod)}" target="_blank" rel="noopener">Abrir ${esc(o.ctNome||'contrato')}</a>${S.pode?'<button class="btn s" data-act="conferirCt">Conferir com a obra</button><button class="btn s d" data-act="removerCt">Remover</button>':''}</div>`:'<span class="muted">Nenhum contrato anexado. Ao anexar, a Central lê o PDF e compara com os dados da obra (vindos do Flow).</span>'}
    ${S.pode?`<div class="fg" style="margin-top:8px"><label class="w">${o.ctPath?'Trocar o contrato (PDF)':'Anexar contrato (PDF)'}<input type="file" id="g_ct" accept=".pdf,application/pdf"></label></div>`:''}</div>
   <div class="step"><h3>Histórico</h3><ul class="hist" id="hist">${histHtml(o)}</ul>
-   ${S.pode?`<div class="acts"><button class="btn s d" data-act="excluir">Excluir obra</button></div>`:''}</div>`;
+   ${S.podeInst?`<div class="acts"><button class="btn s d" data-act="excluir">Excluir obra</button></div>`:''}</div>`;
 }
-const ROT={entrada:'Data de entrada',material_previsto:'Previsão de entrega',material_entregue:'Entrega do material',inicio_previsto:'Início previsto',fim_previsto:'Fim previsto',inicio_real:'Início realizado',fim_real:'Finalização',equipe_id:'Equipe',criada:'Obra criada',contrato_nome:'Contrato',nome_card:'Nome do card',pagamento_na:'Pagamento vinculado',pagamentos:'Pagamento condicionado'};
+/* ---------- Flow e tags ---------- */
+const CAMPO_FLOW={nome_card:['card','Nome do card'],cliente:['cliente','Cliente'],cpf_cnpj:['cpf','CPF/CNPJ'],endereco:['end','Endereço'],cep:['cep','CEP'],cidade:['cidade','Cidade'],telefone:['tel','Telefone'],
+  email_cliente:['email','E-mail'],kwp:['kwp','Potência (kWp)'],equipamentos:['equip','Equipamentos'],valor:['valor','Valor'],financiamento:['financ','Financiamento']};
+function avisosFlow(o){
+  const a=[];
+  if(o.codProv)a.push(`Código provisório: no Flow, o pedido ${esc(o.pedido||'')} está sem código de projeto no padrão (ex.: WB260500COL). Corrija lá e a obra troca de código sozinha.`);
+  if(o.flowSit&&!['Aprovado','Faturado'].includes(o.flowSit))a.push(`O pedido saiu de aprovado no Flow (agora: ${esc(o.flowSit)}). Confira se a obra continua.`);
+  if(o.fimReal&&o.osStatus&&!/^obra conclu/i.test(o.osStatus)&&!/cancel/i.test(o.osStatus))a.push(`Instalação concluída aqui, mas a OS no Flow está em "${esc(o.osStatus)}": falta mudar a OS.`);
+  if(o.osStatus&&/cancel/i.test(o.osStatus))a.push('A OS foi cancelada no Flow.');
+  return a;
+}
+const fmtFlow=(k,v)=>v==null?'vazio':k==='equipamentos'?(v||[]).map(e=>`${e.quantidade}× ${e.produto}`).join('; '):k==='valor'?moeda(v):k==='financiamento'?(v?'sim':'não'):k==='kwp'?num(v,2):String(v);
+function flowHtml(o){
+  if(!o.pedido&&!o.osFlow)return'<span class="muted">Sem pedido ligado no Flow (obra cadastrada antes da integração).</span>';
+  const fv=o.flowVal||{},dif=(o.flowEd||[]).filter(k=>CAMPO_FLOW[k]&&k in fv&&JSON.stringify(fv[k])!==JSON.stringify(o[CAMPO_FLOW[k][0]]??null));
+  return`<div class="flowbox"><b>Pedido ${esc(o.pedido||'—')}</b> · ${esc(o.flowSit||'situação não informada')}${o.osFlow?` · OS ${esc(o.osFlow)}: <b>${esc(o.osStatus||'—')}</b>`:''}${o.osCoord?` · coordenador ${esc(o.osCoord)}`:''}
+   ${o.flowInfo?`<div class="info">${esc(o.flowInfo)}</div>`:''}
+   ${o.flowAt?`<div class="muted small" style="margin-top:6px">Atualizado do Flow em ${new Date(o.flowAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Os dados do Flow se atualizam sozinhos enquanto ninguém muda o campo aqui.</div>`:''}</div>
+   ${avisosFlow(o).map(t=>`<div class="note">${t}</div>`).join('')}
+   ${dif.length?`<div class="note">Diferente do Flow (vale o da Central): ${dif.map(k=>`${CAMPO_FLOW[k][1]} (no Flow: ${esc(fmtFlow(k,fv[k]))})`).join(' · ')}</div>`:''}`;
+}
+function tagsHtml(o){
+  const todas=[...new Set([...S.obras.values()].flatMap(x=>x.tags||[]))].filter(t=>!(o.tags||[]).includes(t)).sort((a,b)=>a.localeCompare(b));
+  return`<div class="tags">${(o.tags||[]).map(t=>`<span class="pill tag">${esc(t)}<button data-act="tiraTag" data-t="${esc(t)}" aria-label="Tirar a tag ${esc(t)}">×</button></span>`).join('')||'<span class="muted small">Nenhuma tag.</span>'}</div>
+   <div class="acts" style="margin-top:6px"><input id="o_tag" list="dltag" maxlength="30" placeholder="ex.: Retrofit, Híbrido" style="flex:1"><datalist id="dltag">${todas.map(t=>`<option value="${esc(t)}">`).join('')}</datalist><button class="btn s" data-act="maisTag">Adicionar</button></div>`;
+}
+async function salvarTags(cod,tags){
+  const {data,error}=await sb.rpc('obra_salvar_tags',{p_codigo:cod,p_tags:tags});
+  if(error){toast(/15 tags/.test(error.message)?'No máximo 15 tags por obra.':'Não foi possível salvar a tag.');return}
+  const o=S.obras.get(cod);if(o)o.tags=data||[];toast('Tags salvas');gaveta();carregarHist(cod);render();
+}
+/* ---------- conferência do contrato com a obra ---------- */
+const sem=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
+async function conferirCt(cod){
+  const o=S.obras.get(cod);if(!o||!o.ctPath)return;
+  modal('<h2>Conferindo o contrato…</h2><p class="muted">Lendo o PDF e comparando com a obra.</p>');
+  let d;try{d=(await api({acao:'ler',path:o.ctPath,nome:o.ctNome||'contrato.pdf'})).dados}catch(e){modal(`<h2>Não deu para ler o contrato</h2><p>${esc(e.message)}</p><div class="acts"><button class="btn" data-act="fechar">Fechar</button></div>`);return}
+  if(!d||!d.lido){modal('<h2>Não deu para ler o contrato</h2><p class="muted">PDF digitalizado ou modelo diferente. Confira à mão.</p><div class="acts"><button class="btn" data-act="fechar">Fechar</button></div>');return}
+  const dig=s=>String(s||'').replace(/\D/g,'');
+  const C=[['Cliente','cliente',d.cliente,(a,b)=>sem(a)===sem(b)],['CPF/CNPJ','cpf',d.cpf_cnpj,(a,b)=>dig(a)===dig(b)],['Cidade','cidade',d.cidade,(a,b)=>sem(a)===sem(b)],
+    ['Potência (kWp)','kwp',d.kwp,(a,b)=>Math.abs(Number(a)-Number(b))<0.011],['Módulos','mod',d.modulos,(a,b)=>Number(a)===Number(b)],['Estrutura','estrut',d.estrutura,(a,b)=>sem(a)===sem(b)],
+    ['Valor','valor',d.valor,(a,b)=>Math.abs(Number(a)-Number(b))<1],['Financiamento','financ',d.financiamento,(a,b)=>!!a===!!b]];
+  const vazios={};let bate=0,difere=0;
+  const lin=C.filter(c=>c[2]!=null&&c[2]!=='').map(([rot,k,vc,ig])=>{const vo=o[k];let st;
+    if(vo==null||vo===''){st='<span class="muted">vazio na obra</span>';vazios[k]=vc}else if(ig(vo,vc)){st='<span class="conf-ok">✓ bate</span>';bate++}else{st='<span class="conf-x">✗ diferente</span>';difere++}
+    const f=v=>k==='valor'?moeda(v):k==='financiamento'||k==='financ'?(v?'sim':'não'):k==='kwp'?num(v,2):esc(v);
+    return`<tr><td>${rot}</td><td>${vo==null||vo===''?'—':f(vo)}</td><td>${f(vc)}</td><td>${st}</td></tr>`}).join('');
+  S.ctVazios={cod,patch:vazios};
+  modal(`<h2>Contrato × obra</h2><p class="muted">${bate} ${bate===1?'campo bate':'campos batem'}, <b>${difere} ${difere===1?'diferente':'diferentes'}</b>. A obra tem os dados do Flow; o contrato não muda nada sozinho.</p>
+   <div class="rep"><table><thead><tr><th>Campo</th><th>Na obra</th><th>No contrato</th><th></th></tr></thead><tbody>${lin||'<tr><td colspan="4" class="muted">Nada para comparar.</td></tr>'}</tbody></table></div>
+   <div class="acts">${Object.keys(vazios).length&&S.pode?'<button class="btn p" data-act="preencherCt">Preencher os vazios com o contrato</button>':''}<button class="btn" data-act="fechar">Fechar</button></div>`);
+}
+const ROT={tags:'Tags',codigo:'Código da obra',entrada:'Data de entrada',material_previsto:'Previsão de entrega',material_entregue:'Entrega do material',inicio_previsto:'Início previsto',fim_previsto:'Fim previsto',inicio_real:'Início realizado',fim_real:'Finalização',equipe_id:'Equipe',criada:'Obra criada',contrato_nome:'Contrato',nome_card:'Nome do card',pagamento_na:'Pagamento vinculado',pagamentos:'Pagamento condicionado'};
 const fv=(c,v)=>v==null||v===''?'vazio':c==='equipe_id'?eqNome(v):c==='criada'?({manual:'manual',contrato:'pelo contrato',planilha:'da planilha',flow:'do Flow'}[v]||v):/^\d{4}-\d\d-\d\d$/.test(v)?brA(v):v;
 function histHtml(o){const h=S.hist[o.cod];if(!h)return'<li class="muted">Carregando…</li>';if(!h.length)return'<li class="muted">Sem alterações registradas.</li>';
   return h.map(x=>`<li><b>${esc(ROT[x.campo]||x.campo)}</b>${x.campo==='criada'?' '+esc(fv('criada',x.para)):`: ${x.de!=null?esc(fv(x.campo,x.de))+' → ':''}${esc(fv(x.campo,x.para))}`}${x.motivo?` · motivo: ${esc(x.motivo)}`:''}<br><span class="muted small">${new Date(x.em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}${x.usuario?' · '+esc(S.nomes[x.usuario]||'alguém'):''}</span></li>`).join('')}
@@ -392,11 +519,13 @@ const COL={card:'nome_card',nomeContrato:'nome_contrato',cliente:'cliente',filia
   cpf:'cpf_cnpj',end:'endereco',cep:'cep',email:'email_cliente',ger:'geracao_kwh',equip:'equipamentos',valor:'valor',formaPag:'forma_pagamento',financ:'financiamento',assinado:'assinado_em',
   pagNa:'pagamento_na',pedido:'pedido_flow',entrada:'entrada',matPrev:'material_previsto',matReal:'material_entregue',kit:'kit_comprado',equipe:'equipe_id',iniPrev:'inicio_previsto',
   fimPrev:'fim_previsto',bIni:'baseline_inicio',bFim:'baseline_fim',iniReal:'inicio_real',fimReal:'fim_real',obs:'observacoes',top:'topicos',topx:'topicos_extra',fora:'fora_indicadores',
-  ctPath:'contrato_path',ctNome:'contrato_nome',origem:'origem',pag:'pagamentos'};
-const daLinha=r=>{const o={cod:r.codigo};for(const[k,c]of Object.entries(COL))o[k]=r[c]??null;o.kwp=o.kwp==null?null:Number(o.kwp);o.valor=o.valor==null?null:Number(o.valor);o.top=r.topicos||{};o.topx=r.topicos_extra||[];o.equip=r.equipamentos||[];o.pag=r.pagamentos||[];return o};
-const paraBanco=patch=>{const p={};for(const[k,v]of Object.entries(patch))if(COL[k])p[COL[k]]=v;return p};
+  ctPath:'contrato_path',ctNome:'contrato_nome',origem:'origem',pag:'pagamentos',tel:'telefone',tags:'tags',bMat:'baseline_material',
+  flowSit:'flow_situacao',osFlow:'os_flow',osStatus:'os_status',osCoord:'os_coordenador',flowInfo:'flow_info',flowVal:'flow_valores',flowEd:'flow_editado',flowAt:'flow_sincronizado_em',codProv:'codigo_provisorio'};
+const SO_LEITURA=new Set(['tags','bMat','flowSit','osFlow','osStatus','osCoord','flowInfo','flowVal','flowEd','flowAt','codProv','bIni','bFim']);
+const daLinha=r=>{const o={cod:r.codigo};for(const[k,c]of Object.entries(COL))o[k]=r[c]??null;o.kwp=o.kwp==null?null:Number(o.kwp);o.valor=o.valor==null?null:Number(o.valor);o.top=r.topicos||{};o.topx=r.topicos_extra||[];o.equip=r.equipamentos||[];o.pag=r.pagamentos||[];o.tags=r.tags||[];o.flowEd=r.flow_editado||[];o.flowVal=r.flow_valores||{};return o};
+const paraBanco=patch=>{const p={};for(const[k,v]of Object.entries(patch))if(COL[k]&&!SO_LEITURA.has(k))p[COL[k]]=v;return p};
 function msgErro(e){const m=String(e&&e.message||'');
-  if(/motivo/i.test(m))return'Informe o motivo da reprogramação.';
+  if(/log[íi]stica/i.test(m))return'Seu perfil (logística) não edita a instalação da obra.';
   if(/42501|só pode consultar|row-level/i.test(m+(e&&e.code)))return'Seu perfil só pode consultar o cronograma.';
   if(/duplicate|23505/.test(m+(e&&e.code)))return'Já existe uma obra com esse código.';
   if(/check constraint|23514/i.test(m+(e&&e.code)))return'Alguma data não fecha com as outras (entrega antes da entrada, fim antes do início ou ano fora de 2024–2030). Confira.';
@@ -433,7 +562,8 @@ async function campo(el){
   if((o[f]??null)===v)return;
   const e=validar(o,f,v);$('#e_o').textContent=e;
   if(e){el.value=o[f]??'';toast(e);return}
-  if(await salvar(o.cod,{[f]:v}))S.pre=null;
+  const mot=f==='matPrev'&&o.matPrev?($('#o_motivoMat')?.value||null):null;
+  if(await salvar(o.cod,{[f]:v},mot))S.pre=null;
 }
 async function salvarTopico(el){
   const o=S.obras.get(S.sel);if(!o)return;
@@ -447,7 +577,6 @@ async function salvarAg(){
   if(fim<ini){E.textContent='O fim previsto não pode ser anterior ao início.';return}
   if(o.entrada&&ini<o.entrada){E.textContent='O início não pode ser anterior à data de entrada.';return}
   const tinha=!!o.iniPrev,mud=tinha&&(ini!==o.iniPrev||fim!==(o.fimPrev||o.iniPrev));
-  if(mud&&!mot){E.textContent='Informe o motivo da reprogramação.';return}
   const oc=(carga(o.cod).get(eq+'|'+ini)||[]).length;E.textContent='';
   if(await salvar(o.cod,{equipe:eq,iniPrev:ini,fimPrev:fim},mud?mot:null)){S.pre=null;if(oc>=(eqp(eq)?.cap||1))toast(`Salvo. Atenção: ${eqNome(eq)} já tem ${oc} obra(s) em ${br(ini)}.`)}
 }
@@ -522,7 +651,7 @@ async function criar(){
 }
 async function anexar(cod,file){
   try{toast('Enviando o contrato…');const path=await enviarPdf(file);
-    if(await salvar(cod,{ctPath:path,ctNome:file.name.slice(0,150)}))toast('Contrato anexado')}
+    if(await salvar(cod,{ctPath:path,ctNome:file.name.slice(0,150)})){toast('Contrato anexado');conferirCt(cod)}}
   catch(e){toast(e.message||'Não foi possível anexar o contrato.')}
 }
 let confCt=0;
@@ -531,11 +660,11 @@ async function removerCt(b){if(Date.now()-confCt>4000){confCt=Date.now();b.textC
 
 /* ---------- equipes (página) ---------- */
 function vEquipes(){
-  const c=S.cfg,dis=S.pode?'':'disabled';
+  const c=S.cfg,dis=S.podeInst?'':'disabled';
   const carga30={};for(const o of S.obras.values())if(o.equipe&&o.iniPrev&&o.iniPrev>=HOJE&&o.iniPrev<=add(HOJE,30)&&!o.fimReal)carga30[o.equipe]=(carga30[o.equipe]||0)+1;
-  return`<p class="muted" style="max-width:75ch">Cada equipe tem uma cor no calendário, uma base e quantas obras faz ao mesmo tempo (acima disso aparece alerta de conflito).${S.pode?'':' Você está em modo de consulta.'}</p>
+  return`<p class="muted" style="max-width:75ch">Cada equipe tem uma cor no calendário, uma base e quantas obras faz ao mesmo tempo (acima disso aparece alerta de conflito).${S.podeInst?'':' Você está em modo de consulta: quem edita as equipes é a área de obras.'}</p>
    <div class="list" id="ceq">${c.equipes.map(e=>linhaEq(e,dis,carga30[e.id]||0)).join('')}</div>
-   ${S.pode?`<div class="acts"><button class="btn s" data-act="novaEq">+ Adicionar equipe</button><button class="btn p" data-act="salvarEq">Salvar equipes</button><span class="err" id="e_c"></span></div>`:''}`;
+   ${S.podeInst?`<div class="acts"><button class="btn s" data-act="novaEq">+ Adicionar equipe</button><button class="btn p" data-act="salvarEq">Salvar equipes</button><span class="err" id="e_c"></span></div>`:''}`;
 }
 const linhaEq=(e,dis,n)=>`<div class="row" data-eq="${esc(e.id)}" data-novo="${e.novo?1:''}" style="padding:8px 12px"><input type="color" data-k="cor" value="${hslHex(e.h)}" ${dis} title="Cor no calendário" style="width:34px;height:30px;padding:0;border:0;background:none">
   <input type="text" data-k="nome" value="${esc(e.nome)}" aria-label="Nome" placeholder="Nome da equipe" style="flex:1 1 120px" ${dis}><input type="text" data-k="base" value="${esc(e.base||'')}" placeholder="Base" style="flex:1 1 110px" ${dis}>
@@ -555,13 +684,13 @@ async function salvarEq(){
 
 /* ---------- configurações (página) ---------- */
 function vConfig(){
-  const c=S.cfg,dis=S.pode?'':'disabled';
+  const c=S.cfg,dis=S.podeInst?'':'disabled';
   return`<div class="two" style="margin-top:0"><div class="panel"><h3>Metas de prazo</h3><div class="fg">${inp('c_meta','Meta (dias da entrada ao fim)',c.metaDias,'number','min="1"')}${inp('c_lim','Limite crítico (dias)',c.limiteDias,'number','min="1"')}${inp('c_folga','Folga mínima entre material e instalação (dias)',c.folgaDias,'number','min="0"')}</div></div>
-   <div class="panel"><h3>Motivos de reprogramação</h3><label class="f">Um por linha<textarea id="c_mot" rows="6" ${dis}>${esc(c.motivos.join('\n'))}</textarea></label></div>
+   <div class="panel"><h3>Motivos de remarcação (entrega e instalação)</h3><label class="f">Um por linha<textarea id="c_mot" rows="6" ${dis}>${esc(c.motivos.join('\n'))}</textarea></label></div>
    <div class="panel"><h3>Estruturas</h3><label class="f">Uma por linha<textarea id="c_est" rows="6" ${dis}>${esc(c.estruturas.join('\n'))}</textarea></label><p class="muted small">Estrutura que já está em obras não sai da lista (fica inativa).</p></div></div>
    <h3 class="sec">Tópicos das obras</h3><p class="muted small" style="max-width:75ch">Aparecem em todas as obras, na ficha. Os marcados como importantes ficam em destaque quando a resposta é "sim" (ou para tópicos de texto, quando preenchidos).</p>
    <div class="cfg-lista" id="ctop">${c.topicos.map(t=>linhaTop(t,dis)).join('')}</div>
-   ${S.pode?`<div class="acts"><button class="btn s" data-act="novoTop">+ Tópico</button></div><div class="acts"><button class="btn p" data-act="salvarCfg">Salvar configurações</button><span class="err" id="e_c"></span></div>`:''}`;
+   ${S.podeInst?`<div class="acts"><button class="btn s" data-act="novoTop">+ Tópico</button></div><div class="acts"><button class="btn p" data-act="salvarCfg">Salvar configurações</button><span class="err" id="e_c"></span></div>`:''}`;
 }
 const linhaTop=(t,dis)=>`<div class="row" data-top-id="${esc(t.id||'')}"><input type="text" data-k="nome" value="${esc(t.nome||'')}" placeholder="Ex.: Tem unidade beneficiária?" style="flex:2 1 220px" ${dis}>
   <select data-k="tipo" ${dis}>${[['simnao','Sim / não'],['texto','Texto'],['numero','Número'],['data','Data'],['lista','Lista de opções']].map(([v,r])=>`<option value="${v}"${t.tipo===v?' selected':''}>${r}</option>`).join('')}</select>
@@ -585,11 +714,12 @@ async function salvarCfg(){
 function modal(h){$('#mb').innerHTML=h;$('#modal').classList.add('on')}
 function fecharModal(){$('#modal').classList.remove('on')}
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
-function banner(m){$('#banner').innerHTML=m?`<div class="banner">${esc(m)}</div>`:(!S.pode?`<div class="banner">Você está em modo de consulta. Quem edita o cronograma é a equipe de obras.${S.podePag?' O pagamento condicionado de cada obra você pode marcar.':''}</div>`:'')}
+function banner(m){$('#banner').innerHTML=m?`<div class="banner">${esc(m)}</div>`:(!S.pode?`<div class="banner">Você está em modo de consulta. Quem edita o cronograma é a equipe de obras e logística. Tags você pode marcar.${S.podePag?' O pagamento condicionado de cada obra também.':''}</div>`:'')}
 document.addEventListener('click',async ev=>{
   const t=ev.target.closest('[data-nav],[data-act],[data-obra]');
   if(!t){if(ev.target.id==='scrim')fechar();if(ev.target.id==='modal')fecharModal();return}
   if(t.dataset.nav){location.hash=t.dataset.nav;if(S.view===t.dataset.nav)render();return}
+  if(t.dataset.act==='vista'){S.lista=t.dataset.v==='lista';try{localStorage.setItem('obraVista',S.lista?'lista':'cal')}catch(_){}render();return}
   const a=t.dataset.act;
   if(!a&&t.dataset.obra){abrir(t.dataset.obra);return}
   if(a==='mes'){const d=+t.dataset.d;if(!d)S.ref=HOJE.slice(0,7)+'-01';else{const x=dt(S.ref);x.setMonth(x.getMonth()+d);S.ref=iso(x)}render()}
@@ -617,7 +747,19 @@ document.addEventListener('click',async ev=>{
   else if(a==='salvarPag')salvarPag();
   else if(a==='copiarRel'){try{await navigator.clipboard.writeText($('#resumo').textContent);toast('Resumo copiado')}catch(e){toast('Não foi possível copiar.')}}
   else if(a==='baixarRel')baixarRel();
+  else if(a==='baixarLista')baixarXlsx(linhasLista(),'Projetos','lista-de-projetos');
+  else if(a==='baixarLog')baixarXlsx(linhasLog(),'Entregas','indicadores-logistica-'+(S.repL.mes||'periodo-todo'));
+  else if(a==='maisTag'){const o=S.obras.get(S.sel),v=($('#o_tag').value||'').trim();if(o&&v)salvarTags(o.cod,[...(o.tags||[]),v])}
+  else if(a==='tiraTag'){const o=S.obras.get(S.sel);if(o)salvarTags(o.cod,(o.tags||[]).filter(x=>x!==t.dataset.t))}
+  else if(a==='conferirCt')conferirCt(S.sel);
+  else if(a==='preencherCt'){const c=S.ctVazios;if(c&&c.cod){fecharModal();await salvar(c.cod,c.patch)}}
 });
+function baixarXlsx(L,aba,arq){
+  if(!L.length){toast('Não há obras neste filtro.');return}
+  if(!window.XLSX){toast('O gerador de planilha não carregou. Recarregue a página.');return}
+  const ws=XLSX.utils.json_to_sheet(L),wb=XLSX.utils.book_new();ws['!cols']=Object.keys(L[0]).map(k=>({wch:Math.max(12,k.length+2)}));XLSX.utils.book_append_sheet(wb,ws,aba);
+  XLSX.writeFile(wb,arq+'.xlsx');toast('Planilha baixada');
+}
 function baixarRel(){
   const L=linhasRel();if(!L.length){toast('Não há obras neste filtro.');return}
   if(!window.XLSX){toast('O gerador de planilha não carregou. Recarregue a página.');return}
@@ -626,16 +768,18 @@ function baixarRel(){
 }
 document.addEventListener('change',ev=>{
   const t=ev.target;
-  if(t.id==='ffil'){S.fil=t.value;render()}else if(t.id==='feq'){S.eq=t.value;render()}
+  if(t.id==='ffil'){S.fil=t.value;render()}else if(t.id==='feq'){S.eq=t.value;render()}else if(t.id==='ftag'){S.tag=t.value;render()}
+  else if(t.id==='lf'){S.listaF=t.value;render()}else if(t.id==='lmes'){S.repL.mes=t.value;render()}
   else if(t.id==='mi'){S.mi=t.checked;render()}else if(t.id==='me'){S.me=t.checked;render()}
   else if(t.id==='rmes'){S.rep.mes=t.value;render()}else if(t.id==='rmin'){S.rep.min=Math.max(0,+t.value||0);render()}else if(t.id==='rso'){S.rep.so=t.checked;render()}
   else if(t.id==='n_arq'&&t.files[0])lerContrato(t.files[0]);
   else if(t.id==='g_ct'&&t.files[0]&&S.sel)anexar(S.sel,t.files[0]);
   else if((t.dataset.top||t.dataset.topx!==undefined)&&t.closest('#drawer'))salvarTopico(t);
+  else if(t.id==='o_tag'||t.id==='o_motivoMat'||t.id==='o_motivo')return;
   else if(t.dataset.f&&t.closest('#drawer'))campo(t);
 });
 let tq;$('#fq').addEventListener('input',e=>{clearTimeout(tq);tq=setTimeout(()=>{S.q=e.target.value;render()},180)});
-addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#modal').classList.contains('on'))fecharModal();else fechar()}});
+addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='o_tag'){e.preventDefault();$('[data-act=maisTag]')?.click();return}if(e.key==='Escape'){if($('#modal').classList.contains('on'))fecharModal();else fechar()}});
 
 /* ---------- dados (Supabase) ---------- */
 let token=C.token,tokenExp=C.tokenExp||0;
@@ -654,14 +798,17 @@ async function carregarCfg(){
     estruturas:(est.data||[]).filter(e=>e.ativa).map(e=>e.nome),estruturasTodas:(est.data||[]).map(e=>e.nome),topicos:tops.data||[]};
 }
 async function lerTudo(tabela,cols){const out=[];for(let de=0;;){const {data,error}=await sb.from(tabela).select(cols).order(tabela==='obra_historico'?'id':'codigo').range(de,de+999);if(error)throw error;if(!data.length)break;out.push(...data);de+=data.length}return out} // o servidor pode devolver menos que 1000 por página
-async function lerReprog(){const out=[];for(let de=0;;){const {data,error}=await sb.from('obra_historico').select('obra').in('campo',['inicio_previsto','fim_previsto']).not('de','is',null).order('id').range(de,de+999);if(error||!data.length)break;out.push(...data);de+=data.length}return out}
+async function lerReprog(){const out=[];for(let de=0;;){const {data,error}=await sb.from('obra_historico').select('obra,campo,motivo,em').in('campo',['inicio_previsto','fim_previsto','material_previsto']).not('de','is',null).order('id').range(de,de+999);if(error||!data.length)break;out.push(...data);de+=data.length}return out}
 let carregando=null;
 async function recarregar(){
   if(carregando)return carregando;
   carregando=(async()=>{
     const [linhas,rep]=await Promise.all([lerTudo('obra_obras','*'),lerReprog()]);
     S.obras=new Map(linhas.map(r=>[r.codigo,daLinha(r)]));
-    S.reprog={};for(const h of rep)S.reprog[h.obra]=(S.reprog[h.obra]||0)+1;
+    // remarcações: instalação (início e fim mudados juntos contam uma vez) e entrega
+    S.reprog={};S.reprogMat={};S.hInst=[];S.hMat=[];const vistos=new Set();
+    for(const h of rep){if(h.campo==='material_previsto'){S.reprogMat[h.obra]=(S.reprogMat[h.obra]||0)+1;S.hMat.push(h);continue}
+      const k=h.obra+'|'+h.em;if(vistos.has(k))continue;vistos.add(k);S.reprog[h.obra]=(S.reprog[h.obra]||0)+1;S.hInst.push(h)}
     S.ok=true;banner();render();abrirPendente();
     if(S.sel){const a=document.activeElement;if(!(a&&a.closest('#drawer')&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)))gaveta()}
   })().catch(()=>{banner('Não foi possível carregar as obras. Recarregue a página.');S.ok=true;render()}).finally(()=>{carregando=null});

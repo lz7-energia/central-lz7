@@ -30,7 +30,7 @@ A empresa não tem equipe de TI: o Claude constrói e mantém este sistema. O do
 | Equipe da central (4 pessoas) | Sim (e-mail Titan) | Tudo, exceto pastas sensíveis |
 | Administrador | Sim | Tudo, inclusive pastas sensíveis e permissões |
 | Diretoria | Sim | Tudo, como a equipe (acesso total desde 14/11/2026; perfil `diretoria`) |
-| Obras (Letícia e equipe de obras/logística) | Sim | **Só a Central de Obras** (perfil `obras`, desde 20/11/2026) |
+| Obras (Letícia e equipe de obras/logística) | Sim | **Só a Central de Obras** (perfil `obras`, desde 20/11/2026); área em `perfis.area_obras`: `obras` (Letícia) ou `logistica` (Adalto) |
 | Colaboradores (40–50) | **Não** | Só o formulário do portal e a consulta do próprio pedido por protocolo |
 
 Regras de acesso aplicadas no banco (Row Level Security), não só na interface. `eh_equipe()` = Central Administrativa = perfil ativo que
@@ -59,7 +59,9 @@ não é `obras` (equipe, admin, diretoria); `eh_obras()` = qualquer perfil ativo
 Sincronização: Edge Function `flow-sincronizar` (no central-teste publicada com o nome automático `hyper-function`; só GET no Flow) copia os dados para o banco da central a cada
 30 min (8h–00h de Brasília, seg–sáb; `supabase/agendar-sincronizacao.sql`); as telas leem do banco. Detalhes em `supabase/README.md`.
 Rodadas **leves** a cada 30 min (23/11/2026): não releem `clientes/` (usam a cópia em `clientes_flow`) nem `pedidosVenda/itens` (só se
-apareceu pedido novo; pedido existente mantém o `valor_total` gravado). **Completa** todo dia às 3h10 com corpo `{"completo": true}`
+apareceu pedido novo; pedido existente mantém o `valor_total` gravado). Com pedido novo, a leve lê `clientes/{id}` do cliente dele
+(até 30) e grava em `clientes_flow`; quando lê os itens, guarda `pedidos_venda.itens` ([{descricao, quantidade, total}]). No fim chama
+`obra_importar_flow()` (Central de Obras; resumo em `obras`). **Completa** todo dia às 3h10 com corpo `{"completo": true}`
 (`supabase/agendar-sincronizacao-completa.sql`); sem cópia do cadastro, a leve vira completa. O resumo da rodada traz `modo`.
 
 ## Fase 1
@@ -214,7 +216,12 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - Topo com `central="obras"` (menu Início, Compras, Logística, Obras, Planner; botão ↔ para trocar de central). `/perfil` em `(conta)`, vale para as duas.
 - Início de Obras: atalho do planner, Meu dia (só planner: `meuDia(id, { soPlanner: true })`, componentes em `components/MeuDia.tsx`) e cards
   das áreas `lib/areas-obras.tsx` (Compras, Logística, Obras), reorganizáveis (`tela_ordem.ordem.obras`, módulos em `modulos["obras-<área>"]`).
-- Esqueleto: módulos ainda "em breve". Ideias aprovadas e prioridades no doc `claude/central-lz7-ideias.md` do projeto ADM
+- **Telas separadas** (24/11/2026, pedido da diretoria): Início de Obras = card grande **Cronograma de instalação** no topo (semana e obras em
+  aberto, `lib/obras-resumo.ts`), planner e Meu dia embaixo, depois Compras (em breve), Logística e Obras com os pendentes no card.
+  Logística: Entregas pendentes (`#entregas`), Indicadores da logística (`#ind-logistica`). Obras: Instalações pendentes (`#pendentes`),
+  Equipes (`#equipes`), Indicadores de obras (`#indicadores`), Configurações (`#config`). Cada tela abre sozinha, sem menu lateral,
+  com "‹ volta" para a área (endereços antigos `#fila`, `#alertas`, `#relatorios` ainda funcionam).
+- Esqueleto: módulos sem endereço ainda "em breve". Ideias aprovadas e prioridades no doc `claude/central-lz7-ideias.md` do projeto ADM
   (o mais importante: Cronograma de instalação; integração: pagamento na entrega/instalação → planner do Financeiro).
 - Cadastrar alguém só de Obras: criar o usuário no Supabase (Authentication) e pôr `papel = 'obras'` no perfil.
 
@@ -224,14 +231,32 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   `claude/central-obras-cronograma.md` do projeto ADM. Migração `20261120000028_obras_cronograma.sql`.
 - Banco: `obra_obras` (código obrigatório `WB260500COL`, nome do card, nome do contrato, dados do contrato, linha do tempo, tópicos),
   `obra_historico` (gatilho), `obra_equipes` (cor, base, filial, membros, capacidade/dia), `obra_config` (metas, motivos), `obra_estruturas`,
-  `obra_topicos`; view `obra_v_obras` (status, dias em aberto, atraso, faixa de prazo). Gatilho `obra_antes_de_gravar`: baseline gravada
-  no 1º agendamento e protegida; reprogramação sem motivo é recusada (`app.motivo`). Gravação pela tela = `obra_salvar(codigo, patch, motivo)`.
-  RLS: todo perfil ativo lê (`eh_obras`); **só o perfil `obras` grava** (`obra_pode_editar`). Bucket privado `obra-contratos`.
+  `obra_topicos`; view `obra_v_obras` (status, dias em aberto, atraso, faixa de prazo). Gatilho `obra_antes_de_gravar`: **previsão original**
+  gravada uma vez e protegida (instalação `baseline_inicio/fim` no 1º agendamento; entrega `baseline_material` na 1ª previsão). Mudar a
+  previsão **não pede motivo** (24/11/2026, pedido da Letícia); motivo opcional vai para o histórico (`app.motivo`, instalação e entrega).
+  Gravação pela tela = `obra_salvar(codigo, patch, motivo)`.
+  RLS: todo perfil ativo lê (`eh_obras`); **só o perfil `obras` grava** (`obra_pode_editar`), e por área (`obra_area()`, migração
+  `20261124000035_obras_areas_flow.sql`): `logistica` edita entrega/material/dados do cliente, `obras` edita isso e a instalação (equipe,
+  início/fim previsto e realizado; o gatilho recusa a logística), equipes, configurações e excluir obra. **Tags** (`obra_obras.tags`,
+  `obra_salvar_tags`): qualquer perfil ativo. Bucket privado `obra-contratos`.
+- **Obra nova vem do Flow** (24/11/2026): `obra_importar_flow()` (só service_role; chamada no fim da `flow-sincronizar`) lê a cópia do Flow.
+  Pedido "Aprovado"/"Faturado" aprovado desde `obra_config.flow_desde` (2026-11-01), sem obra, com OS que não está concluída nem cancelada →
+  obra `origem = 'flow'`: nome do card = apelido do cliente no Flow (kWp tirado de "(x kWp)"), cliente, CPF/CNPJ, endereço/CEP/cidade e
+  telefone (`clientes_flow`), valor e equipamentos (itens do pedido), financiamento (campo adicional "Tipo de Financiamento"), entrada =
+  data de aprovação. Código = código do projeto se no padrão `AA000000AAA`; senão `PV-<pedido>` com `codigo_provisorio` (troca sozinho
+  quando corrigirem no Flow). Ligação pelo `id_cab_pedido_venda`; obra antiga liga pelo código e só recebe o que estiver vazio.
+  Toda rodada atualiza `flow_situacao`, `os_flow`, `os_status`, `os_coordenador`, `flow_info` (complemento da OS) e `flow_valores`; campo
+  mudado por alguém na Central entra em `flow_editado` e o Flow não sobrescreve mais (a ficha mostra "Diferente do Flow"). Avisos na ficha:
+  código provisório, pedido que saiu de aprovado, obra concluída com OS ainda aberta. Cadastro manual pela tela saiu.
+- Contrato: anexar o PDF lê e compara com a obra (cliente, CPF/CNPJ, cidade, kWp, módulos, estrutura, valor, financiamento); "Preencher
+  os vazios com o contrato" só completa o que está vazio.
+- **Lista de projetos**: botão Calendário | Lista no cronograma (lembrado no navegador): uma linha por obra com etapa, status da OS,
+  entrega e instalação (com a previsão original), equipe e tags; filtro em aberto/finalizadas/todas e Excel. Filtro por tag no topo.
 - Tela própria (`app/(obras)/obras/cronograma/route.ts` + `public/obras-app/cronograma.js|css`): regras e telas portadas do protótipo
   (calendário mês/equipe, fila com sugestão, alertas, relatórios previsto × realizado + Excel, validações), dados direto no Supabase com o
-  token da sessão (`/obras/api/token`), tempo real em `obra_obras`. Telas por hash: `#calendario`, `#fila`, `#alertas`, `#entregas` (Logística),
-  `#relatorios` (Indicadores), `#equipes`, `#config` (metas, motivos, estruturas, tópicos). Os cards de Obras/Logística apontam para elas.
-- **Nova obra pelo contrato**: PDF vai direto ao bucket (link assinado, `/obras/api/contrato` acao `url`); `acao: "ler"` lê com unpdf e
+  token da sessão (`/obras/api/token`), tempo real em `obra_obras`. Telas por hash (ver "Telas separadas" acima). Indicadores mostram a
+  previsão original × realizado, remarcações por obra e os motivos (os sem motivo contam à parte).
+- **Leitura do contrato** (antes era "Nova obra pelo contrato"; a obra agora vem do Flow): PDF vai direto ao bucket (link assinado, `/obras/api/contrato` acao `url`); `acao: "ler"` lê com unpdf e
   `lib/obras-contrato.ts` (`lerTextoContrato`, modelo padrão Clicksign: cliente, CPF/CNPJ, endereço, cidade/zona/CEP, kWp, geração,
   equipamentos, módulos, estrutura pela "junto a estrutura X", valor, forma de pagamento, financiamento, data da assinatura do cliente,
   e-mail). Nome do contrato e sugestão do nome do card vêm do nome do arquivo (`1114_Fabiano_8_de_Abril` → "1114", "Fabiano – 8 de Abril").

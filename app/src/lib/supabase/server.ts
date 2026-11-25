@@ -27,6 +27,7 @@ export async function supabaseUsuario() {
 export type Perfil = {
   id: string; nome: string; email: string; papel: "equipe" | "admin" | "diretoria" | "obras"; ativo: boolean;
   cargo: string | null; telefone: string | null; foto_caminho: string | null;
+  area_obras?: "obras" | "logistica" | null;
 };
 
 /** Endereço público da foto de perfil (bucket "fotos-perfil"). */
@@ -44,7 +45,7 @@ export const perfilAtual = cache(async () => {
   if (!user) return null;
   const { data } = await sb
     .from("perfis")
-    .select("id, nome, email, papel, ativo, cargo, telefone, foto_caminho")
+    .select("id, nome, email, papel, ativo, cargo, telefone, foto_caminho, area_obras")
     .eq("id", user.id)
     .maybeSingle();
   if (!data || !data.ativo) return null;

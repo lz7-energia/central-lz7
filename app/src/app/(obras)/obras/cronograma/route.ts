@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 // Cronograma de instalação (Central de Obras): página própria com a lógica do protótipo "Cronograma de Obras LZ7"
 // (public/obras-app/cronograma.js|css) falando direto com o banco, sujeito ao RLS (só o perfil obras grava).
-const VERSAO = "6";
+// Cada tela abre sozinha pelo hash (#calendario, #entregas, #pendentes…), vinda do card da Início ou da área; sem menu lateral.
+const VERSAO = "7";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   const { data: perfis } = await supabaseServico().from("perfis").select("id, nome, papel, ativo");
   const central = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, podePagamento: ["obras", "equipe", "admin"].includes(String(p.papel)), usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
+    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, area: p.area, podePagamento: ["obras", "equipe", "admin"].includes(String(p.papel)), usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
   };
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -33,29 +34,16 @@ export async function GET(req: Request) {
 <link rel="stylesheet" href="/obras-app/cronograma.css?v=${VERSAO}">
 </head>
 <body>
-<div class="app">
-  <nav class="side" aria-label="Seções">
-    <div class="brand"><img src="/logo-lz7-branco.png" alt="LZ7">Central de Obras<small>Cronograma de instalação</small></div>
-    <a class="voltar" href="/obras">‹ Início de Obras</a>
-    <hr>
-    <button class="nav" data-nav="calendario">Calendário</button>
-    <button class="nav" data-nav="fila">Fila de agendamento <span class="n" id="nFila" hidden></span></button>
-    <button class="nav" data-nav="alertas">Alertas <span class="n" id="nAl" hidden></span></button>
-    <button class="nav" data-nav="entregas">Entregas de material</button>
-    <button class="nav" data-nav="relatorios">Indicadores</button>
-    <button class="nav" data-nav="equipes">Equipes</button>
-    <hr>
-    ${p.podeEditar ? '<button class="nav" data-act="nova">+ Nova obra</button>' : ""}
-    <span class="sp"></span>
-    <button class="nav" data-nav="config">Configurações</button>
-  </nav>
+<div class="app solo">
   <div class="main">
     <div id="banner"></div>
     <header class="top">
+      <a class="voltar" id="voltar" href="/obras">‹ Início de Obras</a>
       <h1 id="titulo">Cronograma de instalação</h1>
-      <input type="search" id="fq" placeholder="Buscar cliente, código, contrato ou cidade" aria-label="Buscar" style="width:270px">
+      <input type="search" id="fq" placeholder="Buscar cliente, código, contrato ou cidade" aria-label="Buscar" style="width:250px">
       <select id="ffil" aria-label="Filial"></select>
       <select id="feq" aria-label="Equipe"></select>
+      <select id="ftag" aria-label="Tag"></select>
     </header>
     <main class="view" id="view"><div class="empty">Carregando obras…</div></main>
   </div>

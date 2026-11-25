@@ -148,12 +148,24 @@ Deno.serve(async (req: Request) => {
     const cadastro = new Map<string, any>(completa
       ? clientes.map((c) => [String(c.id), c])
       : (await lerTudo(sb, "clientes_flow", "flow_id, bruto")).map((c: any) => [String(c.flow_id), c.bruto ?? {}]));
+    // Rodada leve com pedido novo: o cliente dele (criado há pouco no Flow) é lido pelo detalhe, para a obra já nascer
+    // com endereço e contato (a cópia completa do cadastro só roda de madrugada).
+    const clientesNovos: any[] = [];
+    if (!completa) {
+      const ids = [...new Set(pedidos.filter((p) => !valoresAntigos.has(String(p.id))).map((p) => p.cliente?.id).filter(Boolean).map(String))];
+      for (const id of ids.slice(0, 30)) {
+        try { const c = await flow(`clientes/${id}`); if (c?.id) { cadastro.set(String(c.id), c); clientesNovos.push(c); } } catch (_) { /* fica para a completa */ }
+      }
+    }
 
     // 2) Pedidos de venda. O valor do pedido é a soma dos itens (o total do cabeçalho vem vazio na API).
     const somaItens = new Map<string, number>();
+    const itensDoPedido = new Map<string, any[]>(); // descrição dos itens (kit) para a obra
     for (const it of itens) {
       const id = String(it.idPedidoVenda);
       somaItens.set(id, (somaItens.get(id) ?? 0) + Number(it.total ?? 0));
+      const l = itensDoPedido.get(id) ?? itensDoPedido.set(id, []).get(id)!;
+      l.push({ descricao: it.descricaoProduto ?? it.descricaoServico ?? null, quantidade: numero(it.quantidade), total: numero(it.total) });
     }
     const idsPedidos = new Set(pedidos.map((p) => String(p.id)));
     // Sem a coluna "responsavel": ela é definida na central e o upsert não pode apagá-la.
@@ -166,6 +178,8 @@ Deno.serve(async (req: Request) => {
       valor_total: somaItens.has(String(p.id)) ? Math.round(somaItens.get(String(p.id))! * 100) / 100
         : leuItens ? null : (valoresAntigos.get(String(p.id)) ?? null),
       data_pedido: dataISO(p.dataEmissao),
+      // itens só quando a rodada leu os itens (senão a coluna fica de fora e o valor guardado continua)
+      ...(leuItens ? { itens: itensDoPedido.get(String(p.id)) ?? [] } : {}),
       bruto: p,
       sincronizado_em: agora,
     }));
@@ -347,12 +361,24 @@ Deno.serve(async (req: Request) => {
                telefone: k.telefone, email: k.email, bruto: c, sincronizado_em: agora };
     });
     if (completa) await emLotes(linhasClientes, (l) => sb.from("clientes_flow").upsert(l, { onConflict: "flow_id" }));
+    else if (clientesNovos.length) {
+      await emLotes(clientesNovos.map((c) => {
+        const k = contatoDoCliente(c);
+        return { flow_id: String(c.id), nome: c.nomeRazaoSocial ?? null, apelido: c.apelido ?? null, cnpj_cpf: c.cnpjCpf ?? null,
+                 telefone: k.telefone, email: k.email, bruto: c, sincronizado_em: agora };
+      }), (l) => sb.from("clientes_flow").upsert(l, { onConflict: "flow_id" }));
+    }
+
+    // 7) Central de Obras: pedido aprovado/faturado vira obra; obras ligadas recebem situação, OS e dados do Flow.
+    //    Erro aqui não derruba a sincronização (fica no resumo).
+    const { data: obras, error: erroObras } = await sb.rpc("obra_importar_flow");
 
     const resumo = {
       modo: completa ? "completa" : "leve", leuItens,
       clientesComTelefone: linhasClientes.filter((c) => c.telefone).length,
       pedidos: linhasPedidos.length, itens: itens.length, ordens: linhasOS.length,
-      notas: notas.size, notasProduto: documentos.length, clientes: clientes.length, notasSemCerteza: ambiguas, titulos: linhasTitulos.length,
+      notas: notas.size, notasProduto: documentos.length, clientes: clientes.length, clientesNovos: clientesNovos.length,
+      notasSemCerteza: ambiguas, titulos: linhasTitulos.length, obras: erroObras ? { erro: erroObras.message } : obras,
     };
     await sb.from("sincronizacoes").update({
       terminada_em: new Date().toISOString(), sucesso: true,

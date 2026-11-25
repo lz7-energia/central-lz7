@@ -13,21 +13,23 @@ export const AREAS_OBRAS: AreaObras[] = [
     ],
   },
   {
-    id: "logistica", nome: "Logística", descricao: "Entregas, rotas e recebimento de material",
+    id: "logistica", nome: "Logística", descricao: "Entregas de material, rotas e recebimento",
     modulos: [
-      { nome: "Agenda de entregas", icone: "agenda", descricao: "Material atrasado, previsto e sem previsão, por obra", href: "/obras/cronograma#entregas" },
+      { nome: "Entregas pendentes", icone: "agenda", descricao: "Atrasadas, próximas e sem previsão; marcar o que chegou", href: "/obras/cronograma#entregas" },
+      { nome: "Indicadores da logística", icone: "quadro", descricao: "Previsão original × entrega, atrasos, remarcações e motivos", href: "/obras/cronograma#ind-logistica" },
       { nome: "Rotas do dia", icone: "carro", descricao: "Entregas e instalações do dia agrupadas por cidade e carro" },
       { nome: "Recebimento de material", icone: "documentos", descricao: "Chegou, conferido ou com divergência" },
     ],
   },
   {
-    id: "obras", nome: "Obras", descricao: "Cronograma de instalação, equipes, homologação e pós-obra",
+    id: "obras", nome: "Obras", descricao: "Instalação: agenda, equipes, homologação e pós-obra",
     modulos: [
-      { nome: "Cronograma de instalação", icone: "calendario", descricao: "Calendário por mês e por equipe, fila de agendamento, alertas e nova obra pelo contrato", href: "/obras/cronograma" },
+      { nome: "Instalações pendentes", icone: "alerta", descricao: "Obras a agendar com sugestão de equipe, atrasadas e alertas", href: "/obras/cronograma#pendentes" },
       { nome: "Equipes de instalação", icone: "equipe", descricao: "Quem é de cada equipe, base, cor e quantas obras faz por dia", href: "/obras/cronograma#equipes" },
-      { nome: "Homologação na Copel", icone: "alerta", descricao: "Acesso, vistoria, troca de medidor, prazos e pendências" },
-      { nome: "Pós-obra e garantia", icone: "pedidos", descricao: "Chamados de manutenção, visita técnica e garantia" },
-      { nome: "Indicadores de obras", icone: "quadro", descricao: "Previsto × realizado, prazo da entrada ao fim, atrasos por mês e por equipe", href: "/obras/cronograma#relatorios" },
+      { nome: "Indicadores de obras", icone: "quadro", descricao: "Previsão original × realizado, prazo da entrada ao fim, remarcações e motivos", href: "/obras/cronograma#indicadores" },
+      { nome: "Configurações do cronograma", icone: "contrato", descricao: "Metas de prazo, motivos de remarcação, estruturas e tópicos", href: "/obras/cronograma#config" },
+      { nome: "Homologação na Copel", icone: "pedidos", descricao: "Acesso, vistoria, troca de medidor, prazos e pendências" },
+      { nome: "Pós-obra e garantia", icone: "documentos", descricao: "Chamados de manutenção, visita técnica e garantia" },
     ],
   },
 ];

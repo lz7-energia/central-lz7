@@ -721,7 +721,7 @@ delete from public.planner_tasks where user_id = '66666666-6666-6666-6666-666666
 delete from public.tela_ordem;
 do $$ begin raise notice 'OK central de obras'; end $$;
 
--- 26) Cronograma de obras: só o perfil obras edita, baseline protegida, motivo obrigatório, histórico
+-- 26) Cronograma de obras: só o perfil obras edita, baseline protegida, motivo opcional, histórico
 insert into public.obra_equipes (id, nome, filial) values ('eq-teste', 'Equipe Teste', 'WB');
 set role authenticated;
 select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
@@ -730,10 +730,8 @@ do $$ begin
   if (select filial from public.obra_obras where codigo = 'WB260999COL') <> 'WB' then raise exception 'filial pelo código'; end if;
   perform public.obra_salvar('WB260999COL', '{"equipe_id":"eq-teste","inicio_previsto":"2026-11-20","fim_previsto":"2026-11-21"}');
   if (select baseline_fim from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-21' then raise exception 'baseline não gravou'; end if;
-  begin
-    perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-25","fim_previsto":"2026-11-25"}');
-    raise exception 'reprogramou sem motivo';
-  exception when check_violation then null; end;
+  perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-23","fim_previsto":"2026-11-23"}');  -- motivo é opcional
+  if (select inicio_previsto from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-23' then raise exception 'mudar sem motivo'; end if;
   perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-25","fim_previsto":"2026-11-25","baseline_fim":"2030-01-01"}', 'Chuva');
   if (select baseline_fim from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-21' then raise exception 'baseline mudou'; end if;
   if (select count(*) from public.obra_historico where obra = 'WB260999COL' and motivo = 'Chuva') <> 2 then raise exception 'histórico da reprogramação'; end if;
@@ -895,3 +893,96 @@ do $$ begin
 end $$;
 reset role;
 do $$ begin raise notice 'OK sistema'; end $$;
+
+-- 32) Central de Obras por área: logística não mexe na instalação, tags de todos, 1ª previsão de entrega, obra vinda do Flow
+insert into auth.users values ('77777777-7777-7777-7777-777777777777');
+insert into public.perfis (id, nome, email, papel, area_obras) values ('77777777-7777-7777-7777-777777777777', 'Adalto', 'adalto@lz7.com.br', 'obras', 'logistica');
+insert into public.obra_equipes (id, nome, filial) values ('eq-a', 'Equipe A', 'WB');
+insert into public.obra_obras (codigo, cliente, entrada, equipe_id, inicio_previsto, fim_previsto) values ('WB260100ABC', 'CLIENTE A', '2026-11-01', 'eq-a', '2026-11-20', '2026-11-20');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '77777777-7777-7777-7777-777777777777', false);
+do $$ begin
+  if public.obra_area() <> 'logistica' then raise exception 'área'; end if;
+  perform public.obra_salvar('WB260100ABC', '{"material_previsto":"2026-11-10","telefone":"43999990000"}');
+  perform public.obra_salvar('WB260100ABC', '{"material_previsto":"2026-11-12"}', 'Fornecedor atrasou');
+  if (select baseline_material from public.obra_obras where codigo = 'WB260100ABC') <> '2026-11-10' then raise exception '1ª previsão de entrega'; end if;
+  if (select motivo from public.obra_historico where obra = 'WB260100ABC' and campo = 'material_previsto' and para = '2026-11-12') <> 'Fornecedor atrasou' then raise exception 'motivo da entrega'; end if;
+  begin perform public.obra_salvar('WB260100ABC', '{"inicio_previsto":"2026-11-22","fim_previsto":"2026-11-22"}'); raise exception 'logística mexeu na instalação';
+  exception when insufficient_privilege then null; end;
+  begin update public.obra_obras set fim_real = '2026-11-20' where codigo = 'WB260100ABC'; raise exception 'logística concluiu direto';
+  exception when insufficient_privilege then null; end;
+  begin delete from public.obra_obras where codigo = 'WB260100ABC'; end;
+  if not exists (select 1 from public.obra_obras where codigo = 'WB260100ABC') then raise exception 'logística excluiu obra'; end if;
+  begin update public.obra_equipes set nome = 'x' where id = 'eq-a'; end;
+  if (select nome from public.obra_equipes where id = 'eq-a') <> 'Equipe A' then raise exception 'logística mexeu em equipe'; end if;
+  if (select tags from public.obra_obras where codigo = 'WB260100ABC') <> '{}' then raise exception 'tags iniciais'; end if;
+  perform public.obra_salvar_tags('WB260100ABC', array[' Retrofit ', 'híbrido', 'Retrofit']);
+  if (select tags from public.obra_obras where codigo = 'WB260100ABC') <> array['Retrofit', 'híbrido'] then raise exception 'tags: %', (select tags from public.obra_obras where codigo = 'WB260100ABC'); end if;
+  if not exists (select 1 from public.obra_obras where codigo = 'WB260100ABC' and 'telefone' = any (flow_editado)) then raise exception 'flow_editado'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);  -- equipe: só tags
+do $$ begin
+  perform public.obra_salvar_tags('WB260100ABC', array['Retrofit']);
+  if (select tags from public.obra_obras where codigo = 'WB260100ABC') <> array['Retrofit'] then raise exception 'equipe marca tag'; end if;
+  begin perform public.obra_importar_flow(); raise exception 'equipe rodou a importação'; exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);  -- obras: instalação
+do $$ begin
+  perform public.obra_salvar('WB260100ABC', '{"inicio_previsto":"2026-11-22","fim_previsto":"2026-11-22"}');
+  if (select baseline_inicio from public.obra_obras where codigo = 'WB260100ABC') <> '2026-11-20' then raise exception 'baseline instalação'; end if;
+end $$;
+reset role;
+
+-- Flow: pedido aprovado com código no padrão, outro faturado com código "Adilson", um em digitação e um com OS concluída
+insert into public.clientes_flow (flow_id, nome, apelido, telefone, bruto) values
+  ('509', 'PAULO TESTE', 'WB260200COL - PAULO TESTE (7.38 kWp)', '43988887777',
+   '{"apelido":"WB260200COL - PAULO TESTE (7.38 kWp)","nomeRazaoSocial":"Paulo Teste","enderecoAdministrativo":"RUA A","numeroEnderecoAdministrativo":"430","bairroEnderecoAdministrativo":"CENTRO","cidadeNomeEnderecoAdministrativo":"Wenceslau Braz"}');
+insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valor_total, itens, bruto) values
+  ('302', '302', 'WB260200COL', 'PAULO TESTE', 37183, '[{"descricao":"KIT GERADOR 7 A 7,5KW (220V)","quantidade":1,"total":37183}]',
+   '{"situacao":"Aprovado","dataAprovacao":"2026-11-19T00:00:00","cliente":{"id":509}}'),
+  ('310', '310', 'Adilson', 'ADILSON TESTE', 9700, null,
+   '{"situacao":"Faturado","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":520,"nomeRazaoSocial":"ADILSON TESTE","apelido":"Adilson Teste"},"camposAdicionais":{"Tipo de Financiamento":[6]}}'),
+  ('311', '311', 'WB260300FCT', 'DIGITANDO', 100, null, '{"situacao":"Em digitação","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":1}}'),
+  ('312', '312', 'WB260400FCT', 'CONCLUIDA', 100, null, '{"situacao":"Faturado","dataAprovacao":"2026-11-20T00:00:00","cliente":{"id":2}}'),
+  ('313', '313', 'WB260100ABC', 'CLIENTE A', 5000, null, '{"situacao":"Aprovado","dataAprovacao":"2026-10-01T00:00:00","cliente":{"id":3,"nomeRazaoSocial":"CLIENTE A FLOW","apelido":"WB260100ABC - CLIENTE A (4 kWp)"}}');
+insert into public.ordens_servico (flow_id, pedido_flow_id, numero, status, bruto) values
+  ('289', '302', '289', 'Separação', '{"id":289,"coordenador":{"nome":"Rafael"},"complemento":"O projeto está em nome de X"}'),
+  ('299', '310', '299', 'Adição no Cronograma', '{"id":299}'),
+  ('300', '312', '300', 'Obra concluída.', '{"id":300}');
+do $$ declare j jsonb; o record; begin
+  j := public.obra_importar_flow();
+  if (j->>'criadas')::int <> 2 or (j->>'ligadas')::int <> 1 then raise exception 'importação: %', j; end if;
+  select * into o from public.obra_obras where codigo = 'WB260200COL';
+  if o.origem <> 'flow' or o.kwp <> 7.38 or o.valor <> 37183 or o.cidade <> 'Wenceslau Braz' or o.os_status <> 'Separação'
+     or o.os_coordenador <> 'Rafael' or o.telefone <> '43988887777' or o.entrada <> '2026-11-19' or o.endereco <> 'RUA A, 430, CENTRO'
+     or o.equipamentos->0->>'produto' <> 'KIT GERADOR 7 A 7,5KW (220V)' or o.cliente <> 'PAULO TESTE' then raise exception 'obra do Flow: %', to_jsonb(o); end if;
+  select * into o from public.obra_obras where codigo = 'PV-310';
+  if not o.codigo_provisorio or o.financiamento is not true or o.flow_situacao <> 'Faturado' then raise exception 'código provisório: %', to_jsonb(o); end if;
+  if exists (select 1 from public.obra_obras where codigo in ('WB260300FCT', 'WB260400FCT')) then raise exception 'criou em digitação/concluída'; end if;
+  -- obra antiga ligada pelo código: só preenche o vazio (cliente da planilha fica)
+  select * into o from public.obra_obras where codigo = 'WB260100ABC';
+  if o.id_cab_pedido_venda <> 313 or o.cliente <> 'CLIENTE A' or o.kwp <> 4 or o.valor <> 5000 then raise exception 'obra antiga ligada: %', to_jsonb(o); end if;
+  -- segunda rodada sem mudança: nada a atualizar
+  j := public.obra_importar_flow();
+  if (j->>'criadas')::int <> 0 or (j->>'atualizadas')::int <> 0 then raise exception 'segunda rodada: %', j; end if;
+end $$;
+-- alguém muda o kWp na Central; o Flow muda kWp e valor: vale o da Central no kWp, o valor do Flow atualiza
+set role authenticated;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);
+do $$ begin perform public.obra_salvar('WB260200COL', '{"kwp":7.5}'); end $$;
+reset role;
+update public.clientes_flow set bruto = jsonb_set(bruto, '{apelido}', '"WB260200COL - PAULO TESTE (8 kWp)"') where flow_id = '509';
+update public.pedidos_venda set valor_total = 38000, bruto = jsonb_set(bruto, '{situacao}', '"Em digitação"') where flow_id = '302';
+update public.pedidos_venda set codigo_projeto = 'LD260500ABC' where flow_id = '310';
+do $$ declare j jsonb; o record; begin
+  j := public.obra_importar_flow();
+  select * into o from public.obra_obras where codigo = 'WB260200COL';
+  if o.kwp <> 7.5 or o.valor <> 38000 or o.flow_situacao <> 'Em digitação' or (o.flow_valores->>'kwp')::numeric <> 8 then raise exception 'Flow × Central: %', to_jsonb(o); end if;
+  if not exists (select 1 from public.obra_obras where codigo = 'LD260500ABC' and not codigo_provisorio) then raise exception 'código corrigido: %', j; end if;
+  if not exists (select 1 from public.obra_historico where obra = 'LD260500ABC' and campo = 'codigo' and de = 'PV-310') then raise exception 'histórico do código'; end if;
+end $$;
+delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-a';
+delete from public.ordens_servico where flow_id in ('289', '299', '300');
+delete from public.pedidos_venda where flow_id in ('302', '310', '311', '312', '313');
+delete from public.clientes_flow where flow_id = '509';
+do $$ begin raise notice 'OK obras por área e Flow'; end $$;
