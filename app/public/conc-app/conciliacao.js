@@ -429,6 +429,7 @@ function act(name, el, ev){
       S.delArm=null; c.saldos.aj=(c.saldos.aj||[]).filter(a=>a.id!==el.dataset.id); markDirty(); renderSaldos(); renderFechamento(); atualizaPill(); break; }
     case "hsort": break;
     case "exphist": exportarResumoHist(); break;
+    case "exphistx": exportarPlanilhaHist(); break; // Central: planilha (conc-relatorio.js)
     case "puxarant": {
       const ym=String(c.fim).slice(0,7), ant=resumoDoMes(c.bancoId,ymMais(ym,-1),c.id); if(!ant) return;
       c.saldos=c.saldos||{}; c.saldos.origem=c.saldos.origem||{};
@@ -480,6 +481,7 @@ document.addEventListener("change", ev => {
   if (t.id==="hsort"){ S.hsort=t.value; try{ localStorage.setItem("conc_hsort",t.value); }catch(_){} renderHist(); }
   if (t.id==="autoenc"){ S.cfg=S.cfg||{}; S.cfg.autoEnc=t.checked; if (S.db) S.db.doc("config/geral").set({...S.cfg}).catch(()=>{}); }
   if (t.id==="hsit"){ S.hsit=t.value; renderHist(); }
+  if (t.id==="hbanco"||t.id==="hmes"){ S[t.id]=t.value; renderHist(); } // Central: filtros por conta e mês
   if (t.id==="tol"){ S.tol=Math.max(0,Math.min(15,parseInt(t.value)||0)); }
   if (t.id==="fileExt"||t.id==="fileFlow") loadFile(t.id==="fileExt"?"ext":"flow", t.files[0]);
   if (t.id==="fileUExt"||t.id==="fileUFlow") loadFile(t.id==="fileUExt"?"uext":"uflow", t.files[0]);
@@ -1035,8 +1037,10 @@ function renderHist(){
   const v=$("#view-hist");
   const fs=S.hsit||"", L=listaHist();
   v.innerHTML=`<section><div class="label">Histórico</div><h2 style="font-size:22px;margin-top:2px">Conciliações salvas</h2>
-    <div class="histbar"><span class="small muted">${L.length} de ${S.resumos.length}${L.length?` · <button class="btn sm pri" data-act="exphist" style="margin-left:8px">Exportar resumo em PDF</button>`:""} <span id="histmsg"></span></span>
+    <div class="histbar"><span class="small muted">${L.length} de ${S.resumos.length}${L.length?` · <button class="btn sm pri" data-act="exphist" style="margin-left:8px">Exportar resumo em PDF</button> <button class="btn sm" data-act="exphistx">Exportar planilha</button>`:""} <span id="histmsg"></span></span>
       <div class="ctl"><input type="text" id="hq" placeholder="Buscar título, banco ou mês" value="${esc(S.hq||"")}">
+        ${/* Central: filtros por conta e por mês (o PDF e a planilha saem com o filtro) */""}<select id="hbanco" aria-label="Filtrar por conta"><option value="">Todas as contas</option>${[...new Map(S.resumos.map(r=>[r.bancoId,r.banco])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]))).map(([id,n])=>`<option value="${esc(id)}" ${S.hbanco===id?"selected":""}>${esc(n)}</option>`).join("")}</select>
+        <select id="hmes" aria-label="Filtrar por mês"><option value="">Todos os meses</option>${[...new Set(S.resumos.map(r=>String(r.fim).slice(0,7)))].sort().reverse().map(m=>`<option value="${m}" ${S.hmes===m?"selected":""}>${ymNome(m)}</option>`).join("")}</select>
         <select id="hsit" aria-label="Filtrar por situação"><option value="">Todas as situações</option>${Object.entries(SIT).map(([k,v])=>`<option value="${k}" ${fs===k?"selected":""}>${v[1]}</option>`).join("")}</select>
         <select id="hsort" aria-label="Ordenar">${Object.entries(ORDENS).map(([k,v])=>`<option value="${k}" ${S.hsort===k?"selected":""}>${v[0]}</option>`).join("")}</select></div></div></section>
   ${faltasHTML()}
@@ -1248,7 +1252,8 @@ function faltasHTML(){
 }
 function listaHist(){
   const q=norm(S.hq||""), fs=S.hsit||"";
-  return S.resumos.filter(r=>(!q||norm(tituloResumo(r)+" "+r.banco+" "+dBR(r.ini)+" "+dBR(r.fim)+" "+(r.justif||"")).includes(q)) && (!fs||sitResumo(r)===fs)).sort(ORDENS[S.hsort][1]);
+  return S.resumos.filter(r=>(!q||norm(tituloResumo(r)+" "+r.banco+" "+dBR(r.ini)+" "+dBR(r.fim)+" "+(r.justif||"")).includes(q)) && (!fs||sitResumo(r)===fs)
+    && (!S.hbanco||r.bancoId===S.hbanco) && (!S.hmes||String(r.fim).slice(0,7)===S.hmes)).sort(ORDENS[S.hsort][1]); // Central: conta e mês
 }
 async function exportarResumoHist(){
   const msg=$("#histmsg"); const L=listaHist();
@@ -1264,7 +1269,7 @@ async function exportarResumoHist(){
   doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(...MUT);
   const meses=[...new Set(L.map(r=>String(r.fim).slice(0,7)))].sort();
   const {bancos,todosMeses,faltam,justif}=faltantes(meses);
-  const filtro=[S.hq?`busca "${S.hq}"`:"", S.hsit?`situação "${SIT[S.hsit][1]}"`:""].filter(Boolean).join(" · ");
+  const filtro=[S.hbanco?`conta "${(S.resumos.find(r=>r.bancoId===S.hbanco)||{}).banco||""}"`:"", S.hmes?`mês ${ymNome(S.hmes)}`:"", S.hq?`busca "${S.hq}"`:"", S.hsit?`situação "${SIT[S.hsit][1]}"`:""].filter(Boolean).join(" · "); // Central: conta e mês
   doc.text(`LZ7 Energia · ${L.length} conciliação(ões) · ${bancos.length} conta(s) · ${mesTxt(meses[0]+"-01")} a ${mesTxt(meses[meses.length-1]+"-01")} · emitido em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}${filtro?" · filtro: "+filtro:""}`,M,y); y+=8;
 
   // 1. Situação geral
