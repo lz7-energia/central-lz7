@@ -990,3 +990,44 @@ delete from public.ordens_servico where flow_id in ('289', '299', '300');
 delete from public.pedidos_venda where flow_id in ('302', '310', '311', '312', '313');
 delete from public.clientes_flow where flow_id = '509';
 do $$ begin raise notice 'OK obras por área e Flow'; end $$;
+
+-- 33) Pendências: avisos para a área de obras quando a logística mexe no material; tags padronizadas
+insert into public.obra_equipes (id, nome, filial) values ('eq-b', 'Equipe B', 'WB');
+insert into public.obra_obras (codigo, cliente, entrada, material_previsto, equipe_id, inicio_previsto, fim_previsto)
+  values ('WB260500AAA', 'AVISO', '2026-11-01', '2026-11-10', 'eq-b', '2026-11-12', '2026-11-12');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '77777777-7777-7777-7777-777777777777', false);  -- Adalto (logística)
+do $$ begin
+  perform public.obra_salvar('WB260500AAA', '{"material_previsto":"2026-11-14"}');
+  if (select texto from public.obra_avisos where obra = 'WB260500AAA' and tipo = 'entrega_mudou' and resolvido_em is null) not like '%10/11 para 14/11%Remarque%' then
+    raise exception 'aviso entrega: %', (select texto from public.obra_avisos where obra = 'WB260500AAA'); end if;
+  perform public.obra_salvar('WB260500AAA', '{"material_previsto":"2026-11-11"}');  -- muda de novo: o mesmo aviso é atualizado
+  if (select count(*) from public.obra_avisos where obra = 'WB260500AAA' and resolvido_em is null) <> 1 then raise exception 'aviso duplicado'; end if;
+  perform public.obra_salvar_tags('WB260500AAA', array['retrofit', 'Londrina']);
+  perform public.obra_salvar_tags('WB260500AAA', array['RETROFIT', 'londrina ', 'Retrofit']);
+  if (select tags from public.obra_obras where codigo = 'WB260500AAA') <> array['Londrina', 'Retrofit'] then
+    raise exception 'tags padronizadas: %', (select tags from public.obra_obras where codigo = 'WB260500AAA'); end if;
+  if (select count(*) from public.obra_tags where lower(nome) = 'retrofit') <> 1 then raise exception 'catálogo duplicado'; end if;
+  perform public.obra_tag_editar('Retrofit', 'Retrofit solar', 30);  -- logística é perfil obras: pode
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);  -- Letícia (obras)
+do $$ begin
+  if not exists (select 1 from public.obra_obras where codigo = 'WB260500AAA' and 'Retrofit solar' = any (tags)) then raise exception 'renomear tag'; end if;
+  perform public.obra_salvar('WB260500AAA', '{"inicio_previsto":"2026-11-13","fim_previsto":"2026-11-13"}');
+  if exists (select 1 from public.obra_avisos where obra = 'WB260500AAA' and resolvido_em is null) then raise exception 'remarcar resolve'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '77777777-7777-7777-7777-777777777777', false);
+do $$ declare i bigint; begin
+  perform public.obra_salvar('WB260500AAA', '{"material_entregue":"2026-11-11"}');
+  select id into i from public.obra_avisos where obra = 'WB260500AAA' and tipo = 'material_entregue' and resolvido_em is null;
+  if i is null then raise exception 'aviso material entregue'; end if;
+  perform public.obra_aviso_ciente(i);
+  if (select como from public.obra_avisos where id = i) <> 'ciente' then raise exception 'ciente'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);  -- equipe: não edita o catálogo
+do $$ begin
+  begin perform public.obra_tag_excluir('Londrina'); raise exception 'equipe excluiu tag'; exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+delete from public.obra_obras where codigo = 'WB260500AAA'; delete from public.obra_equipes where id = 'eq-b'; delete from public.obra_tags;
+do $$ begin raise notice 'OK pendências e tags'; end $$;

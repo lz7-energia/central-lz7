@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Cronograma de instalação (Central de Obras): página própria com a lógica do protótipo "Cronograma de Obras LZ7"
 // (public/obras-app/cronograma.js|css) falando direto com o banco, sujeito ao RLS (só o perfil obras grava).
 // Cada tela abre sozinha pelo hash (#calendario, #entregas, #pendentes…), vinda do card da Início ou da área; sem menu lateral.
-const VERSAO = "8";
+const VERSAO = "9";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const { data: perfis } = await supabaseServico().from("perfis").select("id, nome, papel, ativo");
   const central = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, area: p.area, podePagamento: ["obras", "equipe", "admin"].includes(String(p.papel)), usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
+    token: t.token, tokenExp: t.exp, podeEditar: p.podeEditar, area: p.area, admin: p.papel === "admin", podePagamento: ["obras", "equipe", "admin"].includes(String(p.papel)), usuario: { id: p.id, nome: p.nome }, perfis: perfis ?? [],
   };
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -41,10 +41,8 @@ export async function GET(req: Request) {
       <a class="voltar" id="voltar" href="/obras">‹ Início de Obras</a>
       <h1 id="titulo">Cronograma de instalação</h1>
       <input type="search" id="fq" placeholder="Buscar cliente, código, contrato ou cidade" aria-label="Buscar" style="width:250px">
-      <select id="ffil" aria-label="Filial"></select>
-      <select id="feq" aria-label="Equipe"></select>
-      <select id="ftag" aria-label="Tag"></select>
     </header>
+    <div class="filtros" id="filtros"></div>
     <main class="view" id="view"><div class="empty">Carregando obras…</div></main>
   </div>
 </div>

@@ -22,13 +22,12 @@ export const AREAS_OBRAS: AreaObras[] = [
     ],
   },
   {
-    id: "obras", nome: "Obras", descricao: "Instalação: agenda, equipes, homologação e pós-obra",
+    id: "obras", nome: "Obras", descricao: "Instalação: agenda, equipes e pós-obra",
     modulos: [
       { nome: "Instalações pendentes", icone: "alerta", descricao: "Obras a agendar com sugestão de equipe, atrasadas e alertas", href: "/obras/cronograma#pendentes" },
       { nome: "Equipes de instalação", icone: "equipe", descricao: "Quem é de cada equipe, base, cor e quantas obras faz por dia", href: "/obras/cronograma#equipes" },
       { nome: "Indicadores de obras", icone: "quadro", descricao: "Previsão original × realizado, prazo da entrada ao fim, remarcações e motivos", href: "/obras/cronograma#indicadores" },
       { nome: "Configurações do cronograma", icone: "contrato", descricao: "Metas de prazo, motivos de remarcação, estruturas e tópicos", href: "/obras/cronograma#config" },
-      { nome: "Homologação na Copel", icone: "pedidos", descricao: "Acesso, vistoria, troca de medidor, prazos e pendências" },
       { nome: "Pós-obra e garantia", icone: "documentos", descricao: "Chamados de manutenção, visita técnica e garantia" },
     ],
   },

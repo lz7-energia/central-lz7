@@ -33,7 +33,7 @@ const num=(n,d=0)=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:d,
 const C=window.__CENTRAL;
 const CFG0={metaDias:30,limiteDias:45,folgaDias:1,equipes:[],estruturas:[],motivos:['Chuva','Material atrasou','Cliente pediu','Equipe indisponível','Obra anterior atrasou','Outro'],topicos:[]};
 const S={obras:new Map(),cfg:CFG0,pode:!!C.podeEditar,podeInst:!!C.podeEditar&&C.area!=='logistica',podePag:!!C.podePagamento,ok:false,view:'calendario',
-  modo:'mes',ref:HOJE.slice(0,7)+'-01',mi:true,me:true,q:'',fil:'',eq:'',tag:'',sel:null,lista:false,listaF:'abertas',
+  modo:'mes',ref:HOJE.slice(0,7)+'-01',mi:true,me:true,q:'',f:{tags:new Set(),cid:new Set(),fil:new Set(),eq:new Set(),st:new Set()},avisos:[],sel:null,lista:false,listaF:'abertas',
   rep:{mes:'',min:1,so:false},repL:{mes:''},reprog:{},reprogMat:{},hInst:[],hMat:[],nomes:{},hist:{}};
 const INST=new Set(['equipe','iniPrev','fimPrev','iniReal','fimReal']); // campos da instalação: só a área de obras
 const ed=f=>S.pode&&(!INST.has(f)||S.podeInst);
@@ -63,7 +63,9 @@ function calc(o){
 const ST={aguard:'Aguardando material',pronta:'Pronta para agendar',agend:'Agendada',inst:'Em instalação',final:'Finalizada'};
 function visiveis(){
   const q=S.q.trim().toLowerCase();
-  return[...S.obras.values()].filter(o=>(!S.fil||filial(o)===S.fil)&&(!S.eq||(S.eq==='-'?!o.equipe:o.equipe===S.eq))&&(!S.tag||(o.tags||[]).includes(S.tag))&&
+  const F=S.f;
+  return[...S.obras.values()].filter(o=>(!F.fil.size||F.fil.has(filial(o)))&&(!F.eq.size||F.eq.has(o.equipe||'-'))&&(!F.tags.size||(o.tags||[]).some(t=>F.tags.has(t)))&&
+    (!F.cid.size||F.cid.has(o.cidade||'—'))&&(!F.st.size||F.st.has(calc(o).st))&&
     (!q||(o.cod+' '+o.cliente+' '+(o.card||'')+' '+(o.nomeContrato||'')+' '+(o.cidade||'')+' '+(o.pedido||'')).toLowerCase().includes(q)));
 }
 function carga(excluir){ // equipe|dia -> obras em aberto
@@ -123,7 +125,7 @@ const chipInst=o=>{const e=eqp(o.equipe),late=!o.fimReal&&o.fimPrev<HOJE;
 const chipEnt=o=>{const late=!o.matReal&&o.matPrev<HOJE;
   return`<button class="chip ent ${o.matReal?'feita':''} ${late?'late':''}" data-obra="${esc(o.cod)}" title="Entrega de material · ${esc(tit(o))}">${o.matReal?'✓ ':''}Entrega · ${esc(curto(tit(o)))}</button>`};
 function vCal(){
-  const ab=[...S.obras.values()].filter(o=>!o.fimReal),s0=seg(HOJE),s1=add(s0,6),al=alertas();
+  const ab=visiveis().filter(o=>!o.fimReal),s0=seg(HOJE),s1=add(s0,6),vc=new Set(visiveis().map(o=>o.cod)),al=alertas().filter(x=>vc.has(x.cod));
   const iw=ab.filter(o=>o.iniPrev&&o.iniPrev<=s1&&(o.fimPrev||o.iniPrev)>=s0).length;
   const ew=ab.filter(o=>!o.matReal&&o.matPrev>=s0&&o.matPrev<=s1).length;
   const kw=ab.reduce((a,o)=>a+(o.kwp||0),0),cr=al.filter(a=>a.sev==='crit').length;
@@ -143,7 +145,8 @@ function vCal(){
   return h+(S.modo==='mes'?calMes():calEq());
 }
 /* ---------- lista de projetos ---------- */
-const tagPills=o=>(o.tags||[]).map(t=>`<span class="pill tag">${esc(t)}</span>`).join('');
+const corTag=t=>{const c=(S.cfg.tags||[]).find(x=>x.nome===t);return c?c.cor:160};
+const tagPills=o=>(o.tags||[]).map(t=>`<span class="pill tag" style="--h:${corTag(t)}">${esc(t)}</span>`).join('');
 function listaFiltrada(){const f=S.listaF;return visiveis().filter(o=>f==='todas'||(f==='finalizadas'?!!o.fimReal:!o.fimReal)).sort((a,b)=>(b.entrada||'').localeCompare(a.entrada||''))}
 function vLista(vista){
   const l=listaFiltrada();
@@ -235,11 +238,20 @@ function vAlertas(tipos){
 
 /* ---------- pendentes de obras ---------- */
 function vPend(){
-  const ab=visiveis().filter(o=>!o.fimReal),fila=ab.filter(o=>!o.iniPrev),atr=ab.filter(o=>o.fimPrev&&o.fimPrev<HOJE),al=alertasDe(T_OBRAS);
+  const ab=visiveis().filter(o=>!o.fimReal),fila=ab.filter(o=>!o.iniPrev),atr=ab.filter(o=>o.fimPrev&&o.fimPrev<HOJE),al=alertasDe(T_OBRAS),vis=new Set(visiveis().map(o=>o.cod));
   return`<div class="tiles"><div class="tile ${fila.length?'warn':'ok'}"><b>${fila.length}</b><span>sem data de instalação</span></div><div class="tile ${atr.length?'crit':'ok'}"><b>${atr.length}</b><span>instalações atrasadas</span></div>
    <div class="tile ${al.filter(a=>a.sev==='crit').length?'crit':'ok'}"><b>${al.length}</b><span>alertas de obras</span></div></div>
+   ${avisosHtml(S.avisos.filter(a=>vis.has(a.obra)))}
    <h3 class="sec">A agendar <span class="pill">${fila.length}</span>${S.pode?' <button class="btn s" data-act="nova" style="margin-left:8px">+ Obra manual</button>':''}</h3>${vFila()}${vAlertas(T_OBRAS)}`;
 }
+/* ---------- avisos da logística para a área de obras ---------- */
+function avisosHtml(l,naObra){
+  if(!l.length)return'';
+  return`${naObra?'':`<h3 class="sec">Avisos da logística <span class="pill warn">${l.length}</span></h3>`}<div class="list">${l.map(a=>{const o=S.obras.get(a.obra);
+    return`<div class="row warn">${naObra?'':`<button class="g" data-obra="${esc(a.obra)}" style="border:0;background:none;text-align:left;padding:0"><b>${esc(o?tit(o):a.obra)}</b><br>`}<span class="${naObra?'g ':''}small">${esc(a.texto)}</span>${naObra?'':'</button>'}
+     <span class="muted small">${new Date(a.criado_em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</span>${S.pode||C.admin?`<button class="btn s" data-act="ciente" data-id="${a.id}">Ciente</button>`:''}</div>`}).join('')}</div>`;
+}
+async function ciente(id){const {error}=await sb.rpc('obra_aviso_ciente',{p_id:+id});if(error){toast('Não foi possível marcar.');return}S.avisos=S.avisos.filter(a=>a.id!==+id);toast('Ok');render();if(S.sel)gaveta()}
 /* ---------- motivos das remarcações ---------- */
 function painelMotivos(lista,titulo){
   const c={};let sem=0;for(const h of lista){if(h.motivo)c[h.motivo]=(c[h.motivo]||0)+1;else sem++}
@@ -328,14 +340,33 @@ addEventListener('hashchange',rota);
 function casca(){
   $('#titulo').textContent=TIT[S.view];document.title=TIT[S.view]+' · Central de Obras';
   const[vh,vt]=VOLTA[S.view]||VOLTA.calendario,vo=$('#voltar');vo.href=vh;vo.textContent='‹ '+vt;
-  const tags=[...new Set([...S.obras.values()].flatMap(o=>o.tags||[]))].sort((a,b)=>a.localeCompare(b));
-  $('#ftag').innerHTML='<option value="">Todas as tags</option>'+tags.map(t=>`<option${S.tag===t?' selected':''}>${esc(t)}</option>`).join('');$('#ftag').hidden=!tags.length;
-  const fs=$('#ffil'),es=$('#feq');
-  fs.innerHTML='<option value="">Todas as filiais</option>'+['WB','LD','PG','Outras'].map(f=>`<option value="${f}"${S.fil===f?' selected':''}>${FIL[f]||f}</option>`).join('');
-  es.innerHTML='<option value="">Todas as equipes</option>'+S.cfg.equipes.map(e=>`<option value="${esc(e.id)}"${S.eq===e.id?' selected':''}>${esc(e.nome)}</option>`).join('')+`<option value="-"${S.eq==='-'?' selected':''}>Sem equipe</option>`;
+  if(!document.querySelector('.mf[open]'))montarFiltros();
   document.body.classList.toggle('ro',!S.pode);
-  const filtros=!['equipes','config'].includes(S.view);['#fq','#ffil','#feq'].forEach(s=>$(s).hidden=!filtros);if(!filtros)$('#ftag').hidden=true;
+  const filtros=!['equipes','config'].includes(S.view);$('#fq').hidden=!filtros;$('#filtros').hidden=!filtros;
 }
+/* ---------- filtros (vários ao mesmo tempo: dentro de um filtro vale qualquer um; entre filtros, todos) ---------- */
+const NOMES_F={tags:'Tags',cid:'Cidade',fil:'Filial',eq:'Equipe',st:'Etapa'};
+function opcoesFiltro(k){
+  const ob=[...S.obras.values()];
+  if(k==='tags')return(S.cfg.tags||[]).map(t=>[t.nome,t.nome]);
+  if(k==='cid')return[...new Set(ob.map(o=>o.cidade||'—'))].sort((a,b)=>a.localeCompare(b)).map(c=>[c,c]);
+  if(k==='fil')return['WB','LD','PG','Outras'].map(f=>[f,FIL[f]||f]);
+  if(k==='eq')return[...S.cfg.equipes.map(e=>[e.id,e.nome]),['-','Sem equipe']];
+  if(k==='st')return Object.entries(ST);
+  return[];
+}
+const rotuloF=k=>NOMES_F[k]+(S.f[k].size?` (${S.f[k].size})`:'');
+function montarFiltros(){
+  const algum=Object.values(S.f).some(x=>x.size);
+  $('#filtros').innerHTML=Object.keys(NOMES_F).map(k=>{const op=opcoesFiltro(k);if(!op.length)return'';
+    return`<details class="mf ${S.f[k].size?'on':''}" data-k="${k}"><summary>${esc(rotuloF(k))}</summary><div class="mf-pop">${op.length>8?'<input type="search" class="mf-busca" placeholder="Buscar">':''}
+     ${op.map(([v,r])=>`<label class="ck"><input type="checkbox" data-mf="${k}" value="${esc(v)}"${S.f[k].has(v)?' checked':''}> ${esc(r)}</label>`).join('')}</div></details>`}).join('')
+   +(algum?'<button class="btn s" data-act="limparF">Limpar filtros</button>':'')
+   +(algum?`<span class="muted small">${visiveis().length} de ${S.obras.size} obras</span>`:'');
+}
+document.addEventListener('toggle',e=>{if(e.target.classList?.contains('mf')&&e.target.open)document.querySelectorAll('.mf[open]').forEach(d=>{if(d!==e.target)d.open=false})},true);
+document.addEventListener('click',e=>{if(!e.target.closest('.mf'))document.querySelectorAll('.mf[open]').forEach(d=>{d.open=false;montarFiltros()})});
+document.addEventListener('input',e=>{if(e.target.classList.contains('mf-busca')){const q=e.target.value.toLowerCase();e.target.closest('.mf-pop').querySelectorAll('label').forEach(l=>l.hidden=!l.textContent.toLowerCase().includes(q))}});
 function render(){
   casca();const v=$('#view');
   if(!S.ok){v.innerHTML='<div class="empty">Carregando obras…</div>';return}
@@ -352,8 +383,8 @@ function vEntregas(){
   const chegou=ab.filter(o=>o.matReal&&o.matReal>=add(HOJE,-7)).sort((a,b)=>a.matReal<b.matReal?1:-1);
   const lin=o=>`<div class="row"><button class="g" data-obra="${esc(o.cod)}" style="border:0;background:none;text-align:left;padding:0"><b>${esc(tit(o))}</b><br><span class="muted small">${esc(o.cod)} · ${esc(o.cidade||'')} · ${o.mod??'?'} módulos${o.envio?' · '+esc(o.envio):''}${o.kit?' · kit comprado':''}</span></button>${matPill(o)}${pagPend(o).some(p=>p.etapa==='entrega')?'<span class="pill imp">Pagamento na entrega</span>':''}${o.iniPrev?`<span class="pill">Instalação ${br(o.iniPrev)}</span>`:''}${S.pode&&!o.matReal?`<button class="btn s" data-act="chegou" data-cod="${esc(o.cod)}">Chegou hoje</button>`:''}</div>`;
   const bloco=(t,l,cls)=>l.length?`<h3 class="sec">${t} <span class="pill ${cls||''}">${l.length}</span></h3><div class="list">${l.map(lin).join('')}</div>`:'';
-  return `<div class="tiles"><div class="tile ${atras.length?'crit':'ok'}"><b>${atras.length}</b><span>entregas atrasadas</span></div><div class="tile"><b>${prox.length}</b><span>previstas nas próximas 2 semanas</span></div><div class="tile warn"><b>${sem.length}</b><span>sem previsão de entrega</span></div><div class="tile ok"><b>${chegou.length}</b><span>chegaram nos últimos 7 dias</span></div></div>`
-    +bloco('Atrasadas',atras,'crit')+bloco('Próximas 2 semanas',prox)+bloco('Sem previsão',sem,'warn')+bloco('Chegaram nos últimos 7 dias',chegou,'ok')
+  return `<div class="tiles"><div class="tile ${atras.length?'crit':'ok'}"><b>${atras.length}</b><span>entregas atrasadas</span></div><div class="tile"><b>${prox.length}</b><span>previstas nas próximas 2 semanas</span></div><div class="tile warn"><b>${sem.length}</b><span>obras novas sem previsão de entrega</span></div><div class="tile ok"><b>${chegou.length}</b><span>chegaram nos últimos 7 dias</span></div></div>`
+    +bloco('Obras novas sem previsão de entrega',sem,'warn')+bloco('Atrasadas',atras,'crit')+bloco('Próximas 2 semanas',prox)+bloco('Chegaram nos últimos 7 dias',chegou,'ok')
     +vAlertas(['folga'])
     +(atras.length+prox.length+sem.length+chegou.length?'':'<div class="empty">Nenhuma entrega pendente.</div>');
 }
@@ -383,6 +414,7 @@ function gaveta(){
   const imp=[...S.cfg.topicos.filter(t=>t.ativo&&t.importante&&(o.top||{})[t.id]==='sim').map(t=>t.nome),...(o.topx||[]).filter(t=>t.importante).map(t=>t.nome)];
   d.innerHTML=`<div class="dh"><div style="flex:1"><h2>${esc(tit(o))}</h2><span class="muted">${esc(o.cod)}${o.nomeContrato?' · Contrato '+esc(o.nomeContrato):''}${o.pedido?' · Pedido '+esc(o.pedido):''} · ${esc(FIL[filial(o)]||filial(o))}</span></div><button class="x" data-act="fecharG" aria-label="Fechar">×</button></div>
   <div class="ln" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px"><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${k.aberto!=null?`<span class="pill ${k.cls}">${dias(k.aberto)} ${o.fimReal?'da entrada ao fim':'em aberto'}</span>`:''}${o.equipe?eqChip(o.equipe):''}${imp.map(n=>`<span class="pill imp">★ ${esc(n)}</span>`).join('')}${pagPend(o).map(p=>`<span class="pill imp">$ ${esc(ETAPA[p.etapa])}</span>`).join('')}${o.fora?'<span class="pill">fora dos indicadores</span>':''}${o.codProv?'<span class="pill warn">código provisório</span>':''}${tagPills(o)}</div>
+  ${S.avisos.some(a=>a.obra===o.cod)?`<div class="step now"><h3>Avisos da logística</h3>${avisosHtml(S.avisos.filter(a=>a.obra===o.cod),true)}</div>`:''}
   <div class="step"><h3>Flow</h3>${flowHtml(o)}</div>
   <div class="step"><h3>Tags</h3>${tagsHtml(o)}</div>
   <div class="step done"><h3>Venda e contrato</h3><div class="fg">${inp('card','Nome do card',o.card,'text','','w')}${inp('cliente','Cliente',o.cliente,'text','','w')}${inp('nomeContrato','Nome do contrato',o.nomeContrato)}${inp('entrada','Data de entrada',o.entrada,'date')}
@@ -435,14 +467,14 @@ function flowHtml(o){
    ${dif.length?`<div class="note">Diferente do Flow (vale o da Central): ${dif.map(k=>`${CAMPO_FLOW[k][1]} (no Flow: ${esc(fmtFlow(k,fv[k]))})`).join(' · ')}</div>`:''}`;
 }
 function tagsHtml(o){
-  const todas=[...new Set([...S.obras.values()].flatMap(x=>x.tags||[]))].filter(t=>!(o.tags||[]).includes(t)).sort((a,b)=>a.localeCompare(b));
-  return`<div class="tags">${(o.tags||[]).map(t=>`<span class="pill tag">${esc(t)}<button data-act="tiraTag" data-t="${esc(t)}" aria-label="Tirar a tag ${esc(t)}">×</button></span>`).join('')||'<span class="muted small">Nenhuma tag.</span>'}</div>
-   <div class="acts" style="margin-top:6px"><input id="o_tag" list="dltag" maxlength="30" placeholder="ex.: Retrofit, Híbrido" style="flex:1"><datalist id="dltag">${todas.map(t=>`<option value="${esc(t)}">`).join('')}</datalist><button class="btn s" data-act="maisTag">Adicionar</button></div>`;
+  const todas=(S.cfg.tags||[]).map(x=>x.nome).filter(t=>!(o.tags||[]).includes(t));
+  return`<div class="tags">${(o.tags||[]).map(t=>`<span class="pill tag" style="--h:${corTag(t)}">${esc(t)}<button data-act="tiraTag" data-t="${esc(t)}" aria-label="Tirar a tag ${esc(t)}">×</button></span>`).join('')||'<span class="muted small">Nenhuma tag.</span>'}</div>
+   <div class="acts" style="margin-top:6px"><input id="o_tag" list="dltag" maxlength="30" placeholder="Escolha da lista ou digite uma nova" style="flex:1"><datalist id="dltag">${todas.map(t=>`<option value="${esc(t)}">`).join('')}</datalist><button class="btn s" data-act="maisTag">Adicionar</button></div>`;
 }
 async function salvarTags(cod,tags){
   const {data,error}=await sb.rpc('obra_salvar_tags',{p_codigo:cod,p_tags:tags});
   if(error){toast(/15 tags/.test(error.message)?'No máximo 15 tags por obra.':'Não foi possível salvar a tag.');return}
-  const o=S.obras.get(cod);if(o)o.tags=data||[];toast('Tags salvas');gaveta();carregarHist(cod);render();
+  const o=S.obras.get(cod);if(o)o.tags=data||[];toast('Tags salvas');await carregarCfg();gaveta();carregarHist(cod);render();
 }
 /* ---------- conferência do contrato com a obra ---------- */
 const sem=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -688,6 +720,10 @@ function vConfig(){
   return`<div class="two" style="margin-top:0"><div class="panel"><h3>Metas de prazo</h3><div class="fg">${inp('c_meta','Meta (dias da entrada ao fim)',c.metaDias,'number','min="1"')}${inp('c_lim','Limite crítico (dias)',c.limiteDias,'number','min="1"')}${inp('c_folga','Folga mínima entre material e instalação (dias)',c.folgaDias,'number','min="0"')}</div></div>
    <div class="panel"><h3>Motivos de remarcação (entrega e instalação)</h3><label class="f">Um por linha<textarea id="c_mot" rows="6" ${dis}>${esc(c.motivos.join('\n'))}</textarea></label></div>
    <div class="panel"><h3>Estruturas</h3><label class="f">Uma por linha<textarea id="c_est" rows="6" ${dis}>${esc(c.estruturas.join('\n'))}</textarea></label><p class="muted small">Estrutura que já está em obras não sai da lista (fica inativa).</p></div></div>
+   <h3 class="sec">Tags</h3><p class="muted small" style="max-width:75ch">Lista única de tags: quem marca uma tag nova na obra já a coloca aqui ("retrofit" e "Retrofit" viram a mesma). Aqui dá para renomear, trocar a cor ou excluir (sai de todas as obras).</p>
+   <div class="list" id="ctags">${(c.tags||[]).map(t=>`<div class="row" data-tag="${esc(t.nome)}" style="padding:6px 12px"><span class="pill tag" style="--h:${t.cor}">${esc(t.nome)}</span>
+     ${S.pode||C.admin?`<input type="color" data-k="cor" value="${hslHex(t.cor)}" title="Cor" style="width:34px;height:28px;padding:0;border:0;background:none"><input type="text" data-k="nome" value="${esc(t.nome)}" maxlength="30" style="flex:1 1 160px">
+     <button class="btn s" data-act="salvarTag">Salvar</button><button class="btn s d" data-act="excluirTag">Excluir</button>`:''}<span class="muted small">${[...S.obras.values()].filter(o=>(o.tags||[]).includes(t.nome)).length} obra(s)</span></div>`).join('')||'<span class="muted">Nenhuma tag ainda. Marque a primeira na ficha de uma obra.</span>'}</div>
    <h3 class="sec">Tópicos das obras</h3><p class="muted small" style="max-width:75ch">Aparecem em todas as obras, na ficha. Os marcados como importantes ficam em destaque quando a resposta é "sim" (ou para tópicos de texto, quando preenchidos).</p>
    <div class="cfg-lista" id="ctop">${c.topicos.map(t=>linhaTop(t,dis)).join('')}</div>
    ${S.podeInst?`<div class="acts"><button class="btn s" data-act="novoTop">+ Tópico</button></div><div class="acts"><button class="btn p" data-act="salvarCfg">Salvar configurações</button><span class="err" id="e_c"></span></div>`:''}`;
@@ -752,6 +788,12 @@ document.addEventListener('click',async ev=>{
   else if(a==='maisTag'){const o=S.obras.get(S.sel),v=($('#o_tag').value||'').trim();if(o&&v)salvarTags(o.cod,[...(o.tags||[]),v])}
   else if(a==='tiraTag'){const o=S.obras.get(S.sel);if(o)salvarTags(o.cod,(o.tags||[]).filter(x=>x!==t.dataset.t))}
   else if(a==='conferirCt')conferirCt(S.sel);
+  else if(a==='ciente')ciente(t.dataset.id);
+  else if(a==='limparF'){Object.values(S.f).forEach(x=>x.clear());montarFiltros();render()}
+  else if(a==='salvarTag'||a==='excluirTag'){const r=t.closest('[data-tag]'),nm=r.dataset.tag;
+    if(a==='excluirTag'){if(!confirm(`Excluir a tag "${nm}"? Ela sai de todas as obras.`))return;const {error}=await sb.rpc('obra_tag_excluir',{p_nome:nm});if(error){toast('Não foi possível excluir.');return}}
+    else{const {error}=await sb.rpc('obra_tag_editar',{p_nome:nm,p_novo:r.querySelector('[data-k=nome]').value,p_cor:hexHue(r.querySelector('[data-k=cor]').value)});if(error){toast(/Já existe/.test(error.message)?error.message:'Não foi possível salvar a tag.');return}}
+    toast('Tags salvas');await carregarCfg();await recarregar()}
   else if(a==='preencherCt'){const c=S.ctVazios;if(c&&c.cod){fecharModal();await salvar(c.cod,c.patch)}}
 });
 function baixarXlsx(L,aba,arq){
@@ -768,7 +810,7 @@ function baixarRel(){
 }
 document.addEventListener('change',ev=>{
   const t=ev.target;
-  if(t.id==='ffil'){S.fil=t.value;render()}else if(t.id==='feq'){S.eq=t.value;render()}else if(t.id==='ftag'){S.tag=t.value;render()}
+  if(t.dataset.mf){const st=S.f[t.dataset.mf];if(t.checked)st.add(t.value);else st.delete(t.value);const d=t.closest('.mf');d.querySelector('summary').textContent=rotuloF(t.dataset.mf);d.classList.toggle('on',!!st.size);render();return}
   else if(t.id==='lf'){S.listaF=t.value;render()}else if(t.id==='lmes'){S.repL.mes=t.value;render()}
   else if(t.id==='mi'){S.mi=t.checked;render()}else if(t.id==='me'){S.me=t.checked;render()}
   else if(t.id==='rmes'){S.rep.mes=t.value;render()}else if(t.id==='rmin'){S.rep.min=Math.max(0,+t.value||0);render()}else if(t.id==='rso'){S.rep.so=t.checked;render()}
@@ -791,11 +833,11 @@ async function tokenAtual(forcar){
 const sb=window.supabase.createClient(C.url,C.anon,{accessToken:tokenAtual});
 window.centralSessao?.manterVivo(tokenAtual);
 async function carregarCfg(){
-  const [cfg,eqs,est,tops]=await Promise.all([sb.from('obra_config').select('chave,valor'),sb.from('obra_equipes').select('*').order('nome'),sb.from('obra_estruturas').select('*').order('ordem'),sb.from('obra_topicos').select('*').order('ordem')]);
+  const [cfg,eqs,est,tops,tgs]=await Promise.all([sb.from('obra_config').select('chave,valor'),sb.from('obra_equipes').select('*').order('nome'),sb.from('obra_estruturas').select('*').order('ordem'),sb.from('obra_topicos').select('*').order('ordem'),sb.from('obra_tags').select('nome,cor').order('nome')]);
   const m=Object.fromEntries((cfg.data||[]).map(r=>[r.chave,r.valor])),metas=m.metas||{};
   S.cfg={metaDias:metas.meta_dias||30,limiteDias:metas.limite_dias||45,folgaDias:metas.folga_dias??1,motivos:m.motivos_reprogramacao||CFG0.motivos,
     equipes:(eqs.data||[]).map(e=>({id:e.id,nome:e.nome,base:e.base,filial:e.filial,membros:e.membros,h:e.matiz,cap:e.capacidade_dia,ativa:e.ativa})),
-    estruturas:(est.data||[]).filter(e=>e.ativa).map(e=>e.nome),estruturasTodas:(est.data||[]).map(e=>e.nome),topicos:tops.data||[]};
+    estruturas:(est.data||[]).filter(e=>e.ativa).map(e=>e.nome),estruturasTodas:(est.data||[]).map(e=>e.nome),topicos:tops.data||[],tags:tgs.data||[]};
 }
 async function lerTudo(tabela,cols){const out=[];for(let de=0;;){const {data,error}=await sb.from(tabela).select(cols).order(tabela==='obra_historico'?'id':'codigo').range(de,de+999);if(error)throw error;if(!data.length)break;out.push(...data);de+=data.length}return out} // o servidor pode devolver menos que 1000 por página
 async function lerReprog(){const out=[];for(let de=0;;){const {data,error}=await sb.from('obra_historico').select('obra,campo,motivo,em').in('campo',['inicio_previsto','fim_previsto','material_previsto']).not('de','is',null).order('id').range(de,de+999);if(error||!data.length)break;out.push(...data);de+=data.length}return out}
@@ -803,7 +845,8 @@ let carregando=null;
 async function recarregar(){
   if(carregando)return carregando;
   carregando=(async()=>{
-    const [linhas,rep]=await Promise.all([lerTudo('obra_obras','*'),lerReprog()]);
+    const [linhas,rep,av]=await Promise.all([lerTudo('obra_obras','*'),lerReprog(),sb.from('obra_avisos').select('id,obra,tipo,texto,criado_em').is('resolvido_em',null).order('criado_em',{ascending:false})]);
+    S.avisos=av.data||[];
     S.obras=new Map(linhas.map(r=>[r.codigo,daLinha(r)]));
     // remarcações: instalação (início e fim mudados juntos contam uma vez) e entrega
     S.reprog={};S.reprogMat={};S.hInst=[];S.hMat=[];const vistos=new Set();
@@ -821,5 +864,6 @@ async function recarregar(){
   await recarregar();
   let tm=null;const depois=()=>{clearTimeout(tm);tm=setTimeout(()=>{recarregar()},400)};
   sb.channel('obras').on('postgres_changes',{event:'*',schema:'public',table:'obra_obras'},depois)
-    .on('postgres_changes',{event:'*',schema:'public',table:'obra_equipes'},()=>carregarCfg().then(render)).subscribe();
+    .on('postgres_changes',{event:'*',schema:'public',table:'obra_equipes'},()=>carregarCfg().then(render))
+    .on('postgres_changes',{event:'*',schema:'public',table:'obra_avisos'},depois).subscribe();
 })();

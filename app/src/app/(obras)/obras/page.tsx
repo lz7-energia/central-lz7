@@ -9,6 +9,8 @@ import { meuDia } from "@/lib/meu-dia";
 import { AtalhoPlanner, MeuDia } from "@/components/MeuDia";
 import { Reordenar } from "../../(equipe)/inicio/Reordenar";
 import { resumoObras } from "@/lib/obras-resumo";
+import { pessoaObras } from "@/lib/obras";
+import { AgendaObras, Pendencias } from "./Pendencias";
 
 export const metadata: Metadata = { title: "Central de Obras" };
 export const dynamic = "force-dynamic";
@@ -21,7 +23,8 @@ export default async function InicioObras() {
     sb.from("tela_ordem").select("ordem").maybeSingle(),
   ]);
   const areas = aplicarOrdem(AREAS_OBRAS, (tela?.ordem as OrdemTela | undefined)?.obras, (a) => a.id);
-  const [dia, r] = await Promise.all([perfil ? meuDia(perfil.id, { soPlanner: true }) : Promise.resolve([]), resumoObras(sb)]);
+  const [dia, r, pessoa] = await Promise.all([perfil ? meuDia(perfil.id, { soPlanner: true }) : Promise.resolve([]), resumoObras(sb), pessoaObras()]);
+  const area = pessoa?.area ?? null;
   const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
   const numeros: Record<string, React.ReactNode> = {
     compras: <span className="mudo">Em breve</span>,
@@ -30,6 +33,7 @@ export default async function InicioObras() {
       <span className={r.logistica.semPrevisao ? "destaque" : ""}><strong>{r.logistica.semPrevisao}</strong> sem previsão de entrega</span>
     </>),
     obras: (<>
+      {!!r.obras.avisos && <span className="destaque"><strong>{r.obras.avisos}</strong> {r.obras.avisos === 1 ? "aviso da logística" : "avisos da logística"}</span>}
       <span className={r.obras.aAgendar ? "destaque" : ""}><strong>{r.obras.aAgendar}</strong> {r.obras.aAgendar === 1 ? "obra a agendar" : "obras a agendar"}</span>
       <span className={r.obras.atrasadas ? "atrasado" : ""}><strong>{r.obras.atrasadas}</strong> {r.obras.atrasadas === 1 ? "instalação atrasada" : "instalações atrasadas"}</span>
       {!!r.obras.avisosFlow && <span className="destaque"><strong>{r.obras.avisosFlow}</strong> com aviso do Flow</span>}
@@ -59,7 +63,13 @@ export default async function InicioObras() {
         <span className="ap-seta" aria-hidden="true">→</span>
       </a>
       <AtalhoPlanner avisos={avisos ?? []} />
-      <MeuDia itens={dia} />
+      <div className="ob-duas">
+        <Pendencias grupos={r.pendencias} area={area} />
+        <div>
+          <AgendaObras itens={r.agenda} area={area} />
+          <MeuDia itens={dia} titulo="Do seu planner" />
+        </div>
+      </div>
 
       <Reordenar lugar="central-obras" className="grade-areas grade-obras" itens={areas.map((a) => ({
         chave: a.id, rotulo: a.nome, conteudo: (
