@@ -263,6 +263,9 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
 - **Obra manual** (de volta em 24/11/2026, para quando a API não puxar): "+ Obra manual" no cronograma e em Instalações pendentes (perfil obras;
   a logística não vê nem pode gravar os campos da instalação, migração `20261124000036_obras_manual.sql`). Pedido que aparecer depois no
   Flow com o mesmo código liga sozinho e só completa o vazio.
+- **Contrato e "Particularidades e benefícios"** (`obra_obras.particularidades`, 25/11/2026): o **admin** também anexa/troca/remove o
+  contrato e escreve as particularidades (`obra_pode_contrato`, `obra_salvar_contrato`, migração `20261125000038_obras_contrato_admin.sql`);
+  o resto da obra continua só do perfil obras. Particularidades aparecem em destaque no topo da ficha.
 - Contrato: anexar o PDF lê e compara com a obra (cliente, CPF/CNPJ, cidade, kWp, módulos, estrutura, valor, financiamento); "Preencher
   os vazios com o contrato" só completa o que está vazio.
 - **Lista de projetos**: botão Calendário | Lista no cronograma (lembrado no navegador): uma linha por obra com etapa, status da OS,

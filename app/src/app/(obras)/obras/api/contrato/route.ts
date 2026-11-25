@@ -13,7 +13,7 @@ const nomeLimpo = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").repl
 export async function POST(req: Request) {
   const p = await pessoaObras();
   if (!p) return ok({ erro: "Faça login de novo." }, 401);
-  if (!p.podeEditar) return ok({ erro: "Seu perfil só pode consultar o cronograma." }, 403);
+  if (!p.podeEditar && p.papel !== "admin") return ok({ erro: "Seu perfil só pode consultar o cronograma." }, 403);  // admin: contrato (obra_pode_contrato)
   const b = await req.json().catch(() => null);
   const sb = await supabaseUsuario();
 

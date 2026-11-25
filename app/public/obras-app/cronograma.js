@@ -37,6 +37,8 @@ const S={obras:new Map(),cfg:CFG0,pode:!!C.podeEditar,podeInst:!!C.podeEditar&&C
   rep:{mes:'',min:1,so:false},repL:{mes:''},reprog:{},reprogMat:{},hInst:[],hMat:[],nomes:{},hist:{}};
 const INST=new Set(['equipe','iniPrev','fimPrev','iniReal','fimReal']); // campos da instalação: só a área de obras
 const ed=f=>S.pode&&(!INST.has(f)||S.podeInst);
+S.podeCt=S.pode||!!C.admin; // contrato e particularidades: também o administrador (obra_pode_contrato)
+const CT=new Set(['ctPath','ctNome','partic']);
 try{S.lista=localStorage.getItem('obraVista')==='lista'}catch(_){}
 const FIL={WB:'Wenceslau Braz',LD:'Londrina',PG:'Ponta Grossa'};
 const filial=o=>o.filial||(FIL[o.cod.slice(0,2)]?o.cod.slice(0,2):'Outras');
@@ -415,6 +417,7 @@ function gaveta(){
   d.innerHTML=`<div class="dh"><div style="flex:1"><h2>${esc(tit(o))}</h2><span class="muted">${esc(o.cod)}${o.nomeContrato?' · Contrato '+esc(o.nomeContrato):''}${o.pedido?' · Pedido '+esc(o.pedido):''} · ${esc(FIL[filial(o)]||filial(o))}</span></div><button class="x" data-act="fecharG" aria-label="Fechar">×</button></div>
   <div class="ln" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px"><span class="pill ${k.st==='final'?'ok':'a'}">${ST[k.st]}</span>${k.aberto!=null?`<span class="pill ${k.cls}">${dias(k.aberto)} ${o.fimReal?'da entrada ao fim':'em aberto'}</span>`:''}${o.equipe?eqChip(o.equipe):''}${imp.map(n=>`<span class="pill imp">★ ${esc(n)}</span>`).join('')}${pagPend(o).map(p=>`<span class="pill imp">$ ${esc(ETAPA[p.etapa])}</span>`).join('')}${o.fora?'<span class="pill">fora dos indicadores</span>':''}${o.codProv?'<span class="pill warn">código provisório</span>':''}${tagPills(o)}</div>
   ${S.avisos.some(a=>a.obra===o.cod)?`<div class="step now"><h3>Avisos da logística</h3>${avisosHtml(S.avisos.filter(a=>a.obra===o.cod),true)}</div>`:''}
+  ${o.partic?`<div class="note"><b>Particularidades e benefícios:</b> ${esc(o.partic)}</div>`:''}
   <div class="step"><h3>Flow</h3>${flowHtml(o)}</div>
   <div class="step"><h3>Tags</h3>${tagsHtml(o)}</div>
   <div class="step done"><h3>Venda e contrato</h3><div class="fg">${inp('card','Nome do card',o.card,'text','','w')}${inp('cliente','Cliente',o.cliente,'text','','w')}${inp('nomeContrato','Nome do contrato',o.nomeContrato)}${inp('entrada','Data de entrada',o.entrada,'date')}
@@ -440,8 +443,9 @@ function gaveta(){
    ${S.podeInst&&!o.fimReal?`<div class="acts">${!o.iniReal?'<button class="btn s" data-act="rapido" data-f="iniReal">Iniciou hoje</button>':''}<button class="btn s" data-act="rapido" data-f="fimReal">Finalizou hoje</button></div>`:''}</div>
   <div class="step"><h3>Observações</h3><div class="fg"><label class="w"><span class="muted">Anotações da obra</span><textarea id="o_obs" data-f="obs" rows="2" ${S.pode?'':'disabled'}>${esc(o.obs||'')}</textarea></label>
    <label class="ck f"><input type="checkbox" data-f="fora" ${o.fora?'checked':''} ${S.pode?'':'disabled'}> Fora dos indicadores (ex.: licitação)</label></div><div class="err" id="e_o"></div></div>
-  <div class="step ${o.ctPath?'done':''}"><h3>Contrato</h3>${o.ctPath?`<div class="acts"><a class="btn s" href="/obras/contrato/${encodeURIComponent(o.cod)}" target="_blank" rel="noopener">Abrir ${esc(o.ctNome||'contrato')}</a>${S.pode?'<button class="btn s" data-act="conferirCt">Conferir com a obra</button><button class="btn s d" data-act="removerCt">Remover</button>':''}</div>`:'<span class="muted">Nenhum contrato anexado. Ao anexar, a Central lê o PDF e compara com os dados da obra (vindos do Flow).</span>'}
-   ${S.pode?`<div class="fg" style="margin-top:8px"><label class="w">${o.ctPath?'Trocar o contrato (PDF)':'Anexar contrato (PDF)'}<input type="file" id="g_ct" accept=".pdf,application/pdf"></label></div>`:''}</div>
+  <div class="step ${o.ctPath?'done':''}"><h3>Contrato</h3>${o.ctPath?`<div class="acts"><a class="btn s" href="/obras/contrato/${encodeURIComponent(o.cod)}" target="_blank" rel="noopener">Abrir ${esc(o.ctNome||'contrato')}</a>${S.podeCt?'<button class="btn s" data-act="conferirCt">Conferir com a obra</button><button class="btn s d" data-act="removerCt">Remover</button>':''}</div>`:'<span class="muted">Nenhum contrato anexado. Ao anexar, a Central lê o PDF e compara com os dados da obra (vindos do Flow).</span>'}
+   ${S.podeCt?`<div class="fg" style="margin-top:8px"><label class="w">${o.ctPath?'Trocar o contrato (PDF)':'Anexar contrato (PDF)'}<input type="file" id="g_ct" accept=".pdf,application/pdf"></label></div>`:''}
+   <div class="fg" style="margin-top:8px"><label class="w">Particularidades e benefícios<textarea id="o_partic" data-f="partic" rows="3" maxlength="2000" placeholder="Ex.: brinde, desconto, condição especial combinada com o cliente" ${S.podeCt?'':'disabled'}>${esc(o.partic||'')}</textarea></label></div></div>
   <div class="step"><h3>Histórico</h3><ul class="hist" id="hist">${histHtml(o)}</ul>
    ${S.podeInst?`<div class="acts"><button class="btn s d" data-act="excluir">Excluir obra</button></div>`:''}</div>`;
 }
@@ -552,7 +556,7 @@ const COL={card:'nome_card',nomeContrato:'nome_contrato',cliente:'cliente',filia
   pagNa:'pagamento_na',pedido:'pedido_flow',entrada:'entrada',matPrev:'material_previsto',matReal:'material_entregue',kit:'kit_comprado',equipe:'equipe_id',iniPrev:'inicio_previsto',
   fimPrev:'fim_previsto',bIni:'baseline_inicio',bFim:'baseline_fim',iniReal:'inicio_real',fimReal:'fim_real',obs:'observacoes',top:'topicos',topx:'topicos_extra',fora:'fora_indicadores',
   ctPath:'contrato_path',ctNome:'contrato_nome',origem:'origem',pag:'pagamentos',tel:'telefone',tags:'tags',bMat:'baseline_material',
-  flowSit:'flow_situacao',osFlow:'os_flow',osStatus:'os_status',osCoord:'os_coordenador',flowInfo:'flow_info',flowVal:'flow_valores',flowEd:'flow_editado',flowAt:'flow_sincronizado_em',codProv:'codigo_provisorio'};
+  partic:'particularidades',flowSit:'flow_situacao',osFlow:'os_flow',osStatus:'os_status',osCoord:'os_coordenador',flowInfo:'flow_info',flowVal:'flow_valores',flowEd:'flow_editado',flowAt:'flow_sincronizado_em',codProv:'codigo_provisorio'};
 const SO_LEITURA=new Set(['tags','bMat','flowSit','osFlow','osStatus','osCoord','flowInfo','flowVal','flowEd','flowAt','codProv','bIni','bFim']);
 const daLinha=r=>{const o={cod:r.codigo};for(const[k,c]of Object.entries(COL))o[k]=r[c]??null;o.kwp=o.kwp==null?null:Number(o.kwp);o.valor=o.valor==null?null:Number(o.valor);o.top=r.topicos||{};o.topx=r.topicos_extra||[];o.equip=r.equipamentos||[];o.pag=r.pagamentos||[];o.tags=r.tags||[];o.flowEd=r.flow_editado||[];o.flowVal=r.flow_valores||{};return o};
 const paraBanco=patch=>{const p={};for(const[k,v]of Object.entries(patch))if(COL[k]&&!SO_LEITURA.has(k))p[COL[k]]=v;return p};
@@ -563,8 +567,10 @@ function msgErro(e){const m=String(e&&e.message||'');
   if(/check constraint|23514/i.test(m+(e&&e.code)))return'Alguma data não fecha com as outras (entrega antes da entrada, fim antes do início ou ano fora de 2024–2030). Confira.';
   return'Não foi possível salvar. Tente de novo.'}
 async function salvar(cod,patch,motivo){
-  if(!S.pode){toast('Seu perfil só pode consultar o cronograma.');return false}
-  const {error}=await sb.rpc('obra_salvar',{p_codigo:cod,p_patch:paraBanco(patch),p_motivo:motivo||null});
+  const soCt=Object.keys(patch).every(k=>CT.has(k));
+  if(!S.pode&&!(soCt&&S.podeCt)){toast('Seu perfil só pode consultar o cronograma.');return false}
+  const {error}=soCt?await sb.rpc('obra_salvar_contrato',{p_codigo:cod,p_patch:paraBanco(patch)})
+    :await sb.rpc('obra_salvar',{p_codigo:cod,p_patch:paraBanco(patch),p_motivo:motivo||null});
   if(error){toast(msgErro(error));return false}
   const o=S.obras.get(cod);if(o)Object.assign(o,patch);toast('Salvo');
   if(o&&(o.pag||[]).some(p=>p.avisar)&&Object.keys(patch).some(k=>DATAS_PAG.includes(k)))refletir(cod);
