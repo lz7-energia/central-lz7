@@ -732,7 +732,7 @@ do $$ begin
   if (select baseline_fim from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-21' then raise exception 'baseline não gravou'; end if;
   perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-23","fim_previsto":"2026-11-23"}');  -- motivo é opcional
   if (select inicio_previsto from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-23' then raise exception 'mudar sem motivo'; end if;
-  perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2026-11-25","fim_previsto":"2026-11-25","baseline_fim":"2030-01-01"}', 'Chuva');
+  perform public.obra_salvar('WB260999COL', '{"inicio_previsto":"2029-11-25","fim_previsto":"2029-11-25","baseline_fim":"2030-01-01"}', 'Chuva');
   if (select baseline_fim from public.obra_obras where codigo = 'WB260999COL') <> '2026-11-21' then raise exception 'baseline mudou'; end if;
   if (select count(*) from public.obra_historico where obra = 'WB260999COL' and motivo = 'Chuva') <> 2 then raise exception 'histórico da reprogramação'; end if;
   if (select status from public.obra_v_obras where codigo = 'WB260999COL') <> 'agendada' then raise exception 'status'; end if;
@@ -1031,3 +1031,24 @@ end $$;
 reset role;
 delete from public.obra_obras where codigo = 'WB260500AAA'; delete from public.obra_equipes where id = 'eq-b'; delete from public.obra_tags;
 do $$ begin raise notice 'OK pendências e tags'; end $$;
+
+-- 34) Contrato e particularidades: admin grava; equipe não; admin não mexe no resto da obra
+insert into public.obra_obras (codigo, cliente, entrada) values ('WB260600AAA', 'CONTRATO', '2026-11-01');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', false);  -- admin
+do $$ begin
+  perform public.obra_salvar_contrato('WB260600AAA', '{"contrato_path":"2026-11/x.pdf","contrato_nome":"x.pdf","particularidades":"Brinde: limpeza grátis no 1º ano","kwp":99}');
+  if (select particularidades from public.obra_obras where codigo = 'WB260600AAA') <> 'Brinde: limpeza grátis no 1º ano'
+     or (select contrato_nome from public.obra_obras where codigo = 'WB260600AAA') <> 'x.pdf'
+     or (select kwp from public.obra_obras where codigo = 'WB260600AAA') is not null then raise exception 'admin contrato'; end if;
+  begin perform public.obra_salvar('WB260600AAA', '{"kwp":5}'); raise exception 'admin editou a obra'; exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);  -- equipe
+do $$ begin
+  begin perform public.obra_salvar_contrato('WB260600AAA', '{"particularidades":"x"}'); raise exception 'equipe gravou contrato'; exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', '66666666-6666-6666-6666-666666666666', false);  -- obras
+do $$ begin perform public.obra_salvar_contrato('WB260600AAA', '{"particularidades":"Desconto de 5%"}'); end $$;
+reset role;
+delete from public.obra_obras where codigo = 'WB260600AAA';
+do $$ begin raise notice 'OK contrato do admin'; end $$;
