@@ -46,7 +46,8 @@ const eqp=id=>S.cfg.equipes.find(e=>e.id===id);
 const eqNome=id=>{const e=eqp(id);return e?e.nome:(id||'Sem equipe')};
 const eqChip=(id,extra='')=>{const e=eqp(id);return e?`<span class="pill eq" style="--h:${e.h}">${esc(e.nome)}${extra}</span>`:'<span class="pill">Sem equipe</span>'};
 // Nome que aparece: o nome do card (sem o código e a potência do padrão do Ploomes), senão o cliente.
-const tit=o=>{const c=String(o.card||'').replace(/^[A-Z0-9-]{6,}\s*-\s*/,'').replace(/\s*\(\s*[\d.,]+\s*kwp\s*\)\s*$/i,'').trim();return c?(c===c.toUpperCase()?nome(c):c):nome(o.cliente)};
+// título = nome do card como está no Flow (apelido do cliente, ex.: "WB260500COL - PAULO DOS SANTOS (7.5 kWp)"), pedido de 25/11/2026
+const tit=o=>{const c=String(o.card||'').trim();return c||nome(o.cliente)};
 
 /* ---------- regras ---------- */
 function calc(o){

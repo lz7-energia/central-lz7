@@ -264,6 +264,10 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   Toda rodada atualiza `flow_situacao`, `os_flow`, `os_status`, `os_coordenador`, `flow_info` (complemento da OS) e `flow_valores`; campo
   mudado por alguém na Central entra em `flow_editado` e o Flow não sobrescreve mais (a ficha mostra "Diferente do Flow"). Avisos na ficha:
   código provisório, pedido que saiu de aprovado, obra concluída com OS ainda aberta.
+  **Sem duplicar** (25/11/2026, migração `20261125000039_obras_sem_duplicar.sql`): lê do pedido mais antigo ao mais novo; pedido cujo código de
+  projeto já tem obra (pelo código ou pelo pedido ligado) ou cuja OS já está numa obra não cria outra. Limpeza das antigas:
+  `supabase/limpar-obras-duplicadas.sql` (passo 1 confere, passo 2 apaga só as que ninguém mexeu). **Título** da obra = nome do card como
+  está no Flow (apelido inteiro, com código e kWp), na tela e nas pendências.
 - **Obra manual** (de volta em 24/11/2026, para quando a API não puxar): "+ Obra manual" no cronograma e em Instalações pendentes (perfil obras;
   a logística não vê nem pode gravar os campos da instalação, migração `20261124000036_obras_manual.sql`). Pedido que aparecer depois no
   Flow com o mesmo código liga sozinho e só completa o vazio.

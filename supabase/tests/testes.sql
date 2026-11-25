@@ -948,7 +948,10 @@ insert into public.pedidos_venda (flow_id, numero, codigo_projeto, cliente, valo
    '{"situacao":"Faturado","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":520,"nomeRazaoSocial":"ADILSON TESTE","apelido":"Adilson Teste"},"camposAdicionais":{"Tipo de Financiamento":[6]}}'),
   ('311', '311', 'WB260300FCT', 'DIGITANDO', 100, null, '{"situacao":"Em digitação","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":1}}'),
   ('312', '312', 'WB260400FCT', 'CONCLUIDA', 100, null, '{"situacao":"Faturado","dataAprovacao":"2026-11-20T00:00:00","cliente":{"id":2}}'),
-  ('313', '313', 'WB260100ABC', 'CLIENTE A', 5000, null, '{"situacao":"Aprovado","dataAprovacao":"2026-10-01T00:00:00","cliente":{"id":3,"nomeRazaoSocial":"CLIENTE A FLOW","apelido":"WB260100ABC - CLIENTE A (4 kWp)"}}');
+  ('313', '313', 'WB260100ABC', 'CLIENTE A', 5000, null, '{"situacao":"Aprovado","dataAprovacao":"2026-10-01T00:00:00","cliente":{"id":3,"nomeRazaoSocial":"CLIENTE A FLOW","apelido":"WB260100ABC - CLIENTE A (4 kWp)"}}'),
+  -- segundo pedido do mesmo projeto (serviços) e segundo pedido "Adilson": não podem virar outra obra
+  ('314', '314', 'WB260200COL', 'PAULO TESTE', 3000, null, '{"situacao":"Aprovado","dataAprovacao":"2026-11-20T00:00:00","cliente":{"id":509}}'),
+  ('315', '315', 'Adilson', 'ADILSON TESTE', 500, null, '{"situacao":"Faturado","dataAprovacao":"2026-11-24T00:00:00","cliente":{"id":520}}');
 insert into public.ordens_servico (flow_id, pedido_flow_id, numero, status, bruto) values
   ('289', '302', '289', 'Separação', '{"id":289,"coordenador":{"nome":"Rafael"},"complemento":"O projeto está em nome de X"}'),
   ('299', '310', '299', 'Adição no Cronograma', '{"id":299}'),
@@ -963,6 +966,7 @@ do $$ declare j jsonb; o record; begin
   select * into o from public.obra_obras where codigo = 'PV-310';
   if not o.codigo_provisorio or o.financiamento is not true or o.flow_situacao <> 'Faturado' then raise exception 'código provisório: %', to_jsonb(o); end if;
   if exists (select 1 from public.obra_obras where codigo in ('WB260300FCT', 'WB260400FCT')) then raise exception 'criou em digitação/concluída'; end if;
+  if exists (select 1 from public.obra_obras where codigo in ('PV-314', 'PV-315')) then raise exception 'duplicou obra do mesmo projeto'; end if;
   -- obra antiga ligada pelo código: só preenche o vazio (cliente da planilha fica)
   select * into o from public.obra_obras where codigo = 'WB260100ABC';
   if o.id_cab_pedido_venda <> 313 or o.cliente <> 'CLIENTE A' or o.kwp <> 4 or o.valor <> 5000 then raise exception 'obra antiga ligada: %', to_jsonb(o); end if;
@@ -987,7 +991,7 @@ do $$ declare j jsonb; o record; begin
 end $$;
 delete from public.obra_obras; delete from public.obra_equipes where id = 'eq-a';
 delete from public.ordens_servico where flow_id in ('289', '299', '300');
-delete from public.pedidos_venda where flow_id in ('302', '310', '311', '312', '313');
+delete from public.pedidos_venda where flow_id in ('302', '310', '311', '312', '313', '314', '315');
 delete from public.clientes_flow where flow_id = '509';
 do $$ begin raise notice 'OK obras por área e Flow'; end $$;
 
