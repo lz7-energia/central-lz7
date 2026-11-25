@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Cronograma de instalação (Central de Obras): página própria com a lógica do protótipo "Cronograma de Obras LZ7"
 // (public/obras-app/cronograma.js|css) falando direto com o banco, sujeito ao RLS (só o perfil obras grava).
 // Cada tela abre sozinha pelo hash (#calendario, #entregas, #pendentes…), vinda do card da Início ou da área; sem menu lateral.
-const VERSAO = "7";
+const VERSAO = "8";
 const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
 
 export async function GET(req: Request) {

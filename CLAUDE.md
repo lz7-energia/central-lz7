@@ -247,7 +247,10 @@ Regras do pedido de venda (base das fontes `flow` e Emitidas):
   quando corrigirem no Flow). Ligação pelo `id_cab_pedido_venda`; obra antiga liga pelo código e só recebe o que estiver vazio.
   Toda rodada atualiza `flow_situacao`, `os_flow`, `os_status`, `os_coordenador`, `flow_info` (complemento da OS) e `flow_valores`; campo
   mudado por alguém na Central entra em `flow_editado` e o Flow não sobrescreve mais (a ficha mostra "Diferente do Flow"). Avisos na ficha:
-  código provisório, pedido que saiu de aprovado, obra concluída com OS ainda aberta. Cadastro manual pela tela saiu.
+  código provisório, pedido que saiu de aprovado, obra concluída com OS ainda aberta.
+- **Obra manual** (de volta em 24/11/2026, para quando a API não puxar): "+ Obra manual" no cronograma e em Instalações pendentes (perfil obras;
+  a logística não vê nem pode gravar os campos da instalação, migração `20261124000036_obras_manual.sql`). Pedido que aparecer depois no
+  Flow com o mesmo código liga sozinho e só completa o vazio.
 - Contrato: anexar o PDF lê e compara com a obra (cliente, CPF/CNPJ, cidade, kWp, módulos, estrutura, valor, financiamento); "Preencher
   os vazios com o contrato" só completa o que está vazio.
 - **Lista de projetos**: botão Calendário | Lista no cronograma (lembrado no navegador): uma linha por obra com etapa, status da OS,

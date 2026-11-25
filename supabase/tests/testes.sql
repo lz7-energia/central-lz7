@@ -911,6 +911,10 @@ do $$ begin
   exception when insufficient_privilege then null; end;
   begin update public.obra_obras set fim_real = '2026-11-20' where codigo = 'WB260100ABC'; raise exception 'logística concluiu direto';
   exception when insufficient_privilege then null; end;
+  begin insert into public.obra_obras (codigo, cliente, entrada, equipe_id, inicio_previsto) values ('WB260101ABC', 'X', '2026-11-01', 'eq-a', '2026-11-20');
+    raise exception 'logística criou obra agendada'; exception when insufficient_privilege then null; end;
+  insert into public.obra_obras (codigo, cliente, entrada, material_previsto, origem) values ('WB260102ABC', 'MANUAL', '2026-11-02', '2026-11-15', 'manual');
+  if (select baseline_material from public.obra_obras where codigo = 'WB260102ABC') <> '2026-11-15' then raise exception 'obra manual da logística'; end if;
   begin delete from public.obra_obras where codigo = 'WB260100ABC'; end;
   if not exists (select 1 from public.obra_obras where codigo = 'WB260100ABC') then raise exception 'logística excluiu obra'; end if;
   begin update public.obra_equipes set nome = 'x' where id = 'eq-a'; end;
