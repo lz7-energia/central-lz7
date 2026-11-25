@@ -133,7 +133,7 @@ function vCal(){
    <div class="tile"><b>${iw}</b><span>instalações nesta semana</span></div>
    <div class="tile"><b>${ew}</b><span>entregas previstas nesta semana</span></div>
    <button class="tile ${cr?'crit':'ok'}" data-nav="pendentes"><b>${cr}</b><span>alertas críticos</span></button></div>`;
-  const vista=`<div class="seg"><button data-act="vista" data-v="cal" class="${S.lista?'':'on'}">Calendário</button><button data-act="vista" data-v="lista" class="${S.lista?'on':''}">Lista</button></div>`;
+  const vista=`<div class="seg"><button data-act="vista" data-v="cal" class="${S.lista?'':'on'}">Calendário</button><button data-act="vista" data-v="lista" class="${S.lista?'on':''}">Lista</button></div>${S.pode?'<button class="btn" data-act="nova" title="Para quando a obra não veio do Flow">+ Obra manual</button>':''}`;
   if(S.lista)return h+vLista(vista);
   h+=`<div class="bar">${vista}<button class="btn" data-act="mes" data-d="-1" aria-label="Mês anterior">‹</button><h2>${MESES[mo-1]} ${y}</h2>
    <button class="btn" data-act="mes" data-d="1" aria-label="Próximo mês">›</button><button class="btn" data-act="mes" data-d="0">Hoje</button><span class="sp"></span>
@@ -238,7 +238,7 @@ function vPend(){
   const ab=visiveis().filter(o=>!o.fimReal),fila=ab.filter(o=>!o.iniPrev),atr=ab.filter(o=>o.fimPrev&&o.fimPrev<HOJE),al=alertasDe(T_OBRAS);
   return`<div class="tiles"><div class="tile ${fila.length?'warn':'ok'}"><b>${fila.length}</b><span>sem data de instalação</span></div><div class="tile ${atr.length?'crit':'ok'}"><b>${atr.length}</b><span>instalações atrasadas</span></div>
    <div class="tile ${al.filter(a=>a.sev==='crit').length?'crit':'ok'}"><b>${al.length}</b><span>alertas de obras</span></div></div>
-   <h3 class="sec">A agendar <span class="pill">${fila.length}</span></h3>${vFila()}${vAlertas(T_OBRAS)}`;
+   <h3 class="sec">A agendar <span class="pill">${fila.length}</span>${S.pode?' <button class="btn s" data-act="nova" style="margin-left:8px">+ Obra manual</button>':''}</h3>${vFila()}${vAlertas(T_OBRAS)}`;
 }
 /* ---------- motivos das remarcações ---------- */
 function painelMotivos(lista,titulo){
@@ -339,7 +339,7 @@ function casca(){
 function render(){
   casca();const v=$('#view');
   if(!S.ok){v.innerHTML='<div class="empty">Carregando obras…</div>';return}
-  if(!S.obras.size&&!['equipes','config'].includes(S.view)){v.innerHTML=`<div class="empty"><h2>Nenhuma obra ainda</h2><p>As obras entram sozinhas quando o pedido de venda fica Aprovado ou Faturado no Flow.</p></div>`;return}
+  if(!S.obras.size&&!['equipes','config'].includes(S.view)){v.innerHTML=`<div class="empty"><h2>Nenhuma obra ainda</h2><p>As obras entram sozinhas quando o pedido de venda fica Aprovado ou Faturado no Flow.</p>${S.pode?'<p><button class="btn p" data-act="nova">+ Obra manual</button></p>':''}</div>`;return}
   v.innerHTML=({calendario:vCal,entregas:vEntregas,'ind-logistica':vIndLog,pendentes:vPend,equipes:vEquipes,indicadores:vRel,config:vConfig})[S.view]();
 }
 
@@ -591,7 +591,7 @@ let NOVO=null; // {path, nome} do contrato enviado
 const COD_OK=/^[A-Z0-9][A-Z0-9-]{3,30}$/;
 function mNova(){
   NOVO=null;const eqs=S.cfg.equipes.filter(e=>e.ativa).map(e=>[e.id,e.nome+(e.base?' · '+e.base:'')]);
-  modal(`<h2>Nova obra</h2>
+  modal(`<h2>Obra manual</h2><p class="muted small" style="max-width:70ch">Para quando a obra não veio do Flow. Se o pedido aparecer depois no Flow com o mesmo código, a Central liga os dois sozinha e só completa o que estiver vazio aqui (nada é duplicado).</p>
    <div class="fg"><label class="w">Contrato em PDF: a Central lê os dados e guarda o arquivo na obra<input type="file" id="n_arq" accept=".pdf,application/pdf"></label></div>
    <div id="n_ct" hidden></div>
    <div class="fg" style="margin-top:10px">${inp('n_cod','Código da obra * (ex.: WB260500COL)','','text','style="text-transform:uppercase" maxlength="31"')}${inp('n_card','Nome do card *','')}${inp('n_contrato','Nome do contrato','','text','placeholder="ex.: 1114"')}
@@ -599,7 +599,7 @@ function mNova(){
    ${inp('n_kwp','Potência (kWp)','','number','step="0.01" min="0"')}${inp('n_mod','Módulos','','number','step="1" min="0"')}${sel('n_estrut','Estrutura','',S.cfg.estruturas)}${sel('n_envio','Envio do material','Estoque',['Estoque','Distribuidora'])}
    ${inp('n_valor','Valor do contrato (R$)','','number','step="0.01" min="0"')}${inp('n_assinado','Assinado em','','date')}${inp('n_formaPag','Forma de pagamento','','text','','w')}
    ${sel('n_pagNa','Pagamento condicionado','',Object.entries(ETAPA).map(([k,v])=>[k,v.charAt(0).toUpperCase()+v.slice(1)]))}${inp('n_matPrev','Previsão de entrega do material','','date')}
-   ${inp('n_iniPrev','Previsão de instalação (início)','','date')}${inp('n_fimPrev','Previsão de instalação (fim)','','date')}${sel('n_equipe','Equipe (pode definir depois)','',eqs)}</div>
+   ${S.podeInst?`${inp('n_iniPrev','Previsão de instalação (início)','','date')}${inp('n_fimPrev','Previsão de instalação (fim)','','date')}${sel('n_equipe','Equipe (pode definir depois)','',eqs)}`:''}</div>
    <div class="err" id="e_n"></div><div class="acts"><button class="btn p" data-act="criar">Cadastrar obra</button><button class="btn" data-act="fechar">Cancelar</button></div>`);
 }
 async function api(corpo){const r=await fetch('/obras/api/contrato',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(corpo)});const j=await r.json().catch(()=>({}));if(!r.ok||j.erro)throw new Error(j.erro||'Não foi possível.');return j}
